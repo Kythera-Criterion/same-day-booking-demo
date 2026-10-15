@@ -8,6 +8,7 @@ import type { Session } from '@supabase/supabase-js';
 import LoginBox from '@/components/LoginBox';
 import { getClient, isConfigured, one } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
+import { requestDispatch } from '@/lib/dispatch-client';
 import { DEFAULT_POINT, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import {
   WINDOWS,
@@ -176,6 +177,7 @@ export default function UserPage() {
       loadSlots();
       return;
     }
+    requestDispatch(supabase);
     setBooked({
       start_at: slot.start_at,
       salon: slot.salon?.name ?? '',

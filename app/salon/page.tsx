@@ -8,6 +8,8 @@ import type { Session } from '@supabase/supabase-js';
 import LoginBox from '@/components/LoginBox';
 import { getClient, isConfigured, one } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
+import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
+import NotificationLog from '@/components/NotificationLog';
 import { fmtTime, jstTodayEnd, jstTodayStart, startTimeOptions } from '@/lib/time';
 
 type Menu = { id: string; name: string; duration_min: number; price: number };
@@ -145,6 +147,7 @@ export default function SalonPage() {
   }, [supabase, salon, loadToday]);
 
   const timeOptions = useMemo(() => startTimeOptions(now), [now]);
+  useDispatchTicker(supabase, !!salon);
 
   async function publish() {
     if (!supabase || !menuId || !startAt) return;
@@ -174,6 +177,7 @@ export default function SalonPage() {
     if (confirmText[action] && !window.confirm(confirmText[action])) return;
     const { error } = await supabase.rpc('salon_update_booking', { p_booking_id: bookingId, p_action: action });
     if (error) setNotice({ kind: 'error', text: toMessage(error) });
+    else requestDispatch(supabase);
     loadToday();
   }
 
@@ -337,6 +341,13 @@ export default function SalonPage() {
               );
             })}
           </ul>
+        </section>
+      )}
+
+      {salon && (
+        <section className="card">
+          <h2 className="card-title">通知ログ</h2>
+          <NotificationLog client={supabase} salonId={salon.id} limit={10} />
         </section>
       )}
     </main>
