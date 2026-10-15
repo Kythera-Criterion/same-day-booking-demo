@@ -420,3 +420,51 @@ button { font: inherit; color: inherit; }
   .app-salon .stack { gap: 14px; }
   .timeline { max-height: 680px; }
 }
+
+/* =========================================================
+   運営の画面
+   ========================================================= */
+.admin-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 0 0 16px; padding: 4px; background: #ebe7df; border-radius: 14px; scrollbar-width: none; }
+.admin-tabs button { flex: 1 0 auto; min-height: 44px; padding: 8px 14px; border: none; border-radius: 10px; background: transparent; font-size: 14px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.admin-tabs button[aria-current="page"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--shadow-s); }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.filter-row .input, .filter-row .select { min-height: 44px; font-size: 15px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 44%), 1fr)); gap: 10px; border-radius: var(--r-m); }
+.kpi-grid .kpi { gap: 2px; }
+.kpi-sub { font-size: 11px; color: var(--sub); line-height: 1.5; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.two-col .card + .card { margin-top: 0; }
+
+.chart { margin: 0; }
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.chart-legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.chart-legend i, .chart-tip i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-grid { stroke: var(--line); stroke-width: 1; }
+.chart-base { stroke: var(--line-strong); stroke-width: 1; }
+.chart-axis { font-size: 11px; fill: var(--sub); font-variant-numeric: tabular-nums; }
+.chart-hover { fill: rgba(31, 111, 92, 0.06); }
+.chart-tip { position: absolute; top: 0; transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 12px; border-radius: 8px; padding: 6px 10px; pointer-events: none; display: flex; flex-direction: column; white-space: nowrap; box-shadow: var(--shadow-m); }
+.chart-note { font-size: 12px; color: var(--sub); }
+.chart-table { margin-top: 8px; font-size: 12px; }
+.chart-table summary { cursor: pointer; color: var(--accent); min-height: 32px; }
+.chart-table table, .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.chart-table th, .chart-table td, .data-table th, .data-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.data-table th { color: var(--sub); font-weight: 500; }
+.table-scroll { overflow-x: auto; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--ink-2); }
+
+.barlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.barlist li { display: grid; grid-template-columns: minmax(88px, 34%) 1fr 52px; gap: 10px; align-items: center; }
+.barlist-label { font-size: 13px; line-height: 1.35; }
+.barlist-label small { display: block; font-size: 11px; color: var(--sub); }
+.barlist-track { height: 12px; background: var(--surface-2); border-radius: 0 4px 4px 0; }
+.barlist-bar { display: block; height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; transition: width 0.5s var(--ease); }
+.barlist-value { text-align: right; font-weight: 700; font-size: 14px; }
+.barlist-value small { font-size: 10px; font-weight: 500; color: var(--sub); margin-left: 1px; }
+
+.overview-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.overview-list li { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.overview-list li:first-child { border-top: none; }
+.overview-list small { color: var(--sub); }
