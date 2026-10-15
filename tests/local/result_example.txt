@@ -1,0 +1,163 @@
+===== 動作確認 =====
+基準時刻 2026-10-15 09:30:00+09 / 今日中に収まる t
+
+== T1 新規登録でプロフィールが作られる（不正な性別は空になる）
+  display_name   |     phone     | gender 
+-----------------+---------------+--------
+ サロンAスタッフ |               | 
+ サロンBスタッフ |               | 
+ 山田 花子       | 090-0000-0001 | female
+ 田中 三郎       | 090-0000-0003 | 
+ 鈴木 一郎       | 090-0000-0002 | male
+
+== T2 ログインしていない人は公開中の枠だけ見られ、予約は見られない
+ 公開中の枠 
+------------
+          3
+
+ERROR:  permission denied for table bookings
+== T3 利用者1が予約できる
+  status   | contact_name | contact_phone 
+-----------+--------------+---------------
+ confirmed | 山田 花子    | 090-0000-0001
+
+ 枠の状態 
+----------
+ booked
+
+== T4 利用者2が同じ枠を予約しようとすると already_booked
+ERROR:  already_booked
+CONTEXT:  PL/pgSQL function book_slot(uuid,text) line 25 at RAISE
+== T5 予約済みの枠は、予約した本人とそのサロンだけが見られる
+ 匿名で見える数 
+----------------
+              0
+
+ 利用者2で見える数 
+-------------------
+                 0
+
+ 利用者1で見える数 
+-------------------
+                 1
+
+== T6 サロンAは自店の予約（名前・電話）を見られる。サロンBは見えない
+ contact_name | contact_phone |  status   
+--------------+---------------+-----------
+ 山田 花子    | 090-0000-0001 | confirmed
+
+ サロンbから見える予約 
+-----------------------
+                     0
+
+== T7 利用者2から利用者1の予約は見えない
+ 利用者2から見える予約 
+-----------------------
+                     0
+
+== T8 画面側からのテーブル直接書き込みは拒否される
+ERROR:  permission denied for table slots
+ERROR:  permission denied for table bookings
+== T9 サロンBはサロンAのメニューで枠を作れない（forbidden）
+ERROR:  forbidden
+CONTEXT:  PL/pgSQL function create_slot(uuid,timestamp with time zone,uuid) line 10 at RAISE
+== T10 サロンAは今日の枠を作れる（美容師つき）
+ status | price |   開始   
+--------+-------+----------
+ open   |  4500 | 11:30:00
+
+== T11 同じ美容師の時間が重なる枠は作れない（overlap）
+ERROR:  overlap
+CONTEXT:  PL/pgSQL function create_slot(uuid,timestamp with time zone,uuid) line 28 at RAISE
+== T12 明日の枠は作れない（today_only）／9時前は作れない（outside_hours）
+ERROR:  today_only
+CONTEXT:  PL/pgSQL function create_slot(uuid,timestamp with time zone,uuid) line 19 at RAISE
+ERROR:  outside_hours
+CONTEXT:  PL/pgSQL function create_slot(uuid,timestamp with time zone,uuid) line 20 at RAISE
+== T13 女性限定のサロンに、男性の利用者は予約できない（not_accepted）
+ERROR:  not_accepted
+CONTEXT:  PL/pgSQL function book_slot(uuid,text) line 30 at RAISE
+== T14 開始10分前を過ぎた枠は予約できない（too_late）
+ERROR:  too_late
+CONTEXT:  PL/pgSQL function book_slot(uuid,text) line 26 at RAISE
+== T15 無断キャンセルが90日で2回になると予約できない（suspended）
+ status  
+---------
+ no_show
+
+ status  
+---------
+ no_show
+
+ERROR:  suspended
+CONTEXT:  PL/pgSQL function book_slot(uuid,text) line 19 at RAISE
+== T16 開始前の予約に無断キャンセルは記録できない（not_started）
+ERROR:  not_started
+CONTEXT:  PL/pgSQL function salon_update_booking(uuid,text) line 20 at RAISE
+== T17 サロンBはサロンAの予約を操作できない（forbidden）
+ERROR:  forbidden
+CONTEXT:  PL/pgSQL function salon_update_booking(uuid,text) line 11 at RAISE
+== T18 サロン都合のキャンセル → 枠が戻り、別の利用者が予約できる
+       status       
+--------------------
+ cancelled_by_salon
+
+ キャンセル後の枠 
+------------------
+ open
+
+  status   | contact_name 
+-----------+--------------
+ confirmed | 鈴木 一郎
+
+ 有効な予約 | 予約の履歴 
+------------+------------
+          1 |          2
+
+== T19 無断キャンセル記録と操作記録は画面側から見えない
+ERROR:  permission denied for table no_show_records
+ERROR:  permission denied for table audit_logs
+== T20 他人のプロフィール（性別など）は、サロンからも見えない
+ サロンaから見えるプロフィール 
+-------------------------------
+                             1
+
+== T21 操作記録が残っている
+     action     | count 
+----------------+-------
+ booking_cancel |     1
+ create_slot    |     1
+
+===== 同時予約の確認 =====
+[利用者2]           log          
+[利用者2] -----------------------
+[利用者2]  予約処理開始 00:33:30
+[利用者2] (1 row)
+[利用者2] 
+[利用者2] ERROR:  already_booked
+[利用者2] CONTEXT:  PL/pgSQL function book_slot(uuid,text) line 25 at RAISE
+[利用者1]           log          
+[利用者1] -----------------------
+[利用者1]  予約処理開始 00:33:29
+[利用者1] (1 row)
+[利用者1] 
+[利用者1]              log             
+[利用者1] -----------------------------
+[利用者1]  結果: confirmed (山田 花子)
+[利用者1] (1 row)
+[利用者1] 
+[利用者1]  pg_sleep 
+[利用者1] ----------
+[利用者1]  
+[利用者1] (1 row)
+[利用者1] 
+[利用者1]       log      
+[利用者1] ---------------
+[利用者1]  確定 00:33:32
+[利用者1] (1 row)
+[利用者1] 
+ この枠の有効な予約数 
+----------------------
+                    1
+(1 row)
+
