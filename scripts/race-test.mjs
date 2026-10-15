@@ -1,21 +1,19 @@
-// 同じ枠に、2人の利用者から合わせて10件の予約を同時に送る。成立するのは1件だけであることを確かめる
-import { admin, createTestSlot, jstTime, signIn } from './_common.mjs';
+// 同じ枠に、10人の利用者から同時に予約を送る。成立するのは1件だけであることを確かめる
+import { admin, createTestSlot, DEMO_USERS, jstTime, signIn } from './_common.mjs';
 
 const slot = await createTestSlot();
-const user1 = await signIn('user1@demo.test');
-const user2 = await signIn('user2@demo.test');
+const clients = await Promise.all(DEMO_USERS.map((email) => signIn(email)));
 
-console.log(`今日 ${jstTime(slot.start_at)} の枠に、10件の予約を同時に送ります…\n`);
+console.log(`今日 ${jstTime(slot.start_at)} の枠に、10人が同時に予約を送ります…\n`);
 
-const requests = Array.from({ length: 10 }, (_, i) => {
-  const who = i % 2 === 0 ? '利用者1' : '利用者2';
-  const client = i % 2 === 0 ? user1 : user2;
-  return client.rpc('book_slot', { p_slot_id: slot.id }).then(({ error }) => ({ who, error }));
-});
+const results = await Promise.all(
+  clients.map((client, i) =>
+    client.rpc('book_slot', { p_slot_id: slot.id }).then(({ error }) => ({ who: `利用者${i + 1}`, error })),
+  ),
+);
 
-const results = await Promise.all(requests);
 results.forEach((r, i) => {
-  const label = `#${String(i + 1).padStart(2, '0')} ${r.who}`;
+  const label = `#${String(i + 1).padStart(2, '0')} ${r.who.padEnd(5, '　')}`;
   if (!r.error) console.log(`${label}  予約成立`);
   else if (r.error.message.includes('already_booked')) console.log(`${label}  すでに埋まっています（already_booked）`);
   else console.log(`${label}  エラー: ${r.error.message}`);
@@ -25,9 +23,12 @@ const { count, error } = await admin
   .from('bookings')
   .select('id', { count: 'exact', head: true })
   .eq('slot_id', slot.id)
-  .neq('status', 'cancelled_by_salon');
+  .eq('status', 'confirmed');
 if (error) throw error;
 
 const success = results.filter((r) => !r.error).length;
-console.log(`\n成立した予約: ${success} 件 ／ データベース上の有効な予約: ${count} 件`);
-console.log(success === 1 && count === 1 ? '→ 同時に予約が来ても、1つの枠に予約は1件だけです。' : '→ 想定と異なる結果です。');
+const alreadyBooked = results.filter((r) => r.error?.message.includes('already_booked')).length;
+console.log(`\n成立した予約: ${success} 件 ／ すでに埋まっています: ${alreadyBooked} 件 ／ データベース上の有効な予約: ${count} 件`);
+const ok = success === 1 && count === 1 && alreadyBooked === 9;
+console.log(ok ? '→ 同時に予約が来ても、1つの枠に予約は1件だけです。' : '→ 想定と異なる結果です。');
+process.exitCode = ok ? 0 : 1;
