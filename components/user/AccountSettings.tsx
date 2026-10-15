@@ -1,10 +1,12 @@
 'use client';
 
-// マイページの「アカウント」：パスワードの変更と、アカウントの削除
+// マイページの「アカウント」：ログインの方法（パスワード・Google・Yahoo! JAPAN ID の連携）と、アカウントの削除
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
+import AccountSecurity from '@/components/auth/AccountSecurity';
+import type { Providers } from '@/lib/oauth-shared';
 
 const DELETE_ERROR: Record<string, string> = {
   has_active_booking: 'ご予約中は削除できません。来店のあと、またはお店へキャンセルのご連絡をしたあとに、お手続きください。',
@@ -13,31 +15,25 @@ const DELETE_ERROR: Record<string, string> = {
   not_authenticated: 'ログインし直してから、もう一度お試しください。',
 };
 
-export default function AccountSettings({ client, hasActiveBooking, onDeleted }: { client: SupabaseClient; hasActiveBooking: boolean; onDeleted: () => void }) {
-  const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
-  const [pwMsg, setPwMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
-  const [pwBusy, setPwBusy] = useState(false);
+export default function AccountSettings({
+  client,
+  hasActiveBooking,
+  onDeleted,
+  providers,
+  linked,
+  authError,
+}: {
+  client: SupabaseClient;
+  hasActiveBooking: boolean;
+  onDeleted: () => void;
+  providers: Providers;
+  linked?: string | null;
+  authError?: string | null;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [agree, setAgree] = useState(false);
   const [delBusy, setDelBusy] = useState(false);
   const [delError, setDelError] = useState<string | null>(null);
-
-  async function changePassword(e: FormEvent) {
-    e.preventDefault();
-    if (pw.length < 8) return setPwMsg({ kind: 'error', text: 'パスワードは8文字以上で入力してください。' });
-    if (pw !== pw2) return setPwMsg({ kind: 'error', text: '確認のため、同じパスワードをもう一度入力してください。' });
-    setPwBusy(true);
-    const { error } = await client.auth.updateUser({ password: pw });
-    setPwBusy(false);
-    if (error) {
-      setPwMsg({ kind: 'error', text: error.message.includes('different') ? '今までと違うパスワードにしてください。' : `変更できませんでした（${error.message}）` });
-      return;
-    }
-    setPw('');
-    setPw2('');
-    setPwMsg({ kind: 'ok', text: 'パスワードを変更しました。' });
-  }
 
   async function deleteAccount() {
     setDelBusy(true);
@@ -56,25 +52,10 @@ export default function AccountSettings({ client, hasActiveBooking, onDeleted }:
 
   return (
     <>
-      <h2 className="section-title">アカウント</h2>
-      <form className="card" onSubmit={changePassword} noValidate>
-        <p className="card-title">パスワードの変更</p>
-        <div className="field-row">
-          <label className="field">
-            <span className="field-label">新しいパスワード</span>
-            <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
-            <span className="field-hint">8文字以上</span>
-          </label>
-          <label className="field">
-            <span className="field-label">もう一度</span>
-            <input className="input" type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-          </label>
-        </div>
-        {pwMsg && <p className={`notice ${pwMsg.kind === 'ok' ? 'notice-ok' : 'notice-error'}`}>{pwMsg.text}</p>}
-        <button className="btn btn-secondary btn-block" type="submit" disabled={pwBusy || !pw}>
-          {pwBusy ? '変更中…' : 'パスワードを変更'}
-        </button>
-      </form>
+      <h2 className="section-title" id="account">
+        アカウント
+      </h2>
+      <AccountSecurity client={client} role="user" providers={providers} returnPath="/mypage" linked={linked} authError={authError} />
 
       <section className="card danger-zone">
         <p className="card-title">アカウントの削除</p>
@@ -91,6 +72,7 @@ export default function AccountSettings({ client, hasActiveBooking, onDeleted }:
           <p className="card-title">アカウントを削除しますか？</p>
           <ul className="delete-list">
             <li>プロフィール・カルテ・会話の好み・ヘア写真を削除します。</li>
+            <li>Google・Yahoo! JAPAN ID との連携も解除されます。</li>
             <li>ご予約のときにお店へお伝えした内容は、お店の記録として残ります。</li>
             <li>無断キャンセルの記録は、規約に基づき電話番号に紐づけて90日間残ります。</li>
             <li>同じメールアドレスで、もう一度登録できます。</li>

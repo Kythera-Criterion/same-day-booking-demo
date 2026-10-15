@@ -11,8 +11,9 @@ import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/profile-options';
 import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
+import type { Providers } from '@/lib/oauth-shared';
 import AccountSettings from './AccountSettings';
-import { useUserState, type MyProfile } from './useUserState';
+import { needsProfile, useUserState, type MyProfile } from './useUserState';
 
 const STATUS_LABEL: Record<string, string> = {
   confirmed: '予約中',
@@ -27,7 +28,7 @@ type Draft = Pick<
   'display_name' | 'phone' | 'gender' | 'age_group' | 'occupation' | 'area_id' | 'conversation_pref' | 'hair_type' | 'color_history' | 'perm_history'
 >;
 
-export default function MyPage() {
+export default function MyPage({ providers, linked, authError }: { providers: Providers; linked?: string | null; authError?: string | null }) {
   const router = useRouter();
   const { client, session, ready } = useRoleSession('user');
   const [deleted, setDeleted] = useState(false);
@@ -37,9 +38,11 @@ export default function MyPage() {
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [now, setNow] = useState(() => new Date());
 
+  // ログアウトしたときは、ログインの画面ではなくホームへ
+  const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    if (ready && !session && !deleted) router.replace('/login?next=/mypage');
-  }, [ready, session, router, deleted]);
+    if (ready && !session && !deleted && !leaving) router.replace('/login?next=/mypage');
+  }, [ready, session, router, deleted, leaving]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -93,6 +96,7 @@ export default function MyPage() {
   }
 
   async function logout() {
+    setLeaving(true);
     await client?.auth.signOut();
     router.replace('/');
   }
@@ -134,6 +138,13 @@ export default function MyPage() {
               無断キャンセルが続いたため、新しいご予約をお受けできません。
               <strong> {fmtDate(suspendedUntil)}から予約できます。</strong>
             </div>
+          )}
+
+          {profile && needsProfile(profile) && (
+            <Link href="/signup/complete?next=/mypage" className="notice notice-info finish-banner">
+              <strong>登録を仕上げてください</strong>
+              ご予約の前に、電話番号・18歳以上の確認などの入力が必要です。 <span className="finish-go">入力する →</span>
+            </Link>
           )}
 
           <h2 className="section-title">現在の予約</h2>
@@ -277,7 +288,14 @@ export default function MyPage() {
             </>
           )}
 
-          <AccountSettings client={client} hasActiveBooking={!!active} onDeleted={() => setDeleted(true)} />
+          <AccountSettings
+            client={client}
+            hasActiveBooking={!!active}
+            onDeleted={() => setDeleted(true)}
+            providers={providers}
+            linked={linked}
+            authError={authError}
+          />
 
           <button className="btn btn-text" onClick={logout}>
             ログアウト

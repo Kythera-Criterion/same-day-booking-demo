@@ -3,10 +3,13 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { demoLogin } from '@/lib/demo-login';
+import PasswordInput from '@/components/auth/PasswordInput';
+import { OrDivider } from '@/components/auth/SocialButtons';
 
 type Account = { email: string; label: string; sub?: string };
 
-// メールアドレスとパスワードでのログイン。デモモードでは、ワンタップのデモログインも出す
+// メールアドレスとパスワードでのログイン。外部の ID（Google・Yahoo! JAPAN ID）のボタンは social に渡す。
+// デモモードでは、ワンタップのデモログインも出す
 export default function LoginBox({
   client,
   title,
@@ -14,6 +17,9 @@ export default function LoginBox({
   demoMode = false,
   forgotHref = '/forgot',
   footer,
+  social,
+  notice,
+  resendRole = 'user',
 }: {
   client: SupabaseClient;
   title: string;
@@ -21,25 +27,54 @@ export default function LoginBox({
   demoMode?: boolean;
   forgotHref?: string | null;
   footer?: ReactNode;
+  social?: ReactNode;
+  notice?: ReactNode;
+  resendRole?: 'user' | 'salon' | null;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resent, setResent] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy('form');
     setError(null);
-    const { error: signInError } = await client.auth.signInWithPassword({ email, password });
+    setResent(null);
+    const { error: signInError } = await client.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(null);
     if (signInError) {
+      const notConfirmed = signInError.message.includes('Email not confirmed');
+      setUnconfirmed(notConfirmed);
       setError(
-        signInError.message.includes('Email not confirmed')
-          ? 'メールアドレスの確認がまだ済んでいません。届いたメールのリンクを開いてください。'
+        notConfirmed
+          ? 'メールアドレスの確認がまだ済んでいません。届いた「メールアドレスの確認のお願い」のリンクを開いてください。'
           : 'ログインできませんでした。メールアドレスとパスワードをご確認ください。',
       );
     }
+  }
+
+  // 確認メールの再送（確認がまだのアカウントだけに届く）
+  async function resendConfirm() {
+    setBusy('resend');
+    const res = await fetch('/api/auth/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), role: resendRole }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { demoLink?: string | null };
+    setBusy(null);
+    if (!res.ok) {
+      setResent('送信が混み合っています。1分ほどおいてお試しください。');
+      return;
+    }
+    if (body.demoLink) {
+      window.location.assign(body.demoLink);
+      return;
+    }
+    setResent('確認メールをもう一度送りました。');
   }
 
   async function oneTap(account: Account) {
@@ -53,6 +88,7 @@ export default function LoginBox({
   return (
     <section className="card fade-in">
       <h2 className="card-title">{title}</h2>
+      {notice}
 
       {demoMode && demoAccounts.length > 0 && (
         <>
@@ -68,23 +104,35 @@ export default function LoginBox({
         </>
       )}
 
+      {social && (
+        <>
+          {social}
+          <OrDivider>またはメールアドレスでログイン</OrDivider>
+        </>
+      )}
+
       <form onSubmit={submit}>
         <label className="field">
           <span className="field-label">メールアドレス</span>
           <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label className="field">
-          <span className="field-label">パスワード</span>
-          <input
-            className="input"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        {error && <p className="notice notice-error">{error}</p>}
+        <div className="field">
+          <label className="field-label" htmlFor="login-password">
+            パスワード
+          </label>
+          <PasswordInput id="login-password" value={password} onChange={setPassword} required />
+        </div>
+        {error && (
+          <div className="notice notice-error" role="alert">
+            {error}
+            {unconfirmed && resendRole && (
+              <button type="button" className="btn btn-text btn-sm" disabled={busy !== null} onClick={resendConfirm}>
+                {busy === 'resend' ? '送信中…' : '確認メールをもう一度送る'}
+              </button>
+            )}
+          </div>
+        )}
+        {resent && <p className="notice notice-info">{resent}</p>}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy !== null}>
           {busy === 'form' ? 'ログイン中…' : 'ログイン'}
         </button>

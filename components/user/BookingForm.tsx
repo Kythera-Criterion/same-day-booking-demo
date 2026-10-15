@@ -36,10 +36,12 @@ export default function BookingForm({
   suspendedUntil,
   now,
   unavailable = null,
+  profileMissing = false,
   onChooseOther,
   onBooked,
   onUnavailable,
 }: {
+  profileMissing?: boolean;
   client: SupabaseClient;
   session: Session;
   slot: BookTarget;
@@ -223,17 +225,24 @@ export default function BookingForm({
               <Link href={`/booking/${activeBookingId}`}>ご予約中の内容を見る</Link>
             </>
           )}
-          {error.code === 'phone_required' && (
+          {(error.code === 'phone_required' || error.code === 'adult_required') && (
             <>
               {' '}
-              <Link href="/mypage">マイページへ</Link>
+              <Link href={`/signup/complete?next=${encodeURIComponent(`/book/${slot.id}`)}`}>登録を仕上げる</Link>
             </>
           )}
         </div>
       )}
       {suspendedUntil && <p className="notice notice-error">{fmtDate(suspendedUntil)}から予約できます。</p>}
 
-      {unavailable && !busy && !booked && onChooseOther ? (
+      {profileMissing && !unavailable ? (
+        <div className="confirm-ctl">
+          <p className="notice notice-info">ご予約の前に、電話番号・18歳以上の確認など、登録の仕上げが必要です（1分ほどで終わります）。</p>
+          <Link className="btn btn-primary btn-lg btn-block" href={`/signup/complete?next=${encodeURIComponent(`/book/${slot.id}`)}`}>
+            登録を仕上げて予約へ進む
+          </Link>
+        </div>
+      ) : unavailable && !busy && !booked && onChooseOther ? (
         <div className="confirm-ctl">
           <button className="btn btn-primary btn-lg btn-block" onClick={onChooseOther}>
             ほかの枠を選ぶ

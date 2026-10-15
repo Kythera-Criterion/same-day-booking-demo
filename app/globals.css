@@ -911,3 +911,67 @@ button { font: inherit; color: inherit; }
 
 .tl-suspended { background: repeating-linear-gradient(135deg, var(--warn-soft) 0 6px, #f7e1da 6px 12px); color: var(--warn); border: 1px dashed color-mix(in srgb, var(--warn) 40%, white); }
 .pill-suspended { color: var(--warn); background: var(--warn-soft); }
+
+/* ---------- 新規登録・ログイン（外部の ID・パスワード） ---------- */
+.social { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 2px; }
+.social-btn {
+  position: relative; justify-content: center; gap: 10px; min-height: 52px; font-weight: 700;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong);
+}
+.social-btn:hover:not(:disabled) { background: var(--surface-2); }
+.social-mark {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 8px;
+  font-size: 13px; font-weight: 800; letter-spacing: -0.02em; color: #fff; background: var(--slate);
+}
+.social-google .social-mark, .social-mark.social-google { background: #3c6fd8; }
+.social-yahoo .social-mark, .social-mark.social-yahoo { background: #b8323f; }
+.social-demo {
+  flex: none;
+  font-size: 11px; font-weight: 700; color: #7a520a; background: var(--amber-soft); border-radius: 999px; padding: 2px 8px;
+}
+.social-note { margin: 2px 2px 0; }
+.or-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; color: var(--sub); font-size: 13px; }
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 76px; }
+.pw-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); min-height: 36px; min-width: 60px; padding: 4px 10px;
+  border: none; border-radius: 9px; background: var(--surface-2); color: var(--ink-2); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.pw-toggle[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent-deep); }
+.pw-meter { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--sub); }
+.pw-bar { display: inline-flex; gap: 3px; }
+.pw-bar i { display: block; width: 22px; height: 5px; border-radius: 3px; background: var(--line); }
+.pw-1 .pw-bar i:nth-child(1) { background: var(--warn); }
+.pw-2 .pw-bar i:nth-child(-n + 2) { background: #c98a14; }
+.pw-3 .pw-bar i { background: var(--accent); }
+.pw-0 { color: var(--warn); }
+
+.signup-cta { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; }
+.signup-cta p { margin: 0 0 8px; font-size: 13px; color: var(--sub); }
+.progress-3 li { flex: 1; text-align: center; }
+.progress-3 li:first-child { text-align: left; }
+.progress-3 li:last-child { text-align: right; }
+
+.demo-link { display: block; }
+.demo-provider { border: 2px dashed color-mix(in srgb, #c98a14 55%, white); }
+.demo-provider-badge {
+  display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em; color: #7a520a; background: var(--amber-soft);
+}
+.demo-accounts { border: none; margin: 8px 0 4px; padding: 0; }
+.demo-accounts small { display: block; }
+
+.finish-banner { display: block; text-decoration: none; margin-bottom: 12px; }
+.finish-banner strong { display: block; margin-bottom: 2px; }
+.finish-go { font-weight: 700; white-space: nowrap; }
+
+.linked-list { list-style: none; margin: 10px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.linked-list li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.linked-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.linked-body small { font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+.pw-form { margin-top: 6px; }
+.pill-row { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 480px) { .account-security .field-row, .demo-provider .field-row { grid-template-columns: 1fr; } }
+.linked-hint { display: block; color: var(--ink-2); margin-top: 2px; }

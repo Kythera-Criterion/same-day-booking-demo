@@ -1,16 +1,24 @@
 'use client';
 
-// 新規登録（2段階）
-//   1. メールアドレスとパスワード
-//   2. 氏名・電話番号・性別・年代・職業・利用エリア、18歳以上の確認、規約への同意
+// 新規登録
+//   ・Google・Yahoo! JAPAN ID で登録（連携のあと、予約に必要な情報だけを入力）
+//   ・メールアドレスで登録（2段階）
+//       1. メールアドレスとパスワード
+//       2. 氏名・電話番号・性別・年代・職業・利用エリア、18歳以上の確認、規約への同意
+//     → 「メールアドレスの確認のお願い」が届く → リンクを開くと登録が完了し、そのままログインした状態になる
 // ラベルは入力欄の上に常に表示し、エラーは入力欄のすぐ下に具体的に書く。選択肢はボタンにする
 
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
+import PasswordInput from '@/components/auth/PasswordInput';
+import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
 import { useRoleSession } from '@/lib/supabase';
+import type { Providers } from '@/lib/oauth-shared';
 import { AGE_GROUPS, GENDERS, OCCUPATIONS, PRIVACY_URL, TERMS_URL, TERMS_VERSION } from '@/lib/profile-options';
+import { Choices, Field } from './FormParts';
 import type { Area } from './useUserState';
 
 type Form = {
@@ -27,38 +35,15 @@ type Form = {
 };
 type Errors = Partial<Record<keyof Form, string>>;
 
-function Field({ id, label, required, error, hint, children }: { id: string; label: string; required?: boolean; error?: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className={`field ${error ? 'has-error' : ''}`}>
-      <label className="field-label" htmlFor={id} id={`${id}-label`}>
-        {label}
-        {required && <span className="req">必須</span>}
-      </label>
-      {children}
-      {hint && !error && <span className="field-hint" id={`${id}-hint`}>{hint}</span>}
-      {error && (
-        <span className="field-error" id={`${id}-error`} role="alert">
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
+const SIGNUP_ERROR: Record<string, string> = {
+  invalid_email: 'メールアドレスの形をご確認ください。',
+  weak_password: 'パスワードは8文字以上72文字以下で入力してください。',
+  rate_limited: '短い時間に何度も送信されたため、少し時間をおいてお試しください。',
+};
 
-function Choices({ id, options, value, onChange }: { id: string; options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
-  return (
-    <div id={id} tabIndex={-1} className="choice-row" role="radiogroup" aria-labelledby={`${id}-label`}>
-      {options.map((o) => (
-        <button type="button" key={o.value} role="radio" aria-checked={value === o.value} className="choice" onClick={() => onChange(o.value)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export default function Signup() {
-  const { client } = useRoleSession('user');
+export default function Signup({ providers, authError, next = '/' }: { providers: Providers; authError?: string | null; next?: string }) {
+  const router = useRouter();
+  const { client, session } = useRoleSession('user');
   const [areas, setAreas] = useState<Area[]>([]);
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<Form>({ email: '', password: '', name: '', phone: '', gender: '', age: '', job: '', area: '', adult: false, terms: false });
@@ -66,27 +51,22 @@ export default function Signup() {
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [demoLink, setDemoLink] = useState<string | null>(null);
+  const [demoNote, setDemoNote] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
 
-  // 確認メールの再送は60秒おきまで（送りすぎると制限にかかるため）
+  // すでにログインしているなら、登録の画面は出さない
+  useEffect(() => {
+    if (session && !sentTo) router.replace(next);
+  }, [session, sentTo, router, next]);
+
+  // 確認メールの再送は60秒おきまで
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
-
-  async function resend() {
-    if (!client || !sentTo) return;
-    setResendMsg(null);
-    const { error } = await client.auth.resend({
-      type: 'signup',
-      email: sentTo,
-      options: { emailRedirectTo: `${window.location.origin}/login?verified=1` },
-    });
-    setCooldown(60);
-    setResendMsg(error ? '送信が混み合っています。少し時間をおいてお試しください。' : '確認メールをもう一度送りました。');
-  }
 
   useEffect(() => {
     client
@@ -96,6 +76,24 @@ export default function Signup() {
       .then(({ data }) => setAreas((data ?? []) as Area[]));
   }, [client]);
 
+  async function resend() {
+    if (!sentTo) return;
+    setResendMsg(null);
+    const res = await fetch('/api/auth/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sentTo, role: 'user', next }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { demoLink?: string | null };
+    setCooldown(60);
+    if (!res.ok) {
+      setResendMsg('送信が混み合っています。少し時間をおいてお試しください。');
+      return;
+    }
+    if (body.demoLink) setDemoLink(body.demoLink);
+    setResendMsg('確認メールをもう一度送りました（確認がまだのアドレスの場合）。');
+  }
+
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -103,8 +101,9 @@ export default function Signup() {
 
   function check1(): Errors {
     const e: Errors = {};
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) e.email = 'メールアドレスの形で入力してください（例：name@example.com）。';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) e.email = 'メールアドレスの形で入力してください（例：name@example.com）。';
     if (form.password.length < 8) e.password = 'パスワードは8文字以上で入力してください。';
+    else if (form.password.length > 72) e.password = 'パスワードは72文字以下で入力してください。';
     return e;
   }
   function check2(): Errors {
@@ -120,7 +119,7 @@ export default function Signup() {
     return e;
   }
 
-  function next(ev: FormEvent) {
+  function toStep2(ev: FormEvent) {
     ev.preventDefault();
     const e = check1();
     setErrors(e);
@@ -134,7 +133,6 @@ export default function Signup() {
 
   async function submit(ev: FormEvent) {
     ev.preventDefault();
-    if (!client) return;
     const e = check2();
     setErrors(e);
     if (Object.keys(e).length > 0) {
@@ -143,11 +141,15 @@ export default function Signup() {
     }
     setBusy(true);
     setSubmitError(null);
-    const { data, error } = await client.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login?verified=1`,
+    const email = form.email.trim().toLowerCase();
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        role: 'user',
+        email,
+        password: form.password,
+        next,
         data: {
           display_name: form.name.trim(),
           phone: form.phone,
@@ -158,25 +160,19 @@ export default function Signup() {
           adult_confirmed: 'true',
           terms_version: TERMS_VERSION,
         },
-      },
-    });
+      }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => ({}))) as { error?: string; demoLink?: string | null; demoNote?: string | null } | undefined;
     setBusy(false);
-    if (error) {
-      setSubmitError(
-        error.message.includes('rate limit')
-          ? '確認メールの送信が混み合っています。少し時間をおいてお試しください。'
-          : error.message.includes('already')
-            ? 'このメールアドレスはすでに登録されています。ログインしてください。'
-            : `登録できませんでした（${error.message}）`,
-      );
+    if (!res || !res.ok) {
+      setSubmitError(SIGNUP_ERROR[body?.error ?? ''] ?? `登録できませんでした（${body?.error ?? '通信エラー'}）。少し時間をおいてお試しください。`);
       return;
     }
-    if (data.session) {
-      window.location.href = '/';
-      return;
-    }
-    setSentTo(form.email);
+    setDemoLink(body?.demoLink ?? null);
+    setDemoNote(body?.demoNote ?? null);
+    setSentTo(email);
     setCooldown(60);
+    window.scrollTo({ top: 0 });
   }
 
   if (!client) return <NotConfigured />;
@@ -186,19 +182,49 @@ export default function Signup() {
       <main className="app">
         <AppHeader role="利用者" />
         <section className="card fade-in">
+          <p className="welcome-kicker">あと少しで完了です</p>
           <p className="card-title">確認メールを送りました</p>
           <p className="card-sub">
-            {sentTo} に届いたメールのリンクを開くと、登録が完了します。届かないときは、迷惑メールのフォルダもご確認ください。
+            <strong className="break">{sentTo}</strong> に届いた「メールアドレスの確認のお願い」のリンクを開くと、登録が完了し、そのままログインした状態になります。
           </p>
+          <ul className="delete-list">
+            <li>数分たっても届かないときは、迷惑メールのフォルダもご確認ください。</li>
+            <li>携帯電話のメール（キャリアメール）で受信の設定をしている場合は、このサービスからのメールを受け取れるようにしてください。</li>
+            <li>アドレスを間違えた場合は、「入力し直す」からやり直せます。</li>
+          </ul>
+          {demoLink && (
+            <div className="notice notice-info demo-link">
+              <strong>デモ：</strong>メールの送信キーが未設定のため、メールは送られていません（「シミュレーション送信」として記録しました）。下のボタンが、メールの中のリンクと同じです。
+              <a className="btn btn-primary btn-block" href={demoLink} style={{ marginTop: 8 }}>
+                メールのリンクを開く（デモ）
+              </a>
+            </div>
+          )}
+          {demoNote === 'exists' && (
+            <p className="notice notice-info">
+              <strong>デモ：</strong>このアドレスはすでに登録済みのため、「登録済みのお知らせ」メールを送りました（本番では、登録の有無が外から分からないよう、画面には同じ案内を出します）。
+            </p>
+          )}
           {resendMsg && <p className="notice notice-info">{resendMsg}</p>}
           <div className="action-pair">
             <button className="btn btn-quiet" disabled={cooldown > 0} onClick={resend}>
               {cooldown > 0 ? `もう一度送る（${cooldown}秒後）` : '確認メールをもう一度送る'}
             </button>
-            <Link className="btn btn-secondary" href="/login">
-              ログイン画面へ
-            </Link>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setSentTo(null);
+                setDemoLink(null);
+                setDemoNote(null);
+                setStep(1);
+              }}
+            >
+              入力し直す
+            </button>
           </div>
+          <p className="login-forgot">
+            <Link href="/login">ログイン画面へ</Link>
+          </p>
         </section>
       </main>
     );
@@ -209,7 +235,18 @@ export default function Signup() {
       <AppHeader role="利用者">
         <Link href="/login">ログイン</Link>
       </AppHeader>
-      <h1 className="screen-title">新規登録</h1>
+      <h1 className="screen-title">新規登録（無料）</h1>
+      <AuthErrorNotice code={authError} />
+
+      {step === 1 && hasAnyProvider(providers) && (
+        <section className="card">
+          <p className="card-title">かんたん登録</p>
+          <p className="card-sub">お使いのアカウントで登録できます。パスワードを新しく決める必要はありません。</p>
+          <SocialButtons providers={providers} role="user" mode="signup" next={next} back="/signup" verb="登録" />
+        </section>
+      )}
+      {step === 1 && hasAnyProvider(providers) && <OrDivider>またはメールアドレスで登録</OrDivider>}
+
       <div className="progress" aria-label={`2段階のうち${step}段階目`}>
         <div className="progress-bar">
           <span style={{ width: step === 1 ? '50%' : '100%' }} />
@@ -221,20 +258,22 @@ export default function Signup() {
       </div>
 
       {step === 1 && (
-        <form className="card" onSubmit={next} noValidate>
-          <Field id="email" label="メールアドレス" required error={errors.email} hint="確認のメールをお送りします。">
+        <form className="card" onSubmit={toStep2} noValidate>
+          <Field id="email" label="メールアドレス" required error={errors.email} hint="Gmail・Yahoo!メール・携帯電話のメールなど、ふだんお使いのアドレス。確認のメールをお送りします。">
             <input id="email" className="input" type="email" inputMode="email" autoComplete="email" value={form.email}
               aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-error' : 'email-hint'}
               onChange={(e) => set('email', e.target.value)} />
           </Field>
-          <Field id="password" label="パスワード" required error={errors.password} hint="8文字以上">
-            <input id="password" className="input" type="password" autoComplete="new-password" value={form.password}
-              aria-invalid={!!errors.password} aria-describedby={errors.password ? 'password-error' : 'password-hint'}
-              onChange={(e) => set('password', e.target.value)} />
+          <Field id="password" label="パスワード" required error={errors.password} hint="8文字以上。英字・数字・記号を混ぜると安全です。">
+            <PasswordInput id="password" isNew value={form.password} invalid={!!errors.password}
+              describedBy={errors.password ? 'password-error' : 'password-hint'} onChange={(v) => set('password', v)} />
           </Field>
           <button className="btn btn-primary btn-lg btn-block" type="submit">
             次へ
           </button>
+          <p className="login-forgot">
+            すでにアカウントをお持ちの方は <Link href="/login">ログイン</Link>
+          </p>
         </form>
       )}
 

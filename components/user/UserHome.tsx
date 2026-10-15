@@ -19,7 +19,7 @@ import { UI_OPTIONS } from '@/lib/ui-options';
 import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
 import BookingForm from './BookingForm';
 import Radar from './Radar';
-import { useUserState } from './useUserState';
+import { needsProfile, useUserState } from './useUserState';
 import VoiceSearch from './VoiceSearch';
 
 type FoundSlot = {
@@ -243,6 +243,12 @@ export default function UserHome() {
         </p>
       )}
       {stateError && <ErrorState onRetry={reload}>{stateError}</ErrorState>}
+      {session && needsProfile(profile) && (
+        <Link href="/signup/complete?next=/" className="notice notice-info finish-banner fade-in">
+          <strong>あと少しで登録が完了します</strong>
+          ご予約の前に、電話番号・18歳以上の確認などを入力してください。 <span className="finish-go">入力する →</span>
+        </Link>
+      )}
       {suspendedUntil && (
         <div className="notice notice-error fade-in">
           無断キャンセルが続いたため、新しいご予約をお受けできません。
@@ -439,6 +445,7 @@ export default function UserHome() {
             activeBookingId={active?.id ?? null}
             suspendedUntil={suspendedUntil}
             now={now}
+            profileMissing={needsProfile(profile)}
             unavailable={sheetGone ? 'この枠は予約できなくなりました（ほかの方の予約・受付の締切・お店の受付終了など）。' : null}
             onChooseOther={() => setSheet(null)}
             onBooked={(id) => router.push(`/booking/${id}?new=1`)}

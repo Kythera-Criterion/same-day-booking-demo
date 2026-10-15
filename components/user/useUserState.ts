@@ -22,6 +22,12 @@ export type MyProfile = {
   adult_confirmed_at: string | null;
 };
 
+// 予約に必要な情報（お名前・電話番号・18歳以上の確認）が足りないか。Google・Yahoo! JAPAN ID で登録した直後など
+export function needsProfile(p: Pick<MyProfile, 'display_name' | 'phone' | 'adult_confirmed_at'> | null): boolean {
+  if (!p) return false;
+  return !p.display_name?.trim() || !(p.phone ?? '').replace(/\D/g, '') || !p.adult_confirmed_at;
+}
+
 export type MyBooking = {
   id: string;
   status: string;

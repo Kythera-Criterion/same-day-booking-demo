@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import { Loading, NotConfigured } from '@/components/States';
+import SocialButtons, { AuthErrorNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
 import { useRoleSession } from '@/lib/supabase';
+import { safePath, type Providers } from '@/lib/oauth-shared';
 
 const DEMO_ACCOUNTS = [
   { email: 'user1@demo.test', label: '山田 花子', sub: '女性・20代' },
@@ -14,21 +16,35 @@ const DEMO_ACCOUNTS = [
   { email: 'user3@demo.test', label: '佐藤 美咲', sub: '女性・18〜19歳' },
 ];
 
-export default function UserLogin({ next, verified, demoMode }: { next: string; verified: boolean; demoMode: boolean }) {
+export default function UserLogin({
+  next,
+  verified,
+  demoMode,
+  providers,
+  authError,
+}: {
+  next: string;
+  verified: boolean;
+  demoMode: boolean;
+  providers: Providers;
+  authError?: string | null;
+}) {
   const router = useRouter();
   const { client, session, ready } = useRoleSession('user');
-  const target = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  const target = safePath(next, '/');
 
   useEffect(() => {
     if (session) router.replace(target);
   }, [session, router, target]);
 
   if (!client) return <NotConfigured />;
+  const back = `/login${target !== '/' ? `?next=${encodeURIComponent(target)}` : ''}`;
 
   return (
     <main className="app">
       <AppHeader role="利用者" />
       {verified && <p className="notice notice-ok">メールアドレスを確認しました。ログインしてください。</p>}
+      <AuthErrorNotice code={authError} />
       {!ready || session ? (
         <Loading rows={2} />
       ) : (
@@ -37,10 +53,14 @@ export default function UserLogin({ next, verified, demoMode }: { next: string; 
           title="ログイン"
           demoMode={demoMode}
           demoAccounts={DEMO_ACCOUNTS}
+          social={hasAnyProvider(providers) ? <SocialButtons providers={providers} role="user" mode="login" next={target} back={back} /> : null}
           footer={
-            <p className="card-sub" style={{ marginTop: 16, textAlign: 'center' }}>
-              はじめての方は <Link href="/signup">新規登録</Link>
-            </p>
+            <div className="signup-cta">
+              <p>はじめての方</p>
+              <Link className="btn btn-secondary btn-block" href={`/signup${target !== '/' ? `?next=${encodeURIComponent(target)}` : ''}`}>
+                新規登録（無料）
+              </Link>
+            </div>
           }
         />
       )}

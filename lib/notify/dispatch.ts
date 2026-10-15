@@ -1,6 +1,6 @@
 import 'server-only';
 import { adminClient } from '@/lib/server/supabase-admin';
-import { renderNotification, type OutboxRow, type Rendered } from '@/lib/notify/format';
+import { SECRET_LINK_KINDS, renderNotification, type OutboxRow, type Rendered } from '@/lib/notify/format';
 
 // 送信待ちの通知を取り出して送る。
 // 取り出しはデータベースの claim_notifications（for update skip locked）で行うため、
@@ -97,11 +97,13 @@ export async function dispatchPending(limit = 10): Promise<DispatchSummary> {
 
     if (result.status === 'sent' || result.status === 'simulated') {
       await admin.rpc('finish_notification', { p_id: row.id, p_status: result.status, p_response: result.response });
-      // 実際に送ったご案内メールは、記録からリンクを消す（ログイン用のリンクを残さない）
-      if (result.status === 'sent' && row.kind === 'salon_welcome_mail') {
+      // ログイン用のリンクを含むメールは、実際に送ったら記録からリンクを消す。
+      // シミュレーション送信でも、デモ以外では消す（運営の記録の画面にリンクを残さない）
+      const redact = result.status === 'sent' || process.env.DEMO_MODE !== 'true';
+      if (redact && SECRET_LINK_KINDS.includes(row.kind) && row.payload.invite_link) {
         await admin
           .from('notification_outbox')
-          .update({ payload: { ...row.payload, invite_link: null, link_redacted: true }, response: { http: 200 } })
+          .update({ payload: { ...row.payload, invite_link: null, link_redacted: true }, response: { http: result.status === 'sent' ? 200 : 0, simulated: result.status === 'simulated' } })
           .eq('id', row.id);
       }
       summary[result.status]++;

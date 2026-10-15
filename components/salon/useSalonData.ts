@@ -16,6 +16,8 @@ export type SalonInfo = {
   lng: number;
   is_approved: boolean;
 };
+// 掲載の状態（listed：掲載中／reviewing：審査中／rejected：見送り／suspended：運営が掲載を止めている）
+export type Listing = 'listed' | 'reviewing' | 'rejected' | 'suspended';
 export type Menu = { id: string; name: string; duration_min: number; price: number; booking_deadline_min: number; is_active: boolean };
 export type Stylist = { id: string; name: string; is_active: boolean };
 export type Preset = {
@@ -74,6 +76,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
   const [presets, setPresets] = useState<Preset[]>([]);
   const [lineGroup, setLineGroup] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [slots, setSlots] = useState<SalonSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,12 +99,14 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     const s = member ? one(member.salons as SalonInfo | SalonInfo[] | null) : null;
     setSalon(s);
     if (!s) return;
-    const [m, st, p, priv] = await Promise.all([
+    const [m, st, p, priv, status] = await Promise.all([
       client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price'),
       client.from('stylists').select('id,name,is_active').eq('salon_id', s.id).order('name'),
       client.from('slot_presets').select('id,label,menu_id,stylist_id,offsets_min,kind,free_minutes').eq('salon_id', s.id).order('created_at'),
       client.from('salon_private').select('line_group_id,onboarding_step').eq('salon_id', s.id).maybeSingle(),
+      client.rpc('my_salon_status', { p_salon_id: s.id }),
     ]);
+    setListing(((status.data as Listing | null) ?? (s.is_approved ? 'listed' : 'suspended')) as Listing);
     setMenus((m.data ?? []) as Menu[]);
     setStylists((st.data ?? []) as Stylist[]);
     setPresets((p.data ?? []) as Preset[]);
@@ -145,5 +150,17 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     loadSlots();
   }, [loadSlots]);
 
-  return { salon, menus, stylists, presets, lineGroup, onboardingStep, slots, error, loadSalon, loadSlots };
+  // 掲載の状態が変わったら（運営の承認・停止・再開）すぐに読み直す
+  useEffect(() => {
+    if (!client || !salon) return;
+    const channel = client
+      .channel(`salon-listing-${salon.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_events', filter: `salon_id=eq.${salon.id}` }, () => loadSalon())
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [client, salon, loadSalon]);
+
+  return { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots };
 }

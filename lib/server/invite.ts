@@ -17,13 +17,14 @@ export function appOrigin(req: Request): string {
   return (process.env.APP_URL || new URL(req.url).origin).replace(/\/$/, '');
 }
 
-// 新しいアカウントなら招待、すでにあるアカウントならログイン用のリンクを作る
+// 新しいアカウントなら招待、すでにあるアカウントならログイン用のリンクを作る（運営への招待は role=admin）
 export async function createStartLink(
   admin: SupabaseClient,
   email: string,
   displayName: string,
   origin: string,
   prefer: 'invite' | 'magiclink' = 'invite',
+  role: 'salon' | 'admin' = 'salon',
 ): Promise<{ userId: string; link: string; type: 'invite' | 'magiclink' }> {
   const order: ('invite' | 'magiclink')[] = prefer === 'invite' ? ['invite', 'magiclink'] : ['magiclink', 'invite'];
   let lastError = '';
@@ -33,7 +34,8 @@ export async function createStartLink(
     );
     const hashed = data?.properties?.hashed_token;
     if (!error && data?.user && hashed) {
-      return { userId: data.user.id, link: `${origin}/welcome?token_hash=${encodeURIComponent(hashed)}&type=${type}`, type };
+      const roleParam = role === 'admin' ? '&role=admin' : '';
+      return { userId: data.user.id, link: `${origin}/welcome?token_hash=${encodeURIComponent(hashed)}&type=${type}${roleParam}`, type };
     }
     lastError = error?.message ?? 'no_link';
   }

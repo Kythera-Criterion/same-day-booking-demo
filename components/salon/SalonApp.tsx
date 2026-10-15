@@ -6,9 +6,13 @@
 //   空いた時間を伝えると枠に切り分けて出せる。初めてのときは3ステップの初期設定
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
+import SocialButtons, { AuthErrorNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import AccountSecurity from '@/components/auth/AccountSecurity';
+import type { Providers } from '@/lib/oauth-shared';
 import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
 import { one, useRoleSession } from '@/lib/supabase';
 import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
@@ -42,10 +46,22 @@ function hm(minutes: number) {
   return h > 0 ? `${h}時間${m > 0 ? `${m}分` : ''}` : `${m}分`;
 }
 
-export default function SalonApp({ demoMode }: { demoMode: boolean }) {
+export default function SalonApp({
+  demoMode,
+  providers,
+  authError,
+  linked,
+  initialTab = 'today',
+}: {
+  demoMode: boolean;
+  providers: Providers;
+  authError?: string | null;
+  linked?: string | null;
+  initialTab?: 'today' | 'settings';
+}) {
   const { client, session, ready } = useRoleSession('salon');
-  const { salon, menus, stylists, presets, lineGroup, onboardingStep, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
-  const [tab, setTab] = useState<'today' | 'settings'>('today');
+  const { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
+  const [tab, setTab] = useState<'today' | 'settings'>(initialTab);
   const [sheet, setSheet] = useState<{ start: Date | null; stylistId: string | null } | null>(null);
   const [selected, setSelected] = useState<SalonSlot | null>(null);
   const [freshIds, setFreshIds] = useState<string[]>([]);
@@ -226,6 +242,26 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
   const endedCount = list.filter(isEnded).length;
   const visibleSlots = showEnded ? list : list.filter((s) => !isEnded(s));
 
+  // 掲載中でなければ、枠は出せない（審査中・見送り・運営が掲載を止めている）
+  const canPublish = listing === null || listing === 'listed';
+  const listingBanner =
+    listing === 'reviewing' ? (
+      <div className="notice notice-info suspended-banner" role="status">
+        <strong>掲載の審査中です。</strong>
+        運営が承認すると、掲載が始まり、メールでお知らせします。承認までの間も、メニュー・担当・お店の場所などの設定は進められます（枠の公開は承認のあとにできます）。
+      </div>
+    ) : listing === 'rejected' ? (
+      <div className="notice notice-error suspended-banner" role="alert">
+        <strong>今回は掲載を見送らせていただきました。</strong>
+        詳しくは、お送りしたメールをご確認ください。ご不明な点は運営事務局へお問い合わせください。
+      </div>
+    ) : listing === 'suspended' ? (
+      <div className="notice notice-error suspended-banner" role="alert">
+        <strong>現在、掲載が止められています。</strong>
+        公開中だった枠は取り下げられ、利用者の画面には表示されません。入っている予約はそのままです。再開については運営事務局へお問い合わせください。
+      </div>
+    ) : null;
+
   return (
     <main className="app app-salon">
       <AppHeader role="サロン" home="/salon">
@@ -237,17 +273,42 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
       </AppHeader>
 
       {ready && !session && (
-        <LoginBox client={client} title="サロンのスタッフとしてログイン" demoMode={demoMode} demoAccounts={DEMO_ACCOUNTS} forgotHref="/forgot?role=salon" />
+        <>
+          <AuthErrorNotice code={authError} />
+          <LoginBox
+            client={client}
+            title="サロンのスタッフとしてログイン"
+            demoMode={demoMode}
+            demoAccounts={DEMO_ACCOUNTS}
+            forgotHref="/forgot?role=salon"
+            resendRole="salon"
+            social={hasAnyProvider(providers) ? <SocialButtons providers={providers} role="salon" mode="login" next="/salon" back="/salon" /> : null}
+            footer={
+              <div className="signup-cta">
+                <p>はじめて掲載するお店</p>
+                <Link className="btn btn-secondary btn-block" href="/salon/signup">
+                  新規登録（掲載のお申し込み）
+                </Link>
+              </div>
+            }
+          />
+        </>
       )}
       {error && <ErrorState onRetry={loadSalon}>{error}</ErrorState>}
       {session && salon === undefined && !error && <Loading rows={3} />}
       {session && salon === null && (
         <div className="card">
-          <p className="card-title">このアカウントは、どのサロンにも所属していません</p>
-          <p className="card-sub">運営に、掲載の承認とスタッフの登録をご依頼ください。</p>
+          <p className="card-title">お店の情報がまだ登録されていません</p>
+          <p className="card-sub">
+            このアカウント（<span className="break">{session.user.email}</span>）は、まだどのお店にも紐づいていません。新しく掲載する場合は、お店の情報を登録してください。すでに掲載しているお店のスタッフとして使う場合は、運営事務局へご連絡ください。
+          </p>
+          <Link className="btn btn-primary btn-block" href="/salon/signup">
+            お店の情報を登録する
+          </Link>
         </div>
       )}
 
+      {salon && onboarding && listingBanner}
       {salon && onboarding && (
         <Onboarding
           client={client}
@@ -280,12 +341,7 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
             )}
           </div>
 
-          {!salon.is_approved && (
-            <div className="notice notice-error suspended-banner" role="alert">
-              <strong>現在、掲載が止められています。</strong>
-              公開中だった枠は取り下げられ、利用者の画面には表示されません。入っている予約はそのままです。再開については運営事務局へお問い合わせください。
-            </div>
-          )}
+          {listingBanner}
           {!started && <AlertGate wake={wake} onStart={start} />}
           {started && wake === 'unsupported' && (
             <p className="notice notice-info">この端末では、画面が自動で消えるのを止められません。端末の設定で、自動ロックを長めにしてください。</p>
@@ -420,7 +476,9 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
                         freshIds={freshIds}
                         showNo={UI_OPTIONS.showBookingNo}
                         onSelect={setSelected}
-                        onEmpty={(startAt, stylistId) => setSheet({ start: startAt, stylistId })}
+                        onEmpty={(startAt, stylistId) => {
+                          if (canPublish) setSheet({ start: startAt, stylistId });
+                        }}
                       />
                       <p className="fine-print card-pad">
                         横にスクロールできます。枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。
@@ -438,6 +496,15 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
           {tab === 'settings' && (
             <>
               <SalonSettings client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} />
+              <h2 className="section-title">スタッフのアカウント</h2>
+              <AccountSecurity
+                client={client}
+                role="salon"
+                providers={providers}
+                returnPath="/salon?tab=settings"
+                linked={linked}
+                authError={session ? authError : null}
+              />
               <button
                 className="btn btn-text"
                 onClick={async () => {
@@ -452,7 +519,7 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
           )}
 
           <nav className="bottom-bar" aria-label="主な操作">
-            {tab === 'today' && presets.length > 0 && (
+            {tab === 'today' && canPublish && presets.length > 0 && (
               <div className="preset-row">
                 {presets.slice(0, 4).map((p) => (
                   <button key={p.id} className="preset" onClick={() => quickPreset(p)}>
@@ -466,8 +533,13 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
               <button className={`bottom-tab ${tab === 'today' ? 'is-on' : ''}`} onClick={() => setTab('today')}>
                 今日
               </button>
-              <button className="btn btn-primary btn-lg bottom-cta" onClick={() => setSheet({ start: null, stylistId: null })}>
-                ＋ 枠を出す
+              <button
+                className="btn btn-primary btn-lg bottom-cta"
+                disabled={!canPublish}
+                title={canPublish ? undefined : '掲載中になると、枠を出せます'}
+                onClick={() => setSheet({ start: null, stylistId: null })}
+              >
+                {canPublish ? '＋ 枠を出す' : listing === 'reviewing' ? '審査中（承認後に枠を出せます）' : '枠は出せません'}
               </button>
               <button className={`bottom-tab ${tab === 'settings' ? 'is-on' : ''}`} onClick={() => setTab('settings')}>
                 設定

@@ -3,6 +3,7 @@
 // 掲載希望の公開フォーム（ログイン不要）
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
@@ -43,6 +44,13 @@ export default function ApplyForm() {
     <main className="app">
       <AppHeader role="サロンの方へ" />
       <h1 className="screen-title">掲載のお申し込み</h1>
+      {!done && (
+        <Link href="/salon/signup" className="notice notice-ok finish-banner">
+          <strong>すぐに始めたい方は、アカウントを作って登録できます（おすすめ）</strong>
+          Google・Yahoo! JAPAN ID・メールアドレスで登録し、審査の間にメニューなどの準備を進められます。 <span className="finish-go">新規登録へ →</span>
+        </Link>
+      )}
+      {!done && <p className="card-sub">まずは相談したい方は、下のフォームからお送りください。運営で確認のうえ、ご連絡します。</p>}
       {done ? (
         <section className="card fade-in">
           <p className="card-title">お申し込みを受け付けました</p>

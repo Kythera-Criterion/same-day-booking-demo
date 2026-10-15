@@ -117,6 +117,29 @@ try {
     const { error } = await operator.rpc('demo_reset', { p_with_history: false });
     check('デモのリセットは画面側から呼べない（運営でも）', !!error, error?.message);
   }
+  // 14. 登録・外部 ID の連携に使う情報は、サーバー側だけが扱う
+  {
+    const { data, error } = await user1.from('social_identities').select('provider').limit(1);
+    check('外部 ID（Google・Yahoo! JAPAN ID）の連携の表は、画面側から読めない', !!error || (data?.length ?? 0) === 0, error?.message);
+  }
+  {
+    const { error } = await user1.rpc('find_user_id_by_email', { p_email: 'user2@demo.test' });
+    check('画面側から、メールアドレスでアカウントを探せない', !!error, error?.message);
+  }
+  {
+    const { error } = await anon().rpc('salon_self_register', {
+      p_salon_name: 'x', p_contact_name: 'y', p_phone: '090-0000-0000', p_area_id: '00000000-0000-0000-0000-000000000000', p_address: 'z',
+    });
+    check('ログインしていない人は、サロンを自己登録できない', !!error, error?.message);
+  }
+  {
+    const { error } = await user1.rpc('admin_list_admins');
+    check('利用者は、運営メンバーの一覧を見られない', !!error && error.message.includes('forbidden'), error?.message);
+  }
+  {
+    const { error } = await user1.from('admins').insert({ user_id: me1.user.id });
+    check('利用者は、自分を運営に加えられない', !!error, error?.message);
+  }
 } finally {
   // 後片付け（テスト用の予約と枠を消す）
   await removeTestSlot(slot.id);

@@ -10,9 +10,12 @@ import Sheet from '@/components/Sheet';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { useDispatchTicker } from '@/lib/dispatch-client';
+import SocialButtons, { AuthErrorNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import type { Providers } from '@/lib/oauth-shared';
 import Applications from './Applications';
 import Dashboard from './Dashboard';
 import Logs from './Logs';
+import Members from './Members';
 import Overview from './Overview';
 import Salons from './Salons';
 import TrialEnd from './TrialEnd';
@@ -23,6 +26,7 @@ const TABS = [
   { key: 'salons', label: 'サロン' },
   { key: 'applications', label: '掲載希望' },
   { key: 'logs', label: '通知・記録' },
+  { key: 'members', label: '運営メンバー' },
   { key: 'trial', label: '終了処理' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -49,10 +53,22 @@ function writeSeen(uid: string) {
   }
 }
 
-export default function AdminApp({ demoMode }: { demoMode: boolean }) {
+export default function AdminApp({
+  demoMode,
+  providers,
+  authError,
+  linked,
+  initialTab,
+}: {
+  demoMode: boolean;
+  providers: Providers;
+  authError?: string | null;
+  linked?: string | null;
+  initialTab?: string | null;
+}) {
   const { client, session, ready } = useRoleSession('admin');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<TabKey>('dashboard');
+  const [tab, setTab] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? (initialTab as TabKey) : 'dashboard');
   const [pending, setPending] = useState<Pending[]>([]);
   const [unseen, setUnseen] = useState<Pending[] | null>(null);
   const [toast, setToast] = useState<Pending | null>(null);
@@ -124,16 +140,33 @@ export default function AdminApp({ demoMode }: { demoMode: boolean }) {
       </AppHeader>
 
       {ready && !session && (
-        <LoginBox
-          client={client}
-          title="運営としてログイン"
-          demoMode={demoMode}
-          demoAccounts={[{ email: 'admin@demo.test', label: '運営（デモ）' }]}
-          forgotHref="/forgot?role=admin"
-        />
+        <>
+          <AuthErrorNotice code={authError} />
+          <LoginBox
+            client={client}
+            title="運営としてログイン"
+            demoMode={demoMode}
+            demoAccounts={[{ email: 'admin@demo.test', label: '運営（デモ）' }]}
+            forgotHref="/forgot?role=admin"
+            resendRole={null}
+            social={
+              hasAnyProvider(providers) ? (
+                <SocialButtons providers={providers} role="admin" mode="login" next={initialTab === 'members' ? '/admin?tab=members' : '/admin'} back="/admin" />
+              ) : null
+            }
+            footer={<p className="fine-print" style={{ textAlign: 'center', marginTop: 14 }}>運営メンバーの登録は、既存の運営メンバーからの招待で行います。</p>}
+          />
+        </>
       )}
       {session && isAdmin === null && <Loading rows={3} />}
-      {session && isAdmin === false && <ErrorState>このアカウントには運営の権限がありません。</ErrorState>}
+      {session && isAdmin === false && (
+        <ErrorState>
+          このアカウント（{session.user.email}）には運営の権限がありません。運営メンバーに招待を依頼してください。
+          <button className="btn btn-text" onClick={() => client.auth.signOut()}>
+            別のアカウントでログイン
+          </button>
+        </ErrorState>
+      )}
 
       {session && isAdmin && (
         <>
@@ -165,6 +198,7 @@ export default function AdminApp({ demoMode }: { demoMode: boolean }) {
           {tab === 'salons' && <Salons client={client} />}
           {tab === 'applications' && <Applications client={client} onChanged={loadPending} />}
           {tab === 'logs' && <Logs client={client} />}
+          {tab === 'members' && <Members client={client} providers={providers} linked={linked} authError={authError} />}
           {tab === 'trial' && <TrialEnd client={client} />}
 
           {unseen && (

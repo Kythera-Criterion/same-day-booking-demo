@@ -1,10 +1,13 @@
 'use client';
 
-// 掲載希望の受付：公開フォームからの申込の一覧。
-// 承認すると、サロンとスタッフのアカウントを作り、申込のメールアドレスへ「ご利用開始のご案内」を自動で送る
+// 掲載希望の受付：サロンの自己登録（/salon/signup）と、公開フォーム（/apply）からの申込の一覧。
+//   自己登録：承認すると掲載が始まり、「掲載開始のお知らせ」を送る
+//   フォーム：承認すると、サロンとスタッフのアカウントを作り、「ご利用開始のご案内」を送る
+//   見送る：確認のうえ、「見送りのご連絡」を送る（送らないことも選べる）
 
 import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Sheet from '@/components/Sheet';
 import { Empty, ErrorState, Loading } from '@/components/States';
 import { toMessage } from '@/lib/errors';
 
@@ -20,6 +23,7 @@ type Application = {
   salon_id: string | null;
   invite_sent_at: string | null;
   invite_count: number;
+  applicant_user_id: string | null;
   created_at: string;
 };
 
@@ -47,11 +51,13 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [rejecting, setRejecting] = useState<Application | null>(null);
+  const [notifyReject, setNotifyReject] = useState(true);
 
   const load = useCallback(async () => {
     const { data, error: e } = await client
       .from('salon_applications')
-      .select('id,salon_name,contact_name,email,phone,area_text,question,status,salon_id,invite_sent_at,invite_count,created_at')
+      .select('id,salon_name,contact_name,email,phone,area_text,question,status,salon_id,invite_sent_at,invite_count,applicant_user_id,created_at')
       .order('created_at', { ascending: false })
       .limit(100);
     if (e) setError(toMessage(e));
@@ -69,12 +75,12 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
     };
   }, [client, load]);
 
-  async function call(path: string, app: Application) {
+  async function call(path: string, app: Application, extra: Record<string, unknown> = {}) {
     const token = (await client.auth.getSession()).data.session?.access_token;
     const res = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ applicationId: app.id }),
+      body: JSON.stringify({ applicationId: app.id, ...extra }),
     });
     const body = (await res.json().catch(() => ({}))) as { error?: string; inviteLink?: string | null; mailStatus?: string };
     return { ok: res.ok, body };
@@ -89,9 +95,10 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
       setResult({ kind: 'error', text: toMessage({ message: body.error ?? '承認できませんでした' }) });
       return;
     }
+    const mailName = app.salon_id ? '掲載開始のお知らせ' : 'ご利用開始のご案内';
     setResult({
       kind: 'ok',
-      text: `${app.salon_name} を承認しました。${app.email} へ「ご利用開始のご案内」を${body.mailStatus === 'failed' ? '送れませんでした' : '自動で送りました'}。`,
+      text: `${app.salon_name} を承認しました${app.salon_id ? '（掲載を始めました）' : ''}。${app.email} へ「${mailName}」を${body.mailStatus === 'failed' ? '送れませんでした' : '自動で送りました'}。`,
       mail: MAIL[body.mailStatus ?? 'pending'],
       link: body.inviteLink,
     });
@@ -112,11 +119,19 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
     load();
   }
 
-  async function reject(app: Application) {
+  async function reject(app: Application, notify: boolean) {
     setBusy(app.id);
-    const { error: e } = await client.rpc('admin_reject_application', { p_application_id: app.id });
+    setResult(null);
+    const { ok, body } = await call('/api/admin/reject', app, { notify });
     setBusy(null);
-    if (e) setResult({ kind: 'error', text: toMessage(e) });
+    setRejecting(null);
+    if (!ok) setResult({ kind: 'error', text: toMessage({ message: body.error ?? '見送れませんでした' }) });
+    else
+      setResult({
+        kind: 'ok',
+        text: `${app.salon_name} の掲載を見送りました。${notify ? `${app.email} へ「見送りのご連絡」を送りました。` : 'メールは送っていません。'}`,
+        mail: notify ? MAIL[body.mailStatus ?? 'pending'] : undefined,
+      });
     load();
     onChanged?.();
   }
@@ -170,8 +185,16 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
               <p className="card-title" style={{ margin: 0 }}>
                 {a.salon_name}
               </p>
-              <span className={`pill pill-${STATUS[a.status].pill}`}>{STATUS[a.status].label}</span>
+              <span className="pill-row">
+                <span className={`pill ${a.applicant_user_id ? 'pill-open' : 'pill-closed'}`}>{a.applicant_user_id ? '自己登録' : 'フォーム'}</span>
+                <span className={`pill pill-${STATUS[a.status].pill}`}>{STATUS[a.status].label}</span>
+              </span>
             </div>
+            <p className="fine-print" style={{ margin: '4px 0 0' }}>
+              {a.applicant_user_id
+                ? 'お店が自分でアカウントを作り、お店の情報を登録済みです。承認すると、そのまま掲載が始まります。'
+                : '公開フォームからの申込です。承認すると、サロンとスタッフのアカウントを作り、ご利用開始のご案内を送ります。'}
+            </p>
             <dl className="detail-dl" style={{ marginTop: 10 }}>
               <dt>担当者</dt>
               <dd>{a.contact_name}</dd>
@@ -197,21 +220,52 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
             </dl>
             {a.status === 'pending' && (
               <div className="action-pair" style={{ marginTop: 12 }}>
-                <button className="btn btn-quiet" disabled={busy !== null} onClick={() => reject(a)}>
+                <button
+                  className="btn btn-quiet"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    setNotifyReject(true);
+                    setRejecting(a);
+                  }}
+                >
                   見送る
                 </button>
                 <button className="btn btn-primary" disabled={busy !== null} onClick={() => approve(a)}>
-                  {busy === a.id ? '処理中…' : '承認してご案内を送る'}
+                  {busy === a.id ? '処理中…' : a.salon_id ? '承認して掲載を始める' : '承認してご案内を送る'}
                 </button>
               </div>
             )}
-            {a.status === 'approved' && a.salon_id && (
+            {a.status === 'approved' && a.salon_id && !a.applicant_user_id && (
               <button className="btn btn-secondary btn-block" style={{ marginTop: 12 }} disabled={busy !== null} onClick={() => resend(a)}>
                 {busy === a.id ? '送信中…' : 'ご案内メールをもう一度送る（新しいリンク）'}
               </button>
             )}
           </section>
         ))
+      )}
+
+      {rejecting && (
+        <Sheet label="掲載を見送りますか" role="alertdialog" narrow onClose={() => setRejecting(null)}>
+          <p className="card-title">{rejecting.salon_name} の掲載を見送りますか？</p>
+          <ul className="delete-list">
+            <li>申込は「見送り」になります。元に戻せません。</li>
+            {rejecting.applicant_user_id && <li>お店が作ったアカウントとお店の情報は残ります（掲載はされません）。不要なら「サロン」のタブから削除できます。</li>}
+          </ul>
+          <label className="check">
+            <input type="checkbox" checked={notifyReject} onChange={(e) => setNotifyReject(e.target.checked)} />
+            <span>
+              {rejecting.email} へ「見送りのご連絡」をメールで送る
+            </span>
+          </label>
+          <div className="action-pair">
+            <button className="btn btn-quiet" onClick={() => setRejecting(null)}>
+              やめる
+            </button>
+            <button className="btn btn-danger" disabled={busy !== null} onClick={() => reject(rejecting, notifyReject)}>
+              {busy === rejecting.id ? '処理中…' : '見送る'}
+            </button>
+          </div>
+        </Sheet>
       )}
     </div>
   );

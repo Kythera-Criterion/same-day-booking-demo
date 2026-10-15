@@ -24,6 +24,10 @@ const MESSAGES: Record<string, string> = {
   stylist_not_found: '担当の美容師が見つかりません。',
   invalid_action: 'この操作は行えません。',
   invalid_input: '入力内容をご確認ください。',
+  salon_not_listed: '掲載中になると枠を出せます（審査中・掲載停止中は出せません）。',
+  already_registered: 'このアカウントは、すでにお店を登録済みです。',
+  cannot_remove_self: '自分自身は外せません。',
+  last_admin: '運営メンバーが1人だけのため、外せません。',
   not_found: '見つかりませんでした。',
 };
 

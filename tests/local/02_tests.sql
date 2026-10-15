@@ -747,4 +747,144 @@ select t.ok('T21 サロン・運営の操作が記録に残る',
    where action in ('create_slot', 'booking_no_show', 'booking_cancel_salon', 'booking_cancel_customer',
                     'update_salon_settings', 'upsert_menu', 'approve_application', 'trial_end_dry_run')) = 8);
 
+-- ---------------------------------------------------------
+-- T44 サロンの自己登録（アカウントを作って店舗の情報を出す → 審査中 → 運営が承認）
+-- ---------------------------------------------------------
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-4000-8000-0000000000e1', 'self-salon@example.test', '{"display_name":"自己登録の担当"}'),
+  ('00000000-0000-4000-8000-0000000000e2', 'self-salon2@example.test', '{"display_name":"見送りの担当"}'),
+  ('00000000-0000-4000-8000-0000000000e3', 'self-salon3@example.test', '{}');
+begin; set local role anon;
+select t.raises('T44 ログインしていない人は、サロンを自己登録できない',
+  $$select public.salon_self_register('x', 'y', '090-1111-2222', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'permission denied');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e3';
+select t.raises('T44 電話番号が正しくないと、自己登録できない',
+  $$select public.salon_self_register('店', '担当', 'abc', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'invalid_input');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e1';
+insert into t.ctx values ('self_salon', public.salon_self_register('サロン みずき', '水木 一花', '086-000-1111',
+  'e0000001-0000-4000-8000-000000000001', '架空県架空市1-2-3', '当日の枠について相談したい')::text);
+select t.ok('T44 自己登録したサロンは、審査中（my_salon_status = reviewing）',
+  public.my_salon_status((select value::uuid from t.ctx where key = 'self_salon')) = 'reviewing');
+select t.raises('T44 同じアカウントで二重に登録できない',
+  $$select public.salon_self_register('別の店', '担当', '090-1111-2222', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'already_registered');
+commit;
+select t.ok('T44 自己登録したサロンは、掲載されていない状態で作られ、本人がスタッフになる',
+  (select not s.is_approved from public.salons s where s.id = (select value::uuid from t.ctx where key = 'self_salon'))
+  and exists (select 1 from public.salon_members where user_id = '00000000-0000-4000-8000-0000000000e1'
+              and salon_id = (select value::uuid from t.ctx where key = 'self_salon')));
+select t.ok('T44 自己登録は、掲載希望（申込者のアカウントつき）として運営に届く',
+  exists (select 1 from public.salon_applications where salon_id = (select value::uuid from t.ctx where key = 'self_salon')
+          and status = 'pending' and applicant_user_id = '00000000-0000-4000-8000-0000000000e1' and email = 'self-salon@example.test'));
+insert into public.menus (id, salon_id, name, duration_min, price, booking_deadline_min)
+values ('d9999999-0000-4000-8000-000000000001', (select value::uuid from t.ctx where key = 'self_salon'), 'カット', 30, 3000, 10);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e1';
+select t.raises('T44 審査中のサロンは、枠を出せない',
+  $$select public.create_slot('d9999999-0000-4000-8000-000000000001', t.at(60))$$, 'salon_not_listed');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T44 審査中のサロンは、利用者から見えない',
+  (select count(*) from public.salons where id = (select value::uuid from t.ctx where key = 'self_salon')) = 0);
+select t.raises('T44 利用者は、ほかのサロンの掲載の状態を調べられない',
+  $$select public.my_salon_status((select value::uuid from t.ctx where key = 'self_salon'))$$, 'forbidden');
+select t.raises('T44 利用者は、掲載希望を承認できない',
+  $$select public.admin_approve_application((select id from public.salon_applications where applicant_user_id = '00000000-0000-4000-8000-0000000000e1'), null)$$, 'forbidden');
+commit;
+insert into t.ctx values ('self_app', (select id::text from public.salon_applications where applicant_user_id = '00000000-0000-4000-8000-0000000000e1'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T44 運営が承認すると、新しいサロンを作らず、自己登録したサロンの掲載が始まる',
+  public.admin_approve_application((select value::uuid from t.ctx where key = 'self_app'), null) = (select value::uuid from t.ctx where key = 'self_salon'));
+commit;
+select t.ok('T44 承認したサロンは掲載中になり、申込は承認済みになる',
+  (select is_approved from public.salons where id = (select value::uuid from t.ctx where key = 'self_salon'))
+  and (select status = 'approved' from public.salon_applications where id = (select value::uuid from t.ctx where key = 'self_app')));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e1';
+select t.ok('T44 承認のあとは、掲載中（listed）になる',
+  public.my_salon_status((select value::uuid from t.ctx where key = 'self_salon')) = 'listed');
+select t.runs('T44 承認のあとは、枠を出せる',
+  $$select public.create_slot('d9999999-0000-4000-8000-000000000001', t.at(60))$$);
+commit;
+
+-- T45 見送り
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e2';
+insert into t.ctx values ('self_salon2', public.salon_self_register('見送りサロン', '見送 二郎', '086-000-2222',
+  'e0000001-0000-4000-8000-000000000001', '架空県架空市4-5-6')::text);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T45 運営が自己登録を見送る',
+  $$select public.admin_reject_application((select id from public.salon_applications where applicant_user_id = '00000000-0000-4000-8000-0000000000e2'))$$);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e2';
+select t.ok('T45 見送ったサロンは「見送り（rejected）」になり、掲載されない',
+  public.my_salon_status((select value::uuid from t.ctx where key = 'self_salon2')) = 'rejected'
+  and not (select is_approved from public.salons where id = (select value::uuid from t.ctx where key = 'self_salon2')));
+commit;
+
+-- ---------------------------------------------------------
+-- T46 運営メンバー（招待だけで加える。外すのは運営だけ）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T46 運営は、運営メンバーの一覧を見られる（自分の印つき）',
+  exists (select 1 from public.admin_list_admins() where user_id = '00000000-0000-4000-8000-0000000000ad' and is_me));
+select t.raises('T46 運営が1人だけのときは外せない',
+  $$select public.admin_remove_admin('00000000-0000-4000-8000-000000000007')$$, 'last_admin');
+select t.raises('T46 自分自身は外せない',
+  $$select public.admin_remove_admin('00000000-0000-4000-8000-0000000000ad')$$, 'cannot_remove_self');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.raises('T46 利用者は、運営メンバーの一覧を見られない', 'select * from public.admin_list_admins()', 'forbidden');
+select t.ok('T46 利用者は、自分を運営に加えられない',
+  t.val($$insert into public.admins (user_id) values ('00000000-0000-4000-8000-000000000001') returning user_id::text$$) ~ 'permission denied|row-level security');
+commit;
+insert into public.admins (user_id, invited_by) values ('00000000-0000-4000-8000-0000000000e3', '00000000-0000-4000-8000-0000000000ad');
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T46 運営は、ほかの運営メンバーを外せる', $$select public.admin_remove_admin('00000000-0000-4000-8000-0000000000e3')$$);
+commit;
+select t.ok('T46 外した記録が残り、運営の権限がなくなる',
+  not exists (select 1 from public.admins where user_id = '00000000-0000-4000-8000-0000000000e3')
+  and exists (select 1 from public.audit_logs where action = 'remove_admin' and target_id = '00000000-0000-4000-8000-0000000000e3'));
+
+-- ---------------------------------------------------------
+-- T47 登録・外部 ID の連携に使う情報は、サーバー側だけが扱う
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.raises('T47 画面側から、メールアドレスでアカウントを探せない',
+  $$select public.find_user_id_by_email('user2@demo.test')$$, 'permission denied');
+select t.raises('T47 画面側から、パスワードの有無を調べられない',
+  $$select public.user_has_password('00000000-0000-4000-8000-000000000002')$$, 'permission denied');
+select t.raises('T47 画面側から、外部 ID の連携の表を読めない', 'select count(*) from public.social_identities', 'permission denied');
+commit;
+begin; set local role anon;
+select t.raises('T47 ログインしていない人も、外部 ID の連携の表を読めない', 'select count(*) from public.social_identities', 'permission denied');
+commit;
+begin; set local role service_role;
+select t.ok('T47 サーバー側は、メールアドレスでアカウントを探せる（大文字・空白を区別しない）',
+  public.find_user_id_by_email('  USER2@demo.test ') = '00000000-0000-4000-8000-000000000002');
+insert into public.social_identities (provider, subject, user_id, email)
+values ('google', 'g-test-1', '00000000-0000-4000-8000-000000000002', 'user2@demo.test');
+select t.ok('T47 サーバー側は、外部 ID をアカウントに結びつけられる',
+  (select count(*) from public.social_identities where user_id = '00000000-0000-4000-8000-000000000002') = 1);
+commit;
+select t.raises('T47 同じ外部 ID を二重に結びつけられない',
+  $$insert into public.social_identities (provider, subject, user_id) values ('google', 'g-test-1', '00000000-0000-4000-8000-000000000001')$$, 'duplicate key');
+select t.runs('T47 登録・審査・招待のメールを送信待ちに積める',
+  $$insert into public.notification_outbox (dedupe_key, kind, channel, recipient, payload)
+    select 'reg-test:' || k, k, 'email', 'x@example.test', '{"salon_name":""}'
+    from unnest(array['signup_confirm_mail','account_exists_mail','salon_approved_mail','salon_rejected_mail','admin_invite_mail']) k$$);
+-- 外部 ID で作ったアカウント（仮のパスワード）は「パスワードなし」。本人が決めると「あり」になる
+insert into auth.users (id, email, encrypted_password) values ('00000000-0000-4000-8000-0000000000f1', 'social-only@example.test', '$2a$10$temporary');
+begin; set local role service_role;
+select public.mark_passwordless('00000000-0000-4000-8000-0000000000f1');
+select t.ok('T47 外部 ID で作ったアカウントは、パスワードなしと判定する', not public.user_has_password('00000000-0000-4000-8000-0000000000f1'));
+commit;
+update auth.users set encrypted_password = '$2a$10$chosen-by-user' where id = '00000000-0000-4000-8000-0000000000f1';
+begin; set local role service_role;
+select t.ok('T47 本人がパスワードを決めると、パスワードありと判定する', public.user_has_password('00000000-0000-4000-8000-0000000000f1'));
+select t.ok('T47 メールアドレスで登録したアカウントは、パスワードありと判定する',
+  (select public.user_has_password(id) from auth.users where email = 'user1@demo.test') is not distinct from (select encrypted_password is not null from auth.users where email = 'user1@demo.test'));
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.raises('T47 画面側から「パスワードなし」の印を付けられない', $$select public.mark_passwordless('00000000-0000-4000-8000-000000000001')$$, 'permission denied');
+commit;
 -- 結果の一覧は run.sh が出す

@@ -10,7 +10,7 @@ import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { one, useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import BookingForm, { type BookTarget } from './BookingForm';
-import { useUserState } from './useUserState';
+import { needsProfile, useUserState } from './useUserState';
 
 type RawSlot = {
   id: string;
@@ -123,6 +123,7 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
           activeBookingId={active?.id ?? null}
           suspendedUntil={suspendedUntil}
           now={now}
+          profileMissing={needsProfile(profile)}
           onBooked={(id) => router.replace(`/booking/${id}?new=1`)}
           onUnavailable={load}
         />
