@@ -1,0 +1,235 @@
+/* 予約確定＝来店までのライブ画面。色・大きさ・時間は tokens.css の意味のトークンだけを使う */
+
+.page {
+  padding-bottom: calc(var(--size-control-lg) + var(--space-8) + var(--safe-bottom));
+}
+
+/* 「予約確定 → 来店 → 来店済み」の点と線 */
+.steps {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-muted);
+}
+/* 点の間の線 */
+.step + .step::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--size-badge) / 2 - var(--size-hairline));
+  right: 50%;
+  width: 100%;
+  height: var(--size-stroke);
+  background: var(--color-line-strong);
+}
+.step[data-state="done"] + .step::before,
+.step[data-state="done"] + .step[data-state="done"]::before {
+  background: var(--color-accent);
+}
+.dot {
+  position: relative;
+  z-index: var(--z-raised);
+  width: var(--size-badge);
+  height: var(--size-badge);
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  background: var(--color-surface);
+  border: var(--size-stroke) solid var(--color-line-strong);
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+.step[data-state="done"] {
+  color: var(--color-accent-strong);
+}
+.step[data-state="done"] .dot {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.step[data-state="now"] {
+  color: var(--color-ink);
+}
+.step[data-state="now"] .dot {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--size-bar) var(--color-accent-soft);
+}
+
+/* 開始までの残り：画面でいちばん大きく。周りの輪は残りに合わせて減る */
+.live {
+  view-transition-name: booking-live;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  border: var(--size-hairline) solid var(--color-line);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+.liveLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-accent-strong);
+}
+.ring {
+  --ring-color: var(--color-accent);
+  position: relative;
+  width: var(--size-live-ring);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: conic-gradient(var(--ring-color) calc(var(--progress, 0) * 1turn), var(--color-track) 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--size-ring-width)), var(--color-neutral-black) calc(100% - var(--size-ring-width) + var(--size-hairline)));
+  transition: --progress var(--motion-long) var(--ease-standard);
+}
+.ring[data-soon] {
+  --ring-color: var(--color-caution-mark);
+}
+.ringInner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-half);
+}
+.until {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+.big {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-num);
+  color: var(--color-ink);
+}
+.big small {
+  font-size: var(--text-h3);
+  font-weight: var(--weight-medium);
+}
+.big strong {
+  font-size: var(--text-live);
+  letter-spacing: var(--tracking-num);
+}
+.range {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.depart {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+/* 予約番号：受付で見せやすい「チケット」。左右の半円の切り欠きと点線の区切り */
+.ticket {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-deep);
+  mask:
+    radial-gradient(circle var(--size-notch) at 0 50%, transparent 98%, var(--color-neutral-black)) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--size-notch) at 100% 50%, transparent 98%, var(--color-neutral-black)) right / 51% 100% no-repeat;
+}
+.ticketLabel {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
+}
+.ticketLabel strong {
+  font-size: var(--text-sm);
+}
+.ticketNo {
+  padding-left: var(--space-4);
+  border-left: var(--size-stroke) dashed var(--color-accent-line);
+  font-size: var(--text-num-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-num);
+}
+
+/* 来店済み・キャンセルなど、終わったときの表示 */
+.ended {
+  view-transition-name: booking-live;
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-panel);
+  text-align: center;
+}
+.ended[data-tone="done"] {
+  background: var(--color-status-completed-bg);
+  color: var(--color-status-completed);
+}
+.ended[data-tone="cancel"] {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+.endedTitle {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+}
+.endedText {
+  font-size: var(--text-sm);
+}
+.endedAction {
+  margin-top: var(--space-4);
+}
+
+.salonName {
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+}
+.salonAddress {
+  margin: var(--space-half) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+
+/* 画面下部に固定した「地図を開く」「電話する」 */
+.actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-bar);
+  padding: var(--space-3) var(--layout-gutter) calc(var(--space-3) + var(--safe-bottom));
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  backdrop-filter: saturate(1.4) blur(var(--blur-bar));
+  border-top: var(--size-hairline) solid var(--color-line);
+}
+.actionsInner {
+  max-width: var(--layout-narrow);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.actionsInner :global(.btn) {
+  min-height: var(--size-control-lg);
+}

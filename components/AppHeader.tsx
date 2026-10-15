@@ -81,7 +81,8 @@ export default function AppHeader({ role, home = '/', children }: { role?: strin
   const kind = roleKind(role);
   return (
     <header className="topbar" data-role={kind ?? undefined}>
-      <Link href={home} className="brand" aria-label={kind ? `${ROLE_INFO[kind].title}のホームへ` : 'ホームへ'}>
+      {/* 読み上げの名前は、見えている文字（当日予約デモ・役割）をそのまま含める（WCAG 2.5.3） */}
+      <Link href={home} className="brand">
         <span className="brand-mark" aria-hidden>
           今
         </span>
@@ -94,6 +95,7 @@ export default function AppHeader({ role, home = '/', children }: { role?: strin
         ) : (
           role && <span className="role-pill">{role}</span>
         )}
+        <span className="sr-only">（ホームへ）</span>
       </Link>
       <nav className="topnav">{children}</nav>
     </header>

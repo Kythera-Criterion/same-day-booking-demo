@@ -1,0 +1,401 @@
+/* =========================================================
+   お客様の画面（ヒーロー・候補のカード・レーダー・ライブ画面・タブは CSS Modules。ここは共通で使う残りの部品）
+   値は tokens.css の意味のトークンだけを使う
+   ========================================================= */
+
+/* 下部のタブがある画面は、タブの高さ分の余白を空ける */
+.app:has([data-tabbar]) {
+  padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-8));
+}
+
+.hero-note {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  text-align: center;
+  margin: 0 0 var(--space-2);
+}
+
+/* 候補の一覧 */
+.results-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.results-title {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
+}
+.slot-list {
+  list-style: none;
+  margin: var(--space-1) 0 var(--space-3);
+  padding: 0;
+}
+.origin {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  margin: var(--space-3) var(--space-half) var(--space-1);
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
+.origin .btn {
+  white-space: nowrap;
+  flex: none;
+}
+.live-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-half);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+.watch-dot {
+  width: var(--size-dot);
+  height: var(--size-dot);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  animation: pulseDot var(--motion-linger) var(--ease-breath) infinite alternate;
+}
+@keyframes pulseDot {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.empty-watch {
+  text-align: center;
+}
+.empty-title {
+  font-weight: var(--weight-bold);
+  margin: var(--space-1) 0 var(--space-2);
+  text-wrap: balance;
+}
+/* 点は文の頭に付けたまま折り返す（折り返しても点だけが離れない） */
+.empty-sub {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  margin: 0 0 var(--space-3);
+  text-wrap: balance;
+}
+.empty-sub .watch-dot {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--space-2);
+}
+.arrival {
+  position: sticky;
+  top: var(--space-16);
+  z-index: var(--z-sticky);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  box-shadow: var(--shadow-2);
+  animation: fadeIn var(--motion-standard) var(--ease-enter) both;
+}
+
+/* ご予約中のカード */
+.active-card {
+  display: grid;
+  gap: var(--space-half);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-panel);
+  text-decoration: none;
+  color: var(--color-on-accent);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+  box-shadow: var(--shadow-2);
+}
+.active-label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-on-accent-soft);
+}
+.active-time {
+  font-size: var(--text-num-lg);
+  font-weight: var(--weight-bold);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.active-time em {
+  font-style: normal;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.active-sub {
+  font-size: var(--text-sm);
+}
+.active-go {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  margin-top: var(--space-2);
+}
+
+/* 予約の確認（ボトムシート） */
+.ticket {
+  position: relative;
+  background: var(--color-surface);
+  border: var(--size-hairline) solid var(--color-line);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-1);
+}
+.ticket-date {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
+.ticket-time {
+  margin: 0;
+  font-size: var(--text-num-xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+}
+.ticket-time span {
+  font-size: var(--text-h3);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-2);
+  margin-left: var(--space-1);
+}
+.ticket-left {
+  margin: var(--space-half) 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent-strong);
+}
+.ticket-price {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+}
+.ticket-map {
+  margin-top: var(--space-3);
+}
+.optional summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  min-height: var(--size-tap);
+  justify-content: center;
+}
+.optional summary::-webkit-details-marker {
+  display: none;
+}
+.optional summary span {
+  font-weight: var(--weight-bold);
+}
+.optional summary span::after {
+  content: "＋";
+  float: right;
+  color: var(--color-accent);
+}
+.optional[open] summary span::after {
+  content: "－";
+}
+.optional summary small {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+.optional[open] summary {
+  margin-bottom: var(--space-3);
+}
+.photo-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.photo-pick img {
+  width: var(--space-20);
+  height: var(--space-20);
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: var(--size-hairline) solid var(--color-line);
+}
+.promise {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: var(--size-hairline) solid var(--color-line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.promise li {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-4);
+}
+.promise li + li {
+  border-top: var(--size-hairline) solid var(--color-line);
+}
+.promise strong {
+  font-size: var(--text-sm);
+}
+.promise span {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+.promise li.is-urgent strong {
+  color: var(--color-caution);
+}
+.confirm-ctl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-2) 0 calc(var(--space-2) + var(--safe-bottom));
+  background: linear-gradient(180deg, transparent, var(--color-surface) 25%);
+}
+
+/* スライドして予約を確定 */
+.slide {
+  position: relative;
+  height: var(--size-control-xl);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+}
+.slide.is-off {
+  opacity: 0.45;
+}
+.slide-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-accent-muted);
+  border-radius: var(--radius-pill);
+}
+.slide-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: var(--weight-bold);
+  color: var(--color-accent-strong);
+  letter-spacing: var(--tracking-body);
+  padding-left: var(--space-10);
+}
+.slide-thumb {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: var(--size-control-lg);
+  height: var(--size-control-lg);
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  cursor: grab;
+  box-shadow: var(--shadow-accent);
+  transition: transform var(--motion-standard) var(--ease-standard);
+}
+.slide-thumb:active {
+  cursor: grabbing;
+}
+.hold-btn {
+  position: relative;
+  min-height: var(--size-tap);
+  border: var(--size-hairline) dashed var(--color-line-input);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+.hold-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.hold-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-accent-soft);
+}
+.hold-text {
+  position: relative;
+}
+
+/* アンケート */
+.survey-q {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+}
+.survey-q legend {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-2);
+  padding: 0;
+}
+
+/* 予約の履歴 */
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history li + li {
+  border-top: var(--size-hairline) solid var(--color-line);
+}
+.history a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-control-lg);
+  padding: var(--space-2) 0;
+  color: inherit;
+  text-decoration: none;
+}
+.history-date {
+  display: block;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+}
+.history-sub {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+/* 話しかけて探す（将来構想のプレビュー） */
+.voice-open {
+  margin-top: var(--space-4);
+}
+.voice {
+  width: 100%;
+  text-align: left;
+  margin-top: var(--space-4);
+}
+.voice-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.voice-parsed {
+  font-size: var(--text-sm);
+  color: var(--color-accent-strong);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-3);
+}

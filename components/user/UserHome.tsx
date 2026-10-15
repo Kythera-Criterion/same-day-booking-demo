@@ -1,25 +1,27 @@
 'use client';
 
-// 利用者のホーム：大きなボタン → 時間帯 → 候補3件（距離レーダーつき）→ ボトムシートで確認してスライドで確定
+// 利用者のホーム：時間帯で色が移るヒーローの「今すぐ」ボタン（または浮かぶパネルで時間帯を選ぶ）
+// → 候補3件（距離レーダーつき）→ ボトムシートで確認してスライドで確定。下部のタブで予約・マイページへ
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
-import { RemainBar } from '@/components/RemainRing';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { AFTER_LOGOUT } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
-import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
+import { bearingDeg, distanceKm, type LatLng } from '@/lib/geo';
 import { saveOrigin } from '@/lib/origin';
-import { walkMinutes } from '@/lib/walk';
 import Sheet from '@/components/Sheet';
-import { ROLE_LABEL, pickThree, restByStart, type PickRole } from '@/lib/picks';
+import { pickThree, restByStart, type PickRole } from '@/lib/picks';
 import { UI_OPTIONS } from '@/lib/ui-options';
-import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
+import { WINDOWS, fmtDate, fmtRemaining, fmtTime, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
 import BookingForm from './BookingForm';
+import CandidateCard from './CandidateCard';
+import Hero, { WindowPanel } from './Hero';
 import Radar from './Radar';
+import TabBar from './TabBar';
 import { needsProfile, useUserState } from './useUserState';
 import VoiceSearch from './VoiceSearch';
 
@@ -40,12 +42,6 @@ type FoundSlot = {
 };
 type Shown = FoundSlot & { id: string; startMs: number; km: number | null; bearing: number | null; role: PickRole | null };
 
-const WINDOW_SUB: Record<WindowKey, string> = {
-  now: '30分以内に始まる',
-  '1h': '60分以内に始まる',
-  '3h': '3時間以内に始まる',
-  today: '今日の最後まで',
-};
 const WIDER: Record<WindowKey, WindowKey | null> = { now: '1h', '1h': '3h', '3h': 'today', today: null };
 const MORE = 3;
 
@@ -59,7 +55,7 @@ export default function UserHome() {
     if (signedOut && !session) router.replace(AFTER_LOGOUT.user);
   }, [signedOut, session, router]);
 
-  const [step, setStep] = useState<'start' | 'pick' | 'results'>('start');
+  const [step, setStep] = useState<'start' | 'results'>('start');
   const [win, setWin] = useState<WindowKey>('1h');
   const [menuWord, setMenuWord] = useState<string | null>(null);
   const [areaId, setAreaId] = useState<string | null>(null);
@@ -205,6 +201,12 @@ export default function UserHome() {
     setStep('results');
   }
 
+  // 「今すぐ」：空きのあるいちばん近い時間帯を開く（どこにもなければ「今日中」）
+  function chooseNow() {
+    const first = WINDOWS.find((w) => counts[w.key] > 0);
+    choose(first ? first.key : 'today');
+  }
+
   function applyLocation() {
     setGpsError(null);
     if (!navigator.geolocation) {
@@ -239,9 +241,7 @@ export default function UserHome() {
 
   return (
     <main className="app">
-      <AppHeader role="利用者">
-        {ready && session ? <Link href="/mypage">マイページ</Link> : <Link href="/login">ログイン</Link>}
-      </AppHeader>
+      <AppHeader role="利用者">{ready && !session && <Link href="/login">ログイン</Link>}</AppHeader>
 
       {arrival && (
         <p className="arrival" role="status">
@@ -277,57 +277,22 @@ export default function UserHome() {
       ) : (
         <>
           {step === 'start' && (
-            <section className="hero fade-in">
-              <p className="hero-lead">空いた時間だけが、今から届く。</p>
-              <button className="hero-button" onClick={() => setStep('pick')}>
-                <span className="hero-count num" aria-live="polite">
-                  {all === null ? '空きを確かめています' : total > 0 ? `今、近くで${total}件の空き` : '今は空きがありません'}
-                </span>
-                <span className="hero-button-main">
-                  今から行ける
-                  <br />
-                  お店を探す
-                </span>
-                <span className="hero-button-sub">電話不要・店頭払い</span>
-              </button>
+            <>
+              <Hero total={total} counts={counts} loading={all === null} onNow={chooseNow} onChoose={(key) => choose(key)} />
               <p className="hero-note">今日の空き枠だけを、近い順にお届けします。</p>
               <VoiceSearch onResult={(key, word) => choose(key, word)} />
-            </section>
-          )}
-
-          {step === 'pick' && (
-            <section className="fade-in">
-              <h1 className="screen-title">いつ行けますか？</h1>
-              <div className="window-grid">
-                {WINDOWS.map((w) => (
-                  <button
-                    key={w.key}
-                    className={`window-option ${counts[w.key] === 0 ? 'is-empty' : ''}`}
-                    aria-disabled={counts[w.key] === 0}
-                    onClick={() => choose(w.key)}
-                  >
-                    <span className="window-count num">{all === null ? '…' : counts[w.key]}</span>
-                    <span className="window-main">{w.label}</span>
-                    <span className="window-sub">{counts[w.key] === 0 ? 'いまは空きなし' : WINDOW_SUB[w.key]}</span>
-                  </button>
-                ))}
-              </div>
-              <button className="btn btn-text" onClick={() => setStep('start')}>
-                ← 戻る
-              </button>
-            </section>
+            </>
           )}
 
           {step === 'results' && (
             <section className="fade-in">
-              <div className="segmented" role="group" aria-label="時間帯">
-                {WINDOWS.map((w) => (
-                  <button key={w.key} aria-pressed={win === w.key} className={counts[w.key] === 0 ? 'is-empty' : ''} onClick={() => choose(w.key, menuWord)}>
-                    {w.label}
-                    <span className="seg-count num">{counts[w.key]}</span>
-                  </button>
-                ))}
+              <div className="results-head">
+                <button className="btn btn-text btn-sm" onClick={() => setStep('start')}>
+                  ← ホーム
+                </button>
+                <h1 className="results-title">今から行けるお店</h1>
               </div>
+              <WindowPanel counts={counts} loading={all === null} current={win} onChoose={(key) => choose(key, menuWord)} />
 
               <div className="origin">
                 <span>
@@ -393,7 +358,7 @@ export default function UserHome() {
               {shown.length > 0 && (
                 <ul className="slot-list">
                   {shown.map((s, i) => (
-                    <SlotCard
+                    <CandidateCard
                       key={s.id}
                       slot={s}
                       no={i + 1}
@@ -414,7 +379,7 @@ export default function UserHome() {
                   <h2 className="section-title">ほかの枠（開始が早い順）</h2>
                   <ul className="slot-list">
                     {extra.map((s) => (
-                      <SlotCard
+                      <CandidateCard
                         key={s.id}
                         slot={s}
                         now={now}
@@ -459,85 +424,7 @@ export default function UserHome() {
           />
         </Sheet>
       )}
+      <TabBar hasActive={!!active} />
     </main>
-  );
-}
-
-function SlotCard({
-  slot,
-  no,
-  now,
-  gone,
-  selected,
-  disabled,
-  onSelect,
-  onBook,
-  refFn,
-}: {
-  slot: Shown;
-  no?: number;
-  now: Date;
-  gone: boolean;
-  selected: boolean;
-  disabled: boolean;
-  onSelect: () => void;
-  onBook: () => void;
-  refFn?: (el: HTMLLIElement | null) => void;
-}) {
-  const left = minutesUntil(slot.deadline_at, now);
-  return (
-    <li
-      ref={refFn}
-      className={`slot-card ${selected ? 'is-selected' : ''} ${gone ? 'is-gone' : ''}`}
-      onClick={onSelect}
-    >
-      {(slot.role || no !== undefined) && (
-        <div className="slot-top">
-          {no !== undefined && <span className="slot-no num">{no}</span>}
-          {slot.role && <span className={`role-tag role-${slot.role}`}>{ROLE_LABEL[slot.role]}</span>}
-        </div>
-      )}
-      <div className="slot-row">
-        <span className="slot-start num">{fmtTime(slot.start_at)}</span>
-        <span className="slot-left num">開始まで{fmtRemaining(minutesUntil(slot.start_at, now)).replace('あと', '')}</span>
-        <span className="slot-price">
-          <span className="price-label">当日価格</span>
-          <span className="num">{fmtYen(slot.price)}</span>
-        </span>
-      </div>
-      <p className="slot-salon">
-        {slot.salon_name}
-        {slot.km !== null && (
-          <span className="slot-walk num">
-            徒歩約{walkMinutes(slot.km)}分・{fmtDistance(slot.km)}
-          </span>
-        )}
-      </p>
-      <p className="slot-meta">
-        {slot.menu_name}・{slot.duration_min}分{slot.stylist_name && `・担当 ${slot.stylist_name}`}
-      </p>
-      <div className="slot-foot">
-        <div className={`slot-deadline ${left <= 5 ? 'is-urgent' : ''}`}>
-          <span className="num">予約受付 残り{Math.max(0, left)}分</span>
-          <RemainBar fraction={left / 60} urgent={left <= 5} />
-        </div>
-        <button
-          className="btn btn-primary slot-cta"
-          disabled={disabled || gone}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBook();
-          }}
-          aria-label={`${fmtTime(slot.start_at)} ${slot.salon_name} を予約する`}
-        >
-          予約する
-        </button>
-      </div>
-      {gone && (
-        <div className="gone-veil" role="status">
-          埋まりました
-        </div>
-      )}
-    </li>
   );
 }

@@ -1,0 +1,148 @@
+/* =========================================================
+   土台：リセット・文字・リンク・フォーカス・動きを減らす設定
+   値はすべて tokens.css の意味のトークンを使う
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-family-base);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--motion-standard) var(--ease-standard);
+}
+
+/* 役割の色の線（お客様・サロン・運営のどの画面かを上端で示す） */
+:root:has(.topbar[data-role]) body {
+  border-top: var(--size-stroke-bold) solid var(--color-accent);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+/* 見出しと短い案内は、日本語の文節で折り返す（対応していないブラウザはふつうの折り返し） */
+h1,
+h2,
+h3,
+.card-title,
+.empty-title,
+.empty-sub {
+  word-break: auto-phrase;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 0.2em;
+}
+
+/* フォーカスリング（デジタル庁デザインシステムの考え方：黒の外枠＋黄色の輪。どの背景でも見える） */
+:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-offset);
+  box-shadow: 0 0 0 var(--focus-halo-width) var(--focus-halo-color);
+}
+
+::selection {
+  background: var(--color-accent-muted);
+  color: var(--color-ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: var(--space-px);
+  height: var(--space-px);
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 数字は桁をそろえる */
+.num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-num);
+}
+
+.muted {
+  color: var(--color-ink-muted);
+}
+
+.break {
+  word-break: break-all;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
+
+/* キーボードで操作する人向けの「本文へ移動」 */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: calc(-1 * var(--space-16));
+  z-index: var(--z-skip);
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* 動きを減らす設定：動きは止め、色の変化だけにする */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--duration-instant) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--duration-instant) !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

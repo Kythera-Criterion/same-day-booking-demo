@@ -3,11 +3,11 @@
 // 予約確定画面＝来店までのライブ画面。
 // 開始までの残り時間（減っていく円）、予約番号、出発の目安、地図・電話。サロンの操作で、その場で表示が切り替わる
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
-import RemainRing from '@/components/RemainRing';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { one, useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
@@ -17,6 +17,7 @@ import { CONVERSATION_PREFS, label } from '@/lib/profile-options';
 import { UI_OPTIONS } from '@/lib/ui-options';
 import { fmtDate, fmtTime, fmtYen } from '@/lib/time';
 import { leaveBy, walkMinutes } from '@/lib/walk';
+import styles from './LiveBooking.module.css';
 import Survey from './Survey';
 
 type Salon = { name: string; address: string; phone: string | null; lat: number; lng: number };
@@ -51,6 +52,16 @@ const ENDED: Record<string, { title: string; tone: string; text: string; search:
   no_show: { title: 'ご来店が確認できませんでした', tone: 'cancel', text: 'お店から無断キャンセルとして記録されました。', search: false },
 };
 
+// 予約の進み具合（予約確定 → 来店 → 来店済み）
+const STEPS = ['予約確定', '来店', '来店済み'];
+
+// 対応しているブラウザでは、表示の切り替えを View Transitions で滑らかにする（ほかのブラウザでは普通に切り替える）
+function withTransition(update: () => void) {
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+  if (typeof doc.startViewTransition === 'function') doc.startViewTransition(() => flushSync(update));
+  else update();
+}
+
 export default function BookingDetail({ bookingId, isNew }: { bookingId: string; isNew: boolean }) {
   const router = useRouter();
   const { client, session, ready, signedOut } = useRoleSession('user');
@@ -59,6 +70,7 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
   const [changed, setChanged] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [walk, setWalk] = useState<{ min: number; label: string } | null>(null);
+  const lastStatus = useRef<string | null>(null);
 
   useEffect(() => {
     if (ready && !session) router.replace(`/login?${signedOut ? 'logged_out=1&' : ''}next=${encodeURIComponent(`/booking/${bookingId}`)}`);
@@ -88,7 +100,11 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
       setD(null);
       return;
     }
-    setD({ ...raw, start_at: slot.start_at, end_at: slot.end_at, price: slot.price, menu: one(slot.menus), salon: one(slot.salons) });
+    const next: Detail = { ...raw, start_at: slot.start_at, end_at: slot.end_at, price: slot.price, menu: one(slot.menus), salon: one(slot.salons) };
+    // サロンが来店済み・キャンセルにしたときは、切り替えを滑らかにする
+    if (lastStatus.current && lastStatus.current !== next.status) withTransition(() => setD(next));
+    else setD(next);
+    lastStatus.current = next.status;
   }, [client, session, bookingId]);
 
   useEffect(() => {
@@ -126,13 +142,12 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
   const fraction = d ? (startMs - now.getTime()) / totalMs : 0;
   const leave = d && walk ? leaveBy(new Date(d.start_at), walk.min) : null;
   const mapUrl = d?.salon ? `https://www.google.com/maps/search/?api=1&query=${d.salon.lat},${d.salon.lng}` : '#';
-  const stage = d?.status === 'completed' ? 2 : 1;
+  // 0：予約確定 1：来店（開始時刻） 2：来店済み。今どこにいるか（予約が確定したら来店を待つ段）
+  const stage = d?.status === 'completed' ? 3 : 1;
 
   return (
-    <main className="app">
-      <AppHeader role="利用者">
-        <Link href="/mypage">マイページ</Link>
-      </AppHeader>
+    <main className={`app ${styles.page}`}>
+      <AppHeader role="利用者" />
 
       {error && <ErrorState onRetry={load}>{error}</ErrorState>}
       {d === undefined && !error && <Loading rows={3} />}
@@ -147,50 +162,71 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
 
       {d && (
         <div className="stack">
-          {!ended || d.status === 'completed' ? (
-            <ol className="flow" aria-label="予約の流れ">
-              <li className={stage >= 1 ? 'is-done' : ''}>予約確定</li>
-              <li className={stage >= 2 ? 'is-done' : stage === 1 ? 'is-next' : ''}>来店</li>
+          {(!ended || d.status === 'completed') && (
+            <ol className={styles.steps} aria-label="予約の進み具合">
+              {STEPS.map((name, i) => {
+                const state = i < stage ? 'done' : i === stage ? 'now' : 'todo';
+                return (
+                  <li key={name} className={styles.step} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
+                    <span className={styles.dot} aria-hidden>
+                      {state === 'done' ? '✓' : ''}
+                    </span>
+                    {name}
+                  </li>
+                );
+              })}
             </ol>
-          ) : null}
+          )}
 
           {ended ? (
-            <section className={`status-banner status-${ended.tone} ${changed ? 'is-fresh' : ''}`} role="status">
-              <p className="status-title">{ended.title}</p>
-              <p className="status-text">{ended.text}</p>
+            <section className={`${styles.ended} ${changed ? 'is-fresh' : ''}`} data-tone={ended.tone} role="status">
+              <p className={styles.endedTitle}>{ended.title}</p>
+              <p className={styles.endedText}>{ended.text}</p>
               {ended.search && (
-                <Link href="/" className="btn btn-primary btn-block" style={{ marginTop: 14 }}>
+                <Link href="/" className={`btn btn-primary btn-block ${styles.endedAction}`}>
                   ほかの枠を探す
                 </Link>
               )}
             </section>
           ) : (
-            <section className={`live ${changed ? 'is-fresh' : ''}`}>
-              <p className="live-label">{isNew ? '予約が確定しました' : 'ご予約中'}</p>
-              <RemainRing fraction={fraction} label={`開始まであと${remainMin}分`}>
-                <span className="live-sub">開始まで</span>
-                <span className="live-main num">
+            <section className={`${styles.live} ${changed ? 'is-fresh' : ''}`} aria-live="polite">
+              <p className={styles.liveLabel}>{isNew ? '予約が確定しました' : 'ご予約中'}</p>
+              <div
+                className={styles.ring}
+                data-soon={remainMin <= 10 || undefined}
+                style={{ '--progress': Math.max(0, Math.min(1, fraction)) } as CSSProperties}
+                role="img"
+                aria-label={`開始まであと${remainMin}分`}
+              >
+                <div className={styles.ringInner}>
+                  <span className={styles.until}>開始まで</span>
                   {remainMin > 0 ? (
-                    <>
-                      あと<strong>{remainMin >= 60 ? `${Math.floor(remainMin / 60)}時間${remainMin % 60}` : remainMin}</strong>分
-                    </>
+                    <span className={`${styles.big} num`}>
+                      <small>あと</small>
+                      <strong>{remainMin >= 60 ? `${Math.floor(remainMin / 60)}:${String(remainMin % 60).padStart(2, '0')}` : remainMin}</strong>
+                      <small>{remainMin >= 60 ? '' : '分'}</small>
+                    </span>
                   ) : (
-                    'まもなく'
+                    <span className={`${styles.big} num`}>
+                      <strong>まもなく</strong>
+                    </span>
                   )}
-                </span>
-                <span className="live-sub num">
-                  {fmtTime(d.start_at)}〜{fmtTime(d.end_at)}
-                </span>
-              </RemainRing>
+                  <span className={`${styles.range} num`}>
+                    {fmtTime(d.start_at)}〜{fmtTime(d.end_at)}
+                  </span>
+                </div>
+              </div>
               {UI_OPTIONS.showBookingNo && d.booking_no !== null && (
-                <p className="booking-no">
-                  <span>予約番号</span>
-                  <strong className="num">{d.booking_no}</strong>
-                  <small>受付でお伝えください</small>
-                </p>
+                <div className={styles.ticket}>
+                  <span className={styles.ticketLabel}>
+                    <strong>予約番号</strong>
+                    受付でこの画面を見せてください
+                  </span>
+                  <strong className={`${styles.ticketNo} num`}>{d.booking_no}</strong>
+                </div>
               )}
               {UI_OPTIONS.showDeparture && walk && leave && (
-                <p className="depart num">
+                <p className={`${styles.depart} num`}>
                   {walk.label === '現在地' ? '' : '基準地点から'}歩いて約{walk.min}分。
                   {leave.getTime() > now.getTime() ? `${fmtTime(leave)}ごろに出れば間に合います。` : 'そろそろ出発しましょう。'}
                 </p>
@@ -199,22 +235,8 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
           )}
 
           <section className="card">
-            <p className="salon-name">{d.salon?.name}</p>
-            <p className="salon-address">{d.salon?.address}</p>
-            <div className="action-pair action-big">
-              <a className="btn btn-secondary btn-lg" href={mapUrl} target="_blank" rel="noopener noreferrer">
-                地図を開く
-              </a>
-              {d.salon?.phone ? (
-                <a className="btn btn-primary btn-lg" href={`tel:${d.salon.phone}`}>
-                  電話する
-                </a>
-              ) : (
-                <span className="btn btn-quiet btn-lg" aria-disabled>
-                  電話番号なし
-                </span>
-              )}
-            </div>
+            <p className={styles.salonName}>{d.salon?.name}</p>
+            <p className={styles.salonAddress}>{d.salon?.address}</p>
             <p className="fine-print">地図にはお店の位置だけを渡します。あなたの現在地は渡しません。</p>
           </section>
 
@@ -256,10 +278,29 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
           {d.status === 'confirmed' && <p className="notice notice-info">変更・キャンセルはお店へ直接お電話ください。</p>}
           {isNew && d.status === 'confirmed' && <Survey client={client} bookingId={d.id} />}
 
-          <Link href="/" className="btn btn-text">
-            ホームへ戻る
+          <Link href="/bookings" className="btn btn-text">
+            予約の一覧へ
           </Link>
         </div>
+      )}
+
+      {d && (
+        <nav className={styles.actions} aria-label="お店への連絡">
+          <div className={styles.actionsInner}>
+            <a className="btn btn-secondary btn-lg" href={mapUrl} target="_blank" rel="noopener noreferrer">
+              地図を開く
+            </a>
+            {d.salon?.phone ? (
+              <a className="btn btn-primary btn-lg" href={`tel:${d.salon.phone}`}>
+                電話する
+              </a>
+            ) : (
+              <span className="btn btn-quiet btn-lg" aria-disabled>
+                電話番号なし
+              </span>
+            )}
+          </div>
+        </nav>
       )}
     </main>
   );

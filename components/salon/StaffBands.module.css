@@ -1,0 +1,226 @@
+/* 担当ごとの帯（CSS Grid：担当名の列＋15分ごとの60列）。値は tokens.css の意味のトークンだけを使う */
+
+/* 中の重なり順（担当名の固定など）を帯の中に閉じ込め、画面上部の警告の帯より前に出ないようにする */
+.scroll {
+  isolation: isolate;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--space-2);
+}
+
+.table {
+  --columns: var(--band-name-col) repeat(var(--cols), minmax(var(--band-col-min), 1fr));
+  display: grid;
+  grid-template-columns: 1fr;
+  min-width: max-content;
+}
+
+.head,
+.row {
+  display: grid;
+  grid-template-columns: var(--columns);
+  position: relative;
+}
+
+/* 時刻の目盛り（1時間ごとの見出し） */
+.head {
+  height: var(--space-8);
+  align-items: end;
+  border-bottom: var(--size-hairline) solid var(--color-line-strong);
+}
+.corner {
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  left: 0;
+  z-index: var(--z-sticky);
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 var(--space-3) var(--space-1);
+  background: var(--color-surface);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+/* 行を1行目に固定する（今の時刻のタグと同じマスでも、2行目へ押し出されない） */
+.hour {
+  grid-row: 1;
+  padding: 0 0 var(--space-1) var(--space-1);
+  border-left: var(--size-hairline) solid var(--color-line-strong);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+.nowTag {
+  grid-row: 1;
+  grid-column: var(--now-col);
+  align-self: start;
+  justify-self: start;
+  margin-left: calc(var(--now-frac) * 100%);
+  transform: translateX(-50%);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-warn);
+  color: var(--color-on-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  z-index: var(--z-raised);
+}
+
+/* 担当ごとの1行（重なる枠は段を分ける） */
+.row {
+  grid-template-rows: repeat(var(--lanes, 1), var(--band-row-height));
+  border-bottom: var(--size-hairline) solid var(--color-line);
+}
+.name {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  position: sticky;
+  left: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  background: var(--color-surface);
+  border-right: var(--size-hairline) solid var(--color-line);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 15分ごとのマス：空いているところに触れると薄く強調、押すと枠を出す */
+.cell {
+  grid-row: 1 / -1;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-left: var(--size-hairline) dotted var(--color-line);
+  background: transparent;
+  cursor: copy;
+  transition: background-color var(--motion-short) var(--ease-standard);
+}
+.cell[data-hour] {
+  border-left: var(--size-hairline) solid var(--color-line-strong);
+}
+.cell:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+/* 受付の締切を過ぎた範囲は斜線で薄く覆う */
+.cell[data-past] {
+  cursor: default;
+  background: repeating-linear-gradient(135deg, var(--color-hatch) 0 var(--space-1), transparent var(--space-1) var(--space-2));
+}
+
+/* 現在時刻の線（--now-col と --now-frac で位置を決める） */
+.now {
+  grid-row: 1 / -1;
+  grid-column: var(--now-col);
+  justify-self: start;
+  margin-left: calc(var(--now-frac) * 100%);
+  width: var(--size-stroke);
+  background: var(--color-warn);
+  pointer-events: none;
+  z-index: var(--z-raised);
+}
+
+/* 枠：始まりの列から置き、列の中のずれ（5分単位）は左右の余白で合わせる */
+.block {
+  --block-ink: var(--color-ink);
+  position: relative;
+  z-index: calc(var(--z-raised) + 1);
+  margin: var(--space-1) calc(var(--inset-end, 0) * 100% + var(--space-half)) var(--space-1) calc(var(--inset-start, 0) * 100% + var(--space-half));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  /* 15分の枠も、押せる幅（44px）を下回らないようにする */
+  min-width: var(--size-tap);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: var(--size-stroke) solid transparent;
+  color: var(--block-ink);
+  font-size: var(--text-xs);
+  line-height: var(--leading-dense);
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow var(--motion-short) var(--ease-standard);
+}
+.block:hover {
+  box-shadow: var(--shadow-2);
+}
+.time {
+  font-weight: var(--weight-bold);
+}
+.label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--weight-medium);
+}
+.no {
+  display: inline-block;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-on-accent-faint);
+  font-weight: var(--weight-bold);
+}
+.block[data-narrow] {
+  align-items: center;
+  padding: 0 var(--space-half);
+}
+
+/* 状態ごとの見分け方（塗り・枠線・模様。色だけに頼らない） */
+/* 公開中：薄い塗り＋点線の枠 */
+.block[data-state="open"] {
+  background: var(--color-status-open-bg);
+  border-style: dashed;
+  border-color: var(--color-status-open-line);
+  --block-ink: var(--color-status-open);
+}
+/* 予約あり：濃い塗り＋実線の枠 */
+.block[data-state="confirmed"],
+.block[data-state="booked"] {
+  background: var(--color-status-booked-bg);
+  border-color: var(--color-status-booked-line);
+  --block-ink: var(--color-status-booked);
+}
+/* 来店済み：灰色の塗り＋二重線の枠 */
+.block[data-state="completed"] {
+  background: var(--color-status-completed-bg);
+  border-style: double;
+  border-width: var(--size-stroke-bold);
+  border-color: var(--color-status-completed-line);
+  --block-ink: var(--color-status-completed);
+}
+/* 無断キャンセル：警告の塗り＋実線の枠 */
+.block[data-state="no_show"] {
+  background: var(--color-warn-bg);
+  border-color: var(--color-warn);
+  --block-ink: var(--color-warn);
+}
+/* 取り下げ・受付終了：塗りなし＋点の枠 */
+.block[data-state="closed"],
+.block[data-state="expired"] {
+  background: var(--color-surface);
+  border-style: dotted;
+  border-color: var(--color-status-cancelled-line);
+  --block-ink: var(--color-status-cancelled);
+}
+/* 今日はここまで・掲載停止：斜線の模様 */
+.block[data-state="paused"],
+.block[data-state="suspended"] {
+  background: repeating-linear-gradient(135deg, var(--color-status-cancelled-bg) 0 var(--space-1), var(--color-surface) var(--space-1) var(--space-2));
+  border-style: dashed;
+  border-color: var(--color-status-cancelled-line);
+  --block-ink: var(--color-status-cancelled);
+}
+.block[data-state="suspended"] {
+  border-color: var(--color-warn);
+  --block-ink: var(--color-warn);
+}

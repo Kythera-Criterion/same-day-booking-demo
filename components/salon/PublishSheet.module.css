@@ -1,0 +1,165 @@
+/* 枠を出すシート（空いた時間から）。値は tokens.css の意味のトークンだけを使う */
+
+/* 空いた時間：30・60・90・120分の大きな丸いチップ */
+.lengths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.round {
+  width: var(--size-split-chip);
+  aspect-ratio: 1;
+  border-radius: var(--radius-full);
+  border: var(--size-stroke) solid var(--color-line-input);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: var(--leading-tight);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-short) var(--ease-standard),
+    border-color var(--motion-short) var(--ease-standard),
+    transform var(--motion-short) var(--ease-standard);
+}
+.round:active {
+  transform: scale(0.96);
+}
+.round[aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.roundNum {
+  font-size: var(--text-h1);
+  font-weight: var(--weight-bold);
+}
+.roundUnit {
+  font-size: var(--text-xs);
+}
+.custom {
+  min-height: var(--size-tap);
+}
+
+/* 横に伸びる時間の目盛り：空いた時間と、切り分けた枠 */
+.scale {
+  position: relative;
+  margin: var(--space-4) 0 var(--space-1);
+  height: var(--space-10);
+  border-radius: var(--radius-sm);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-surface-sunken) 0 calc(var(--tick) - var(--size-hairline)),
+    var(--color-line) calc(var(--tick) - var(--size-hairline)) var(--tick)
+  );
+  border: var(--size-hairline) solid var(--color-line-strong);
+  overflow: hidden;
+}
+.seg {
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: calc(var(--from) * 100%);
+  width: calc((var(--to) - var(--from)) * 100%);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 var(--size-stroke) var(--color-surface);
+  animation: grow var(--motion-standard) var(--ease-enter) both;
+  animation-delay: calc(var(--i) * var(--motion-short));
+  transform-origin: left center;
+}
+.seg[data-off] {
+  background: repeating-linear-gradient(135deg, var(--color-status-cancelled-bg) 0 var(--space-1), var(--color-surface) var(--space-1) var(--space-2));
+}
+.seg[data-unchecked] {
+  background: var(--color-accent-muted);
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+.scaleLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+/* 切り分けた枠の案：小さなチケットが1枚ずつ重なって並ぶ */
+.tickets {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ticketItem {
+  margin-top: calc(-1 * var(--space-1));
+  animation: stack var(--motion-long) var(--ease-enter) both;
+  animation-delay: calc(var(--i) * var(--motion-short));
+}
+.ticketItem:first-child {
+  margin-top: 0;
+}
+@keyframes stack {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-4))) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-control);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  border: var(--size-hairline) solid var(--color-line-strong);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  /* 左右の半円の切り欠き */
+  mask:
+    radial-gradient(circle var(--space-2) at 0 50%, transparent 98%, var(--color-neutral-black)) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--space-2) at 100% 50%, transparent 98%, var(--color-neutral-black)) right / 51% 100% no-repeat;
+}
+.ticket input {
+  width: var(--size-check);
+  height: var(--size-check);
+  accent-color: var(--color-accent);
+}
+.ticketTime {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body);
+}
+.ticketNote {
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+  text-align: right;
+}
+.ticketItem[data-off] .ticket {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-muted);
+  cursor: default;
+}
+
+/* 最後に、画面幅いっぱいの「公開する」 */
+.publish {
+  margin-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

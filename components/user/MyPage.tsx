@@ -1,28 +1,23 @@
 'use client';
 
-// マイページ：現在の予約、予約の履歴、カルテ（髪質・カラー・パーマ）、会話の好み、予約停止中なら再開日
+// マイページ：現在の予約（履歴は「予約」タブ）、カルテ（髪質・カラー・パーマ）、会話の好み、登録情報、ログインの方法、予約停止中なら再開日
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
-import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
+import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { AFTER_LOGOUT, logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/profile-options';
-import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
+import { fmtDate } from '@/lib/time';
 import type { Providers } from '@/lib/oauth-shared';
 import AccountSettings from './AccountSettings';
+import { ActiveCard, NoActive } from './BookingsList';
+import TabBar from './TabBar';
 import { needsProfile, useUserState, type MyProfile } from './useUserState';
 
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: '予約中',
-  completed: '来店済み',
-  no_show: '無断キャンセル',
-  cancelled_by_salon: 'サロン都合のキャンセル',
-  cancelled_by_customer: 'キャンセル（お店へ連絡済み）',
-};
 
 type Draft = Pick<
   MyProfile,
@@ -122,9 +117,7 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
 
   return (
     <main className="app">
-      <AppHeader role="利用者">
-        <Link href="/">ホーム</Link>
-      </AppHeader>
+      <AppHeader role="利用者" />
 
       <h1 className="screen-title">{profile ? `${profile.display_name} さん` : 'マイページ'}</h1>
 
@@ -148,52 +141,10 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
           )}
 
           <h2 className="section-title">現在の予約</h2>
-          {active && active.slot ? (
-            <Link href={`/booking/${active.id}`} className="active-card">
-              <span className="active-label">ご予約中</span>
-              <span className="active-time num">
-                今日 {fmtTime(active.slot.start_at)}
-                <em>{fmtRemaining(minutesUntil(active.slot.start_at, now))}</em>
-              </span>
-              <span className="active-sub">
-                {active.slot.salon?.name} ・ {active.slot.menu?.name}
-              </span>
-              <span className="active-go">予約内容を見る →</span>
-            </Link>
-          ) : (
-            <div className="card">
-              <Empty>いまご予約はありません。</Empty>
-              <Link href="/" className="btn btn-primary btn-block">
-                今から行けるお店を探す
-              </Link>
-            </div>
-          )}
-
-          <h2 className="section-title">予約の履歴</h2>
-          <div className="card">
-            {history.length === 0 ? (
-              <Empty>履歴はまだありません。</Empty>
-            ) : (
-              <ul className="history">
-                {history.map((b) => (
-                  <li key={b.id}>
-                    <Link href={`/booking/${b.id}`}>
-                      <span>
-                        <span className="history-date num">
-                          {b.slot ? `${fmtDate(b.slot.start_at)} ${fmtTime(b.slot.start_at)}` : '--'}
-                        </span>
-                        <span className="history-sub">
-                          {b.slot?.salon?.name} ・ {b.slot?.menu?.name} ・ {b.slot ? fmtYen(b.slot.price) : ''}
-                        </span>
-                      </span>
-                      <span className={`pill pill-${b.status}`}>{STATUS_LABEL[b.status] ?? b.status}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
+          {active && active.slot ? <ActiveCard booking={active} now={now} /> : <NoActive />}
+          <Link href="/bookings" className="btn btn-secondary btn-block">
+            これまでの予約を見る（{history.length}件）
+          </Link>
           {message && <p className={`notice ${message.kind === 'ok' ? 'notice-ok' : 'notice-error'}`}>{message.text}</p>}
 
           {draft && (
@@ -302,6 +253,7 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
           </button>
         </div>
       )}
+      <TabBar hasActive={!!active} />
     </main>
   );
 }

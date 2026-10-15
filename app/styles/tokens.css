@@ -1,0 +1,418 @@
+/* =========================================================
+   トークン（色・文字・余白・形・影・動き）
+   ---------------------------------------------------------
+   1. 基本トークン（デジタル庁デザインシステム）
+        @digital-go-jp/design-tokens 2.0.1（MIT License / Copyright (c) 2023 デジタル庁。全文は THIRD_PARTY_LICENSES.md）
+        app/layout.tsx で dist/tokens.css を先に読み込む。
+        使うもの：--font-size-*・--line-height-*・--font-weight-*・--font-family-sans・--border-radius-*・
+                  --color-neutral-*・--color-primitive-yellow-300（フォーカスの輪）
+   2. 基本トークン（このサービス）：色の段階・余白・大きさ・時間・重なり
+   3. 意味のトークン：各画面の CSS は、ここで決めた名前だけを使う（色や数値を直接書かない）
+   4. 役割ごとのテーマ（お客様：緑／サロン：青／運営：紫）
+   5. 動きを減らす設定
+   参考サイトで測った値は、docs/design-references.md の「変換のルール」で置き換えてから使っている
+   ========================================================= */
+
+:root {
+  /* ---------------------------------------------------------
+     2. このサービスの基本トークン
+     --------------------------------------------------------- */
+
+  /* アクセント（深い緑 #1f6f5c を 600 とした 50〜900 の段階） */
+  --brand-green-50: #e9f4f0;
+  --brand-green-100: #d1e8df;
+  --brand-green-200: #a8d3c3;
+  --brand-green-300: #78b9a3;
+  --brand-green-400: #4c9d84;
+  --brand-green-500: #2e8770;
+  --brand-green-600: #1f6f5c;
+  --brand-green-700: #17574a;
+  --brand-green-800: #114439;
+  --brand-green-900: #0b2f28;
+
+  /* サロンの画面（青） */
+  --brand-blue-50: #eaf0fa;
+  --brand-blue-100: #d6e2f4;
+  --brand-blue-200: #b1c7ea;
+  --brand-blue-300: #87a9dd;
+  --brand-blue-400: #5a86cb;
+  --brand-blue-500: #3d6db8;
+  --brand-blue-600: #2c5aa0;
+  --brand-blue-700: #1f437c;
+  --brand-blue-800: #17335e;
+  --brand-blue-900: #0f2240;
+
+  /* 運営の画面（紫） */
+  --brand-purple-50: #f3eefa;
+  --brand-purple-100: #e6ddf4;
+  --brand-purple-200: #cdbbe8;
+  --brand-purple-300: #b096d9;
+  --brand-purple-400: #9172c6;
+  --brand-purple-500: #7655b0;
+  --brand-purple-600: #5b3f99;
+  --brand-purple-700: #452f78;
+  --brand-purple-800: #33235a;
+  --brand-purple-900: #22173c;
+
+  /* 背景と文字（温かみのある灰色の段階） */
+  --sand-0: #ffffff;
+  --sand-50: #faf8f4;
+  --sand-100: #f5f3ee;
+  --sand-150: #efece6;
+  --sand-200: #e6e2d9;
+  --sand-250: #ebe7df;
+  --sand-300: #d5d0c4;
+  --sand-500: #85817a;
+  --sand-600: #5c615c;
+  --sand-700: #434845;
+  --sand-900: #1a1d1b;
+
+  /* サロン・運営の背景（役割の色を薄く混ぜた灰色） */
+  --mist-blue-50: #f7f9fc;
+  --mist-blue-100: #eef2f8;
+  --mist-blue-200: #dfe5ee;
+  --mist-blue-250: #dfe6f1;
+  --mist-blue-300: #cbd4e2;
+  --mist-purple-50: #f9f7fc;
+  --mist-purple-100: #f1eef7;
+  --mist-purple-200: #e5e0ee;
+  --mist-purple-250: #e6e0f0;
+  --mist-purple-300: #d3cbe2;
+
+  /* 状態の色の素（文字は背景に対して 4.5:1 以上。tests は docs/design-references.md） */
+  --red-50: #fbe9e3;
+  --red-100: #f6d3c8;
+  --red-600: #a63a24;
+  --amber-50: #fbf0d9;
+  --amber-100: #f4dfb2;
+  --amber-500: #b7780f;
+  --amber-700: #6f4a06;
+  --slate-50: #e5eaee;
+  --slate-200: #c6d0d7;
+  --slate-700: #3d4a55;
+  --sky-50: #e6eef8;
+  --sky-700: #2d5486;
+  --chart-green: #00876a;
+  --chart-amber: #c27510;
+  --line-app-green: #06c755;
+
+  /* 外部の ID のボタン（各社のガイドラインで決められた色。ここだけは各社の値をそのまま使う） */
+  --provider-google-fill: #ffffff;
+  --provider-google-line: #747775;
+  --provider-google-ink: #1f1f1f;
+  --provider-google-hover: #f2f2f2;
+
+  /* 時間帯のヒーロー（朝・昼・夕方・夜。どれも濃い文字で 4.5:1 以上になる明るさ） */
+  --sky-morning-a: #fbe3d2;
+  --sky-morning-b: #f4eedb;
+  --sky-day-a: #d9efe6;
+  --sky-day-b: #e1edf8;
+  --sky-evening-a: #f6d9c6;
+  --sky-evening-b: #eed6e2;
+  --sky-night-a: #d5dcef;
+  --sky-night-b: #dcd6ee;
+
+  /* 余白（4px の倍数） */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-half: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* 大きさ */
+  --size-tap: 44px;
+  --size-control: 48px;
+  --size-control-lg: 56px;
+  --size-control-xl: 64px;
+  --size-icon-xs: 16px;
+  --size-icon-sm: 20px;
+  --size-icon-md: 24px;
+  --size-icon-lg: 40px;
+  --size-badge: 22px;
+  --size-check: 20px;
+  --size-dot: 8px;
+  --size-hairline: 1px;
+  --size-stroke: 2px;
+  --size-stroke-bold: 4px;
+  --size-bar: 4px;
+  --size-bar-thick: 6px;
+
+  /* 時間（短い・標準・長い・呼吸・知らせ） */
+  --duration-instant: 1ms;
+  --duration-short: 120ms;
+  --duration-standard: 240ms;
+  --duration-long: 480ms;
+  --duration-linger: 1200ms;
+  --duration-breath: 4800ms;
+  --duration-alert: 2400ms;
+
+  /* 動き方 */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-breath: cubic-bezier(0.45, 0, 0.55, 1);
+
+  /* ぼかし（浮いた帯・半透明のパネル） */
+  --blur-bar: 14px;
+  --blur-glass: 16px;
+
+  /* 画面幅の区切り（メディアクエリでは変数を使えないため、各 CSS では同じ値を em で書く） */
+  --bp-xs: 22.5em; /* 360px */
+  --bp-sm: 30em; /* 480px */
+  --bp-md: 37.5em; /* 600px */
+  --bp-tablet: 56.25em; /* 900px */
+  --bp-lg: 60em; /* 960px */
+  --bp-xl: 93.75em; /* 1500px */
+
+  /* 重なりの順 */
+  --z-raised: 2;
+  --z-sticky: 20;
+  --z-bar: 30;
+  --z-sheet: 50;
+  --z-toast: 60;
+  --z-alert: 80;
+  --z-banner: 90;
+  --z-skip: 100;
+
+  /* ---------------------------------------------------------
+     3. 意味のトークン（各画面の CSS はこれだけを使う）
+     --------------------------------------------------------- */
+
+  /* 色：アクセント */
+  --color-accent: var(--brand-green-600);
+  --color-accent-strong: var(--brand-green-700);
+  --color-accent-deep: var(--brand-green-800);
+  --color-accent-soft: var(--brand-green-50);
+  --color-accent-muted: var(--brand-green-100);
+  --color-accent-line: var(--brand-green-300);
+  --color-accent-bright: var(--brand-green-500);
+  --color-on-accent: var(--color-neutral-white);
+
+  /* 色：面と文字 */
+  --color-bg: var(--sand-100);
+  --color-surface: var(--sand-0);
+  --color-surface-sunken: var(--sand-50);
+  --color-surface-muted: var(--sand-150);
+  --color-track: var(--sand-250);
+  --color-ink: var(--sand-900);
+  --color-ink-2: var(--sand-700);
+  --color-ink-muted: var(--sand-600);
+  --color-ink-inverse: var(--color-neutral-white);
+  --color-line: var(--sand-200);
+  --color-line-strong: var(--sand-300);
+  --color-line-input: var(--sand-500);
+  --color-scrim: rgb(20 24 22 / 0.42);
+  --color-veil: rgb(255 255 255 / 0.82);
+  --color-glass: rgb(255 255 255 / 0.62);
+  --color-glass-line: rgb(255 255 255 / 0.7);
+  --color-on-accent-faint: rgb(255 255 255 / 0.16);
+  --color-on-accent-soft: rgb(255 255 255 / 0.85);
+  --color-hatch: rgb(0 0 0 / 0.06);
+
+  /* 色：状態（文字の色・背景・枠） */
+  --color-status-open: var(--color-accent-strong);
+  --color-status-open-bg: var(--color-accent-soft);
+  --color-status-open-line: var(--color-accent);
+  --color-status-booked: var(--color-on-accent);
+  --color-status-booked-bg: var(--color-accent);
+  --color-status-booked-line: var(--color-accent-deep);
+  --color-status-completed: var(--slate-700);
+  --color-status-completed-bg: var(--slate-50);
+  --color-status-completed-line: var(--slate-200);
+  --color-status-cancelled: var(--sand-600);
+  --color-status-cancelled-bg: var(--sand-150);
+  --color-status-cancelled-line: var(--sand-300);
+  --color-warn: var(--red-600);
+  --color-warn-bg: var(--red-50);
+  --color-warn-line: var(--red-100);
+  --color-caution: var(--amber-700);
+  --color-caution-bg: var(--amber-50);
+  --color-caution-line: var(--amber-100);
+  --color-caution-mark: var(--amber-500);
+  --color-info: var(--sky-700);
+  --color-info-bg: var(--sky-50);
+  --color-success: var(--color-accent-strong);
+  --color-success-bg: var(--color-accent-soft);
+  --color-line-app: var(--line-app-green);
+
+  /* 色：候補の役割（いちばん早い／いちばん近い／もうひとつの候補） */
+  --color-role-earliest: var(--brand-green-600);
+  --color-role-earliest-ink: var(--brand-green-700);
+  --color-role-earliest-bg: var(--brand-green-50);
+  --color-role-nearest: var(--brand-blue-500);
+  --color-role-nearest-ink: var(--brand-blue-700);
+  --color-role-nearest-bg: var(--brand-blue-50);
+  --color-role-other: var(--amber-500);
+  --color-role-other-ink: var(--amber-700);
+  --color-role-other-bg: var(--amber-50);
+
+  /* 色：グラフ（検証済みの2色） */
+  --color-chart-1: var(--chart-green);
+  --color-chart-2: var(--chart-amber);
+
+  /* 文字（デジタル庁の文字の段階に合わせる。12px はバッジ・目盛りだけに使うこのサービス独自の段） */
+  --font-family-base: var(--font-noto), var(--font-family-sans);
+  --font-family-mono: ui-monospace, Menlo, Consolas, monospace;
+  --text-display: var(--font-size-64);
+  --text-display-sm: var(--font-size-48);
+  --text-num-xl: var(--font-size-36);
+  --text-num-lg: var(--font-size-28);
+  --text-num-md: var(--font-size-24);
+  /* 区切りの大見出し（はじめの設定など）：本文の 2 倍（参考：Too Good To Go のスマホの見出し÷本文 = 2.0 をデジタル庁の 32px に当てた） */
+  --text-intro: var(--font-size-32);
+  --text-h1: var(--font-size-24);
+  --text-h2: var(--font-size-20);
+  --text-h3: var(--font-size-18);
+  --text-lead: var(--font-size-17);
+  --text-body: var(--font-size-16);
+  --text-sm: var(--font-size-14);
+  --text-xs: 0.75rem;
+  --leading-body: var(--line-height-170);
+  --leading-ui: var(--line-height-150);
+  --leading-heading: var(--line-height-140);
+  --leading-dense: var(--line-height-130);
+  --leading-tight: var(--line-height-120);
+  --leading-num: var(--line-height-100);
+  --weight-regular: var(--font-weight-400);
+  --weight-medium: 500;
+  --weight-bold: var(--font-weight-700);
+  --tracking-body: 0.02em;
+  --tracking-wide: 0.08em;
+  --tracking-num: 0.01em;
+
+  /* 形：角丸は 小・中・大・完全な丸 の4段階 */
+  --radius-sm: var(--border-radius-8);
+  --radius-md: var(--border-radius-12);
+  --radius-lg: var(--border-radius-24);
+  --radius-full: var(--border-radius-full);
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-md);
+  --radius-panel: var(--radius-lg);
+  --radius-sheet: var(--radius-lg);
+  --radius-pill: var(--radius-full);
+
+  /* 影：浮き上がりは3段階まで（1：カード／2：浮いた面／3：重なる層） */
+  --shadow-1: 0 1px 2px rgb(26 29 27 / 0.06);
+  --shadow-2: 0 1px 2px rgb(26 29 27 / 0.04), 0 10px 28px rgb(26 29 27 / 0.08);
+  --shadow-3: 0 24px 64px rgb(26 29 27 / 0.2);
+  --shadow-accent: 0 8px 20px color-mix(in srgb, var(--color-accent) 26%, transparent);
+
+  /* 動き（短い・標準・長い。呼吸と知らせは周期を長くして、点滅は1秒に3回を大きく下回る） */
+  --motion-short: var(--duration-short);
+  --motion-standard: var(--duration-standard);
+  --motion-long: var(--duration-long);
+  --motion-linger: var(--duration-linger);
+  --motion-breath: var(--duration-breath);
+  --motion-alert: var(--duration-alert);
+
+  /* フォーカス（デジタル庁のフォーカスリング：黒の外枠と、その内側の黄色の輪） */
+  --focus-outline-color: var(--color-neutral-black);
+  --focus-outline-width: var(--size-stroke-bold);
+  --focus-offset: var(--size-stroke);
+  --focus-halo-color: var(--color-primitive-yellow-300);
+  --focus-halo-width: var(--size-stroke);
+
+  /* レイアウト */
+  --layout-narrow: 480px;
+  --layout-salon: 1120px;
+  --layout-admin: 1040px;
+  --layout-sheet: 720px;
+  --layout-toast: 440px;
+  --layout-gutter: var(--space-4);
+  --sheet-max-height: 92vh;
+  --overdue-max-height: 30vh;
+  --tabbar-height: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* 画面ごとの部品の大きさ（コンポーネントのトークン） */
+  --size-hero-button: min(17.5rem, 72vw);
+  --size-radar: 15rem;
+  --size-live-ring: min(17rem, 72vw);
+  --size-ring-width: var(--space-3);
+  --size-notch: var(--space-3);
+  --size-time-col: 5.25rem;
+  --size-split-chip: 4.75rem;
+  --band-name-col: 6rem;
+  --band-col-min: 3rem;
+  --band-row-height: 3.5rem;
+  --text-live: clamp(3.5rem, 16vw, 5rem);
+  --text-alert-time: clamp(4.5rem, 14vw, 7.5rem);
+  --text-alert-name: clamp(2rem, 6vw, 3.75rem);
+  --text-alert-sub: clamp(1.25rem, 3.5vw, 2.25rem);
+
+  /* デモ用の舞台（/demo）の端末の枠 */
+  --stage-phone-width: 390px;
+  --stage-tablet-min: 560px;
+  --stage-desk-min: 480px;
+  --stage-frame-min-height: 720px;
+  --stage-phone-max-height: 844px;
+  --stage-device-frame: var(--sand-900);
+
+  /* 時間帯のヒーロー（画面の時計から data-daypart と --hero-mix を更新する） */
+  --hero-from-a: var(--sky-day-a);
+  --hero-from-b: var(--sky-day-b);
+  --hero-to-a: var(--sky-evening-a);
+  --hero-to-b: var(--sky-evening-b);
+}
+
+/* ---------------------------------------------------------
+   4. 役割ごとのテーマ（画面上部の帯の data-role で切り替える）
+   --------------------------------------------------------- */
+:root:has(.topbar[data-role="salon"]) {
+  --color-accent: var(--brand-blue-600);
+  --color-accent-strong: var(--brand-blue-700);
+  --color-accent-deep: var(--brand-blue-800);
+  --color-accent-soft: var(--brand-blue-50);
+  --color-accent-muted: var(--brand-blue-100);
+  --color-accent-line: var(--brand-blue-300);
+  --color-accent-bright: var(--brand-blue-500);
+  --color-bg: var(--mist-blue-100);
+  --color-surface-sunken: var(--mist-blue-50);
+  --color-line: var(--mist-blue-200);
+  --color-line-strong: var(--mist-blue-300);
+  --color-track: var(--mist-blue-250);
+}
+:root:has(.topbar[data-role="admin"]) {
+  --color-accent: var(--brand-purple-600);
+  --color-accent-strong: var(--brand-purple-700);
+  --color-accent-deep: var(--brand-purple-800);
+  --color-accent-soft: var(--brand-purple-50);
+  --color-accent-muted: var(--brand-purple-100);
+  --color-accent-line: var(--brand-purple-300);
+  --color-accent-bright: var(--brand-purple-500);
+  --color-bg: var(--mist-purple-100);
+  --color-surface-sunken: var(--mist-purple-50);
+  --color-line: var(--mist-purple-200);
+  --color-line-strong: var(--mist-purple-300);
+  --color-track: var(--mist-purple-250);
+}
+
+/* ---------------------------------------------------------
+   5. 動きを減らす設定：時間をほぼ0にする（色の変化だけが残る）
+   --------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: var(--duration-instant);
+    --motion-standard: var(--duration-instant);
+    --motion-long: var(--duration-instant);
+    --motion-linger: var(--duration-instant);
+  }
+}
+
+/* 残りの割合を滑らかに変えるため、数値として登録する */
+@property --progress {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}

@@ -1,0 +1,109 @@
+/* 距離レーダー。色・大きさ・時間は tokens.css の意味のトークンだけを使う */
+
+.radar {
+  margin: 0 auto var(--space-2);
+  max-width: var(--size-radar);
+}
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.edge {
+  fill: var(--color-surface);
+  stroke: var(--color-line);
+  stroke-width: var(--size-hairline);
+}
+.ring {
+  fill: none;
+  stroke: var(--color-line-strong);
+  stroke-width: var(--size-hairline);
+}
+.tick {
+  stroke: var(--color-ink-muted);
+  stroke-width: var(--size-stroke);
+}
+.scale {
+  font-size: var(--text-xs);
+  fill: var(--color-ink-muted);
+}
+.me {
+  fill: var(--color-ink);
+  stroke: var(--color-surface);
+  stroke-width: var(--size-stroke);
+}
+.meLabel {
+  font-size: var(--text-xs);
+  fill: var(--color-ink-2);
+}
+
+.pt {
+  cursor: pointer;
+  outline: none;
+}
+.hit {
+  fill: transparent;
+}
+.dot {
+  fill: var(--color-accent);
+}
+.stem {
+  stroke: var(--color-accent);
+  stroke-width: var(--size-hairline);
+}
+.label {
+  fill: var(--color-surface);
+  stroke: var(--color-accent);
+  stroke-width: var(--size-stroke);
+  transition:
+    fill var(--motion-short) var(--ease-standard),
+    stroke var(--motion-short) var(--ease-standard);
+}
+.text {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  fill: var(--color-accent-strong);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.pt[data-on] .label {
+  fill: var(--color-accent);
+  stroke: var(--color-accent-strong);
+}
+.pt[data-on] .text {
+  fill: var(--color-on-accent);
+}
+.pt[data-out] .label {
+  stroke-dasharray: var(--space-1) var(--space-half);
+}
+.pt:focus-visible .label {
+  stroke: var(--focus-outline-color);
+  stroke-width: var(--size-stroke-bold);
+}
+
+/* 新しく出た候補だけ、一度だけ波紋のように広がる */
+.ripple {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: var(--size-stroke);
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: ripple var(--motion-linger) var(--ease-exit) 1 both;
+  pointer-events: none;
+}
+@keyframes ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ripple {
+    display: none;
+  }
+}

@@ -1,22 +1,26 @@
 'use client';
 
 // 担当ごとの「今日だけ」の帯（9:00〜24:00）。タブレットの横向き向け。
-// 1時間を180pxで描き、15分ごとに細い線を引く。時刻は枠の幅が狭くても切らずに出す。
-// 現在時刻の線が動き、締切を過ぎた範囲（今から10分後まで）は斜線。空いているところを押すと、その時刻から枠を出せる。
-// 同じ担当で時間が重なる枠（担当なしの枠など）は、帯の中で段を分けて並べる
+//   ・CSS Grid で 15分ごとの60列に分け、担当ごとに1行。担当の名前の列は、横にスクロールしても固定
+//   ・現在時刻の線は CSS変数（--now-col と --now-frac）で位置を決め、毎分更新する
+//   ・受付の締切を過ぎた範囲（今から10分後まで）は斜線で薄く覆う
+//   ・公開中・予約あり・来店済み・取り下げは、色だけでなく、塗り・枠線・模様でも見分けられるようにする
+//   ・空いているところに触れると薄く強調し、押すとその時刻から枠を出すシートを開く
+//   ・同じ担当で時間が重なる枠（担当なしの枠など）は、帯の中で段を分けて並べる
 
-import { useEffect, useRef, type MouseEvent } from 'react';
+import { useEffect, useId, useRef, type CSSProperties } from 'react';
 import { fmtTime, jstMinuteOfDay } from '@/lib/time';
 import { activeBooking, type SalonSlot, type Stylist } from './useSalonData';
 import { STATE_LABEL, slotState } from './Timeline';
+import styles from './StaffBands.module.css';
 
 const START = 9 * 60;
 const END = 24 * 60;
-const PX_PER_MIN = 3; // 1時間 = 180px（15分 = 45px）
-const NAME_W = 92;
-const LANE_H = 44;
-const TRACK_W = (END - START) * PX_PER_MIN;
-const x = (min: number) => (Math.min(Math.max(min, START), END) - START) * PX_PER_MIN;
+const STEP = 15;
+const COLS = (END - START) / STEP; // 60列
+const PAST_MARGIN = 10; // 締切の目安（今から10分後までは出せない）
+
+const colOf = (min: number) => (Math.min(Math.max(min, START), END) - START) / STEP; // 0〜60（小数あり）
 
 function lanesOf(slots: SalonSlot[]) {
   const ends: number[] = [];
@@ -32,6 +36,20 @@ function lanesOf(slots: SalonSlot[]) {
       } else ends[lane] = z;
       return { s, a, z, lane };
     });
+}
+
+// 枠の位置：始まりの列と、その列の中のずれ（5分単位の枠も正確に置く）
+function place(a: number, z: number) {
+  const c0 = colOf(a);
+  const c1 = Math.max(c0 + 0.2, colOf(z));
+  const first = Math.floor(c0);
+  const last = Math.ceil(c1);
+  const span = Math.max(1, last - first);
+  return {
+    gridColumn: `${first + 2} / span ${span}`,
+    '--inset-start': (c0 - first) / span,
+    '--inset-end': (last - c1) / span,
+  } as CSSProperties;
 }
 
 export default function StaffBands({
@@ -52,96 +70,126 @@ export default function StaffBands({
   onEmpty: (start: Date, stylistId: string | null) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const uid = useId();
   const nowMin = jstMinuteOfDay(now);
+  const nowCol = colOf(nowMin);
+  const pastCol = colOf(nowMin + PAST_MARGIN);
   const rows: { id: string | null; name: string }[] = [
     ...stylists.filter((s) => s.is_active || slots.some((x) => x.stylist_id === s.id)).map((s) => ({ id: s.id, name: s.name })),
     { id: null, name: '担当なし' },
   ];
-  const quarters = Array.from({ length: (END - START) / 15 + 1 }, (_, i) => START + i * 15);
+  const hours = Array.from({ length: COLS / 4 }, (_, i) => START / 60 + i);
+  const todayStartMs = now.getTime() - nowMin * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
 
-  // 開いたときは、今の時刻の30分前が左端に来るようにする
+  // 開いたときは、今の時刻の30分前が左端に来るようにする（最初の1回だけ）
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    el.scrollLeft = Math.max(0, x(nowMin - 30));
-    // 最初の1回だけ
+    const cell = el.querySelector<HTMLElement>(`[data-col="${Math.max(0, Math.floor(nowCol) - 2)}"]`);
+    const name = el.querySelector<HTMLElement>('[data-namecol]');
+    if (cell && name) el.scrollLeft = cell.offsetLeft - name.offsetWidth;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function tapEmpty(e: MouseEvent<HTMLDivElement>, stylistId: string | null) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const minute = START + (e.clientX - rect.left) / PX_PER_MIN;
-    const rounded = Math.ceil(minute / 5) * 5;
-    const todayStartMs = now.getTime() - jstMinuteOfDay(now) * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
-    onEmpty(new Date(todayStartMs + rounded * 60_000), stylistId);
-  }
+  const showNow = nowMin >= START && nowMin <= END;
+  const gridVars = {
+    '--cols': COLS,
+    '--now-col': Math.floor(nowCol) + 2,
+    '--now-frac': nowCol - Math.floor(nowCol),
+  } as CSSProperties;
 
   return (
-    <div className="bands-scroll" ref={scroller}>
-      <div className="bands" role="grid" aria-label="担当ごとの今日の予定" style={{ width: NAME_W + TRACK_W + 24 }}>
-        <div className="bands-head" aria-hidden style={{ gridTemplateColumns: `${NAME_W}px ${TRACK_W}px` }}>
-          <span className="band-corner" />
-          <div className="bands-scale">
-            {quarters
-              .filter((m) => m % 30 === 0)
-              .map((m) => (
-                <span key={m} className={m % 60 === 0 ? 'is-hour' : 'is-half'} style={{ left: x(m) }}>
-                  {Math.floor(m / 60)}:{m % 60 === 0 ? '00' : '30'}
-                </span>
-              ))}
-          </div>
+    <div className={styles.scroll} ref={scroller}>
+      {/* 枠は列をまたぐため表の形にはせず、担当ごとのまとまり（group）にする。時刻の目盛りは見た目だけ（各枠の名前に時刻を含める） */}
+      <div className={styles.table} role="group" aria-label="担当ごとの今日の予定" style={gridVars}>
+        <div className={styles.head} aria-hidden>
+          <span className={styles.corner} data-namecol>
+            担当
+          </span>
+          {hours.map((h, i) => (
+            <span key={h} className={`${styles.hour} num`} style={{ gridColumn: `${i * 4 + 2} / span 4` }}>
+              {h}:00
+            </span>
+          ))}
+          {showNow && (
+            <span className={`${styles.nowTag} num`} aria-hidden>
+              {fmtTime(now)}
+            </span>
+          )}
         </div>
+
         {rows.map((row) => {
           const placed = lanesOf(slots.filter((s) => (s.stylist_id ?? null) === row.id));
           const lanes = Math.max(1, ...placed.map((p) => p.lane + 1));
           return (
-            <div key={row.id ?? 'none'} className="band-row" role="row" style={{ gridTemplateColumns: `${NAME_W}px ${TRACK_W}px` }}>
-              <span className="band-name" role="rowheader">
+            <div
+              key={row.id ?? 'none'}
+              className={styles.row}
+              role="group"
+              aria-labelledby={`${uid}-${row.id ?? 'none'}`}
+              style={{ '--lanes': lanes } as CSSProperties}
+            >
+              <span className={styles.name} id={`${uid}-${row.id ?? 'none'}`}>
                 {row.name}
               </span>
-              <div
-                className="band-track"
-                style={{ height: lanes * LANE_H + 8, width: TRACK_W }}
-                onClick={(e) => tapEmpty(e, row.id)}
-                role="gridcell"
-                aria-label={`${row.name}：空いている時刻を押すと、その時刻から枠を出せます`}
-              >
-                <span className="band-past" style={{ width: x(nowMin + 10) }} aria-hidden />
-                {quarters.map((m) => (
-                  <span key={m} className={`band-tick ${m % 60 === 0 ? 'is-hour' : m % 30 === 0 ? 'is-half' : ''}`} style={{ left: x(m) }} aria-hidden />
-                ))}
-                {nowMin >= START && nowMin <= END && <span className="band-now" style={{ left: x(nowMin) }} aria-hidden />}
-                {placed.map(({ s, a, z, lane }) => {
-                  const st = slotState(s);
-                  const b = activeBooking(s);
-                  const w = Math.max(40, x(z) - x(a) - 3);
-                  const who = b ? `${b.contact_name} 様` : STATE_LABEL[st] ?? st;
-                  return (
-                    <button
-                      key={s.id}
-                      className={`band-block tl-${st} ${w < 120 ? 'is-narrow' : ''} ${b && freshIds.includes(b.id) ? 'is-fresh' : ''}`}
-                      style={{ left: x(a) + 1, width: w, top: 4 + lane * LANE_H, height: LANE_H - 4 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelect(s);
-                      }}
-                      title={`${fmtTime(s.start_at)}〜${fmtTime(s.end_at)} ${s.menu?.name ?? ''} ${who}${b && showNo && b.booking_no !== null ? `（予約番号 ${b.booking_no}）` : ''}`}
-                      aria-label={`${fmtTime(s.start_at)}〜${fmtTime(s.end_at)} ${who}`}
-                    >
-                      <span className="band-time num">
-                        {fmtTime(s.start_at)}
-                        {w >= 120 && `〜${fmtTime(s.end_at)}`}
+              {Array.from({ length: COLS }, (_, c) => {
+                const startMin = START + c * STEP;
+                const past = c < pastCol;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    tabIndex={-1}
+                    data-col={c}
+                    data-past={past || undefined}
+                    data-hour={c % 4 === 0 || undefined}
+                    className={styles.cell}
+                    style={{ gridColumn: c + 2 }}
+                    disabled={past}
+                    aria-label={`${row.name} ${Math.floor(startMin / 60)}:${String(startMin % 60).padStart(2, '0')}から枠を出す`}
+                    onClick={() => onEmpty(new Date(todayStartMs + Math.max(startMin, Math.ceil((nowMin + PAST_MARGIN) / 5) * 5) * 60_000), row.id)}
+                  />
+                );
+              })}
+              {showNow && <span className={styles.now} aria-hidden />}
+              {placed.map(({ s, a, z, lane }) => {
+                const st = slotState(s);
+                const b = activeBooking(s);
+                const narrow = z - a <= 30;
+                const who = b ? `${b.contact_name} 様` : STATE_LABEL[st] ?? st;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`${styles.block} ${b && freshIds.includes(b.id) ? 'is-fresh' : ''}`}
+                    data-state={st}
+                    data-narrow={narrow || undefined}
+                    style={{ ...place(a, z), gridRow: lane + 1 }}
+                    onClick={() => onSelect(s)}
+                    title={`${fmtTime(s.start_at)}〜${fmtTime(s.end_at)} ${s.menu?.name ?? ''} ${who}${b && showNo && b.booking_no !== null ? `（予約番号 ${b.booking_no}）` : ''}`}
+                  >
+                    {/* 読み上げの名前は見えている文字＋見えない補足（終了時刻・状態）。見えている文字をそのまま含める（WCAG 2.5.3） */}
+                    <span className={`${styles.time} num`}>
+                      {fmtTime(s.start_at)}
+                      {narrow ? <span className="sr-only">〜{fmtTime(s.end_at)}</span> : `〜${fmtTime(s.end_at)}`}
+                    </span>
+                    {b && <span className="sr-only">{STATE_LABEL[st] ?? st}</span>}
+                    {narrow ? (
+                      <span className="sr-only">{who}</span>
+                    ) : (
+                      <span className={styles.label}>
+                        {who}
+                        {b && showNo && b.booking_no !== null && (
+                          <span className={`${styles.no} num`}>
+                            <span className="sr-only">予約番号</span>
+                            {b.booking_no}
+                          </span>
+                        )}
                       </span>
-                      {w >= 120 && (
-                        <span className="band-label">
-                          {who}
-                          {b && showNo && b.booking_no !== null && <span className="band-no num">{b.booking_no}</span>}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           );
         })}

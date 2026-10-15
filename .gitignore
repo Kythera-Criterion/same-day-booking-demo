@@ -3,3 +3,5 @@ node_modules
 .env.local
 *.tsbuildinfo
 next-env.d.ts
+# 参考サイトのスクリーンショットと測定値（他社の画像なのでコミットしない）
+.design-refs/

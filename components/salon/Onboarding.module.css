@@ -1,0 +1,81 @@
+/* 初回の3ステップの設定。大きな見出し・短い説明・進み具合の点で、軽く親しみやすく。値は tokens.css の意味のトークンだけを使う */
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border-radius: var(--radius-panel);
+  background: var(--color-accent-soft);
+  border: var(--size-hairline) solid var(--color-accent-muted);
+}
+.kicker {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-accent-strong);
+}
+.title {
+  font-size: var(--text-intro);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+  color: var(--color-ink);
+}
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+/* 進み具合を示す点 */
+.dots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.dot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-muted);
+}
+.dot::before {
+  content: "";
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  border: var(--size-stroke) solid var(--color-line-input);
+  transition:
+    width var(--motion-standard) var(--ease-standard),
+    background-color var(--motion-standard) var(--ease-standard);
+}
+.dot[data-state="done"]::before {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.dot[data-state="now"] {
+  color: var(--color-accent-strong);
+}
+.dot[data-state="now"]::before {
+  width: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.dotLabel {
+  white-space: nowrap;
+}
+/* 今の段だけ名前を出し、ほかは点だけにして軽く見せる */
+.dot:not([data-state="now"]) .dotLabel {
+  position: absolute;
+  width: var(--space-px);
+  height: var(--space-px);
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

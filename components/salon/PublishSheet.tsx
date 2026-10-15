@@ -5,13 +5,14 @@
 //   時刻を選ぶ    ：「○分後」の時刻を選んで出す（以前からのやり方）
 // どちらも、締切や担当の重なりは DB で判定し、作れなかった枠は理由を表示する
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
 import { toMessage } from '@/lib/errors';
 import { SPLIT_PROBLEM_LABEL, splitFreeTime } from '@/lib/split';
 import { fmtTime, fmtYen, jstTodayEnd, slotStartProblem, startAfter } from '@/lib/time';
 import type { Menu, Preset, Stylist } from './useSalonData';
+import styles from './PublishSheet.module.css';
 
 export const OFFSETS = [15, 30, 45, 60, 90, 120, 180];
 const FREE_LENGTHS = [30, 60, 90, 120];
@@ -132,6 +133,10 @@ export default function PublishSheet({
     [menu, freeStart.getTime(), freeEnd.getTime(), now],
   );
   const chosen = plan.filter((p) => !p.problem && !unchecked.includes(p.start.toISOString()));
+  // 目盛りの上の位置（空いた時間の始まりを0、終わりを1とした割合）
+  const totalMin = Math.max(15, (freeEnd.getTime() - freeStart.getTime()) / 60_000);
+  const frac = (d: Date) => Math.max(0, Math.min(1, (d.getTime() - freeStart.getTime()) / 60_000 / totalMin));
+  const fmtEnd = (d: Date) => (fmtTime(d) === '00:00' ? '24:00' : fmtTime(d));
 
   const offsetOptions = useMemo(
     () =>
@@ -210,13 +215,14 @@ export default function PublishSheet({
             <p className="step-label">
               <span className="step-no">1</span>空いた時間
             </p>
-            <div className="chips">
+            <div className={styles.lengths} role="group" aria-label="今から何分空いたか">
               {FREE_LENGTHS.map((m) => (
-                <button key={m} className={`chip ${length === m ? 'chip-on' : ''}`} onClick={() => setLength(m)}>
-                  今から{m}分
+                <button key={m} type="button" className={styles.round} aria-pressed={length === m} aria-label={`今から${m}分`} onClick={() => setLength(m)}>
+                  <span className={`${styles.roundNum} num`}>{m}</span>
+                  <span className={styles.roundUnit}>分</span>
                 </button>
               ))}
-              <button className={`chip ${length === 'custom' ? 'chip-on' : ''}`} onClick={() => setLength('custom')}>
+              <button type="button" className={`chip ${styles.custom} ${length === 'custom' ? 'chip-on' : ''}`} onClick={() => setLength('custom')}>
                 時刻を指定
               </button>
             </div>
@@ -290,30 +296,54 @@ export default function PublishSheet({
             {plan.length === 0 ? (
               <p className="notice notice-info">この空き時間には、{menu?.name ?? 'メニュー'}（{menu?.duration_min}分）が入りません。</p>
             ) : (
-              <ul className="plan">
-                {plan.map((p) => {
-                  const key = p.start.toISOString();
-                  const on = !p.problem && !unchecked.includes(key);
-                  return (
-                    <li key={key} className={p.problem ? 'is-off' : ''}>
-                      <label className="plan-row">
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          disabled={!!p.problem}
-                          onChange={() => setUnchecked((u) => (u.includes(key) ? u.filter((x) => x !== key) : [...u, key]))}
-                        />
-                        <span className="plan-time num">
-                          {fmtTime(p.start)}〜{fmtTime(p.end)}
-                        </span>
-                        <span className="plan-note">{p.problem ? SPLIT_PROBLEM_LABEL[p.problem] : `受付は${fmtTime(new Date(p.start.getTime() - (menu?.booking_deadline_min ?? 0) * 60_000))}まで`}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </>
+              <>
+                <div
+                  className={styles.scale}
+                  style={{ '--tick': `${(15 / totalMin) * 100}%` } as CSSProperties}
+                  role="img"
+                  aria-label={`${fmtTime(freeStart)}から${fmtEnd(freeEnd)}までの空きを、${plan.length}枠に切り分けた案`}
+                >
+                  {plan.map((p, i) => {
+                    const key = p.start.toISOString();
+                    return (
+                      <span
+                        key={key}
+                        className={styles.seg}
+                        data-off={p.problem ? true : undefined}
+                        data-unchecked={!p.problem && unchecked.includes(key) ? true : undefined}
+                        style={{ '--from': frac(p.start), '--to': frac(p.end), '--i': i } as CSSProperties}
+                      />
+                    );
+                  })}
+                </div>
+                <div className={`${styles.scaleLabels} num`} aria-hidden>
+                  <span>{fmtTime(freeStart)}</span>
+                  <span>{fmtEnd(freeEnd)}</span>
+                </div>
+                <ul className={styles.tickets}>
+                  {plan.map((p, i) => {
+                    const key = p.start.toISOString();
+                    const on = !p.problem && !unchecked.includes(key);
+                    return (
+                      <li key={key} className={styles.ticketItem} data-off={p.problem ? true : undefined} style={{ '--i': i } as CSSProperties}>
+                        <label className={styles.ticket}>
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            disabled={!!p.problem}
+                            onChange={() => setUnchecked((u) => (u.includes(key) ? u.filter((x) => x !== key) : [...u, key]))}
+                          />
+                          <span className={`${styles.ticketTime} num`}>
+                            {fmtTime(p.start)}〜{fmtTime(p.end)}
+                          </span>
+                          <span className={styles.ticketNote}>{p.problem ? SPLIT_PROBLEM_LABEL[p.problem] : `受付は${fmtTime(new Date(p.start.getTime() - (menu?.booking_deadline_min ?? 0) * 60_000))}まで`}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}          </>
         ) : (
           <>
             <p className="step-label">
@@ -353,12 +383,12 @@ export default function PublishSheet({
 
         {message && <p className="notice notice-info">{message}</p>}
 
-        <div className="sheet-actions">
-          <button className="btn btn-quiet" disabled={!canPublish} onClick={savePreset}>
-            {mode === 'free' ? 'いつもの空き方に保存' : 'いつもの枠に保存'}
+        <div className={styles.publish}>
+          <button className="btn btn-primary btn-lg btn-block" disabled={!canPublish || busy} onClick={publish}>
+            {busy ? '公開中…' : count > 1 ? `${count}件の枠を公開する` : 'この枠を公開する'}
           </button>
-          <button className="btn btn-primary btn-lg" disabled={!canPublish || busy} onClick={publish}>
-            {busy ? '公開中…' : count > 1 ? `${count}件の枠を公開` : 'この枠を公開'}
+          <button className="btn btn-text" disabled={!canPublish} onClick={savePreset}>
+            {mode === 'free' ? 'この空き方を「いつもの空き方」に保存' : 'この組み合わせを「いつもの枠」に保存'}
           </button>
         </div>
         <p className="fine-print">公開した枠は、すぐに利用者の画面に表示されます。担当の時間の重なりや受付の締切は、公開するときにもう一度確かめます。</p>

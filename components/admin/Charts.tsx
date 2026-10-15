@@ -1,11 +1,11 @@
 'use client';
 
-// 軽量なグラフ（SVG）。色は検証済みの2色（予約 #00876a ／ 公開した枠 #c27510）。
+// 軽量なグラフ（SVG）。色は検証済みの2色（予約・公開した枠。値は tokens.css の --color-chart-1・--color-chart-2）。
 // 細い棒・4px の角丸・棒どうしの 2px の隙間・控えめな目盛り。各グラフに数値の表を添える
 
 import { useState, type ReactNode } from 'react';
 
-export const SERIES_COLORS = { primary: '#00876a', secondary: '#c27510' };
+export const SERIES_COLORS = { primary: 'var(--color-chart-1)', secondary: 'var(--color-chart-2)' };
 
 type Series = { key: string; name: string; color: string };
 type Row = { label: string; values: Record<string, number> };
@@ -122,7 +122,7 @@ export function ColumnChart({
                     <path
                       key={s.key}
                       d={`M${x},${8 + plotH} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + barW - rr} Q${x + barW},${y} ${x + barW},${y + rr} V${8 + plotH} Z`}
-                      fill={s.color}
+                      style={{ fill: s.color }}
                     />
                   ) : null;
                 })}

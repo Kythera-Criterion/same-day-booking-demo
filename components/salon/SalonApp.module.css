@@ -1,0 +1,106 @@
+/* サロンの画面：受付状態の切り替えと、記録漏れの帯。値は tokens.css の意味のトークンだけを使う */
+
+/* 受付中／今日はここまで：丸い切り替え。状態で色と文字が変わる */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--size-tap);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  border: var(--size-stroke) solid transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-standard) var(--ease-standard),
+    color var(--motion-standard) var(--ease-standard),
+    border-color var(--motion-standard) var(--ease-standard);
+}
+.status[data-state="open"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.status[data-state="paused"] {
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  border-color: var(--color-line-input);
+}
+.knob {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  font-size: var(--text-xs);
+}
+.status[data-state="open"] .knob {
+  background: var(--color-on-accent);
+  color: var(--color-accent);
+}
+.status[data-state="paused"] .knob {
+  background: var(--color-surface-muted);
+  color: var(--color-ink-muted);
+}
+.statusSub {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+/* 来店の記録がまだの予約：画面上部に固定した細めの警告の帯。下の帯表示を隠しすぎないよう、件数が多いときは帯の中でスクロール */
+.overdue {
+  position: sticky;
+  top: var(--space-16);
+  z-index: var(--z-sticky);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  max-height: var(--overdue-max-height);
+  overflow-y: auto;
+  border-radius: var(--radius-control);
+  background: var(--color-warn);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-2);
+}
+.overdueHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.overdueTitle {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+}
+.overdueSub {
+  font-size: var(--text-xs);
+  color: var(--color-on-accent-soft);
+}
+.overdueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.overdueItem {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.overdueWho {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.overdueActions {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: auto;
+}

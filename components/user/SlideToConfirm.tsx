@@ -110,10 +110,10 @@ export default function SlideToConfirm({
         onKeyDown={keyDown}
         onKeyUp={() => stopHold()}
         onBlur={() => stopHold()}
-        aria-label={`${label}（長押しで確定）`}
       >
         <span className="hold-fill" style={{ width: `${hold * 100}%` }} aria-hidden />
         <span className="hold-text">または、ここを長押しで確定</span>
+        <span className="sr-only">（{label}）</span>
       </button>
     </div>
   );

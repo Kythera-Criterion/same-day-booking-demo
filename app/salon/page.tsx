@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic';
 export default async function SalonPage({
   searchParams,
 }: {
-  searchParams: Promise<{ auth_error?: string; linked?: string; tab?: string; logged_out?: string }>;
+  searchParams: Promise<{ auth_error?: string; linked?: string; tab?: string; logged_out?: string; preview?: string }>;
 }) {
-  const { auth_error, linked, tab, logged_out } = await searchParams;
+  const { auth_error, linked, tab, logged_out, preview } = await searchParams;
   return (
     <SalonApp
       demoMode={process.env.DEMO_MODE === 'true'}
@@ -19,6 +19,7 @@ export default async function SalonPage({
       linked={linked ?? null}
       initialTab={tab === 'settings' ? 'settings' : 'today'}
       loggedOut={logged_out === '1'}
+      previewIncoming={preview === 'incoming'}
     />
   );
 }

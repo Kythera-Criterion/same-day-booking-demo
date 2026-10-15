@@ -1,0 +1,178 @@
+/* ホームのヒーロー。色・大きさ・時間は tokens.css の意味のトークンだけを使う */
+
+.hero {
+  /* 時間帯ごとの色（data-from から data-to へ、--hero-mix の割合で混ぜる） */
+  --hero-a: color-mix(in oklab, var(--hero-from-a), var(--hero-to-a) var(--hero-mix, 0%));
+  --hero-b: color-mix(in oklab, var(--hero-from-b), var(--hero-to-b) var(--hero-mix, 0%));
+  position: relative;
+  margin: 0 calc(-1 * var(--layout-gutter)) var(--space-4);
+  padding: var(--space-8) var(--layout-gutter) var(--space-4);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--hero-b) 0%, transparent 70%),
+    linear-gradient(170deg, var(--hero-a) 0%, var(--hero-b) 100%);
+  text-align: center;
+  overflow: hidden;
+  transition: background var(--motion-long) var(--ease-standard);
+}
+.hero[data-from="morning"] { --hero-from-a: var(--sky-morning-a); --hero-from-b: var(--sky-morning-b); }
+.hero[data-from="day"] { --hero-from-a: var(--sky-day-a); --hero-from-b: var(--sky-day-b); }
+.hero[data-from="evening"] { --hero-from-a: var(--sky-evening-a); --hero-from-b: var(--sky-evening-b); }
+.hero[data-from="night"] { --hero-from-a: var(--sky-night-a); --hero-from-b: var(--sky-night-b); }
+.hero[data-to="morning"] { --hero-to-a: var(--sky-morning-a); --hero-to-b: var(--sky-morning-b); }
+.hero[data-to="day"] { --hero-to-a: var(--sky-day-a); --hero-to-b: var(--sky-day-b); }
+.hero[data-to="evening"] { --hero-to-a: var(--sky-evening-a); --hero-to-b: var(--sky-evening-b); }
+.hero[data-to="night"] { --hero-to-a: var(--sky-night-a); --hero-to-b: var(--sky-night-b); }
+
+.lead {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-body);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-ink-2);
+}
+
+.stage {
+  display: grid;
+  place-items: center;
+  padding: var(--space-4) 0 var(--space-8);
+}
+
+/* 大きな円形の「今すぐ」ボタンと、呼吸する光の輪 */
+.now {
+  position: relative;
+  width: var(--size-hero-button);
+  aspect-ratio: 1;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--color-on-accent);
+  background: radial-gradient(circle at 32% 26%, var(--color-accent-bright) 0%, var(--color-accent) 46%, var(--color-accent-strong) 100%);
+  box-shadow: var(--shadow-accent), var(--shadow-2);
+  transition: transform var(--motion-short) var(--ease-standard);
+}
+.now::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--space-2));
+  border-radius: inherit;
+  pointer-events: none;
+  animation: breathe var(--motion-breath) var(--ease-breath) infinite;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 var(--space-1) color-mix(in srgb, var(--color-accent) 22%, transparent),
+      0 0 0 var(--space-3) color-mix(in srgb, var(--color-accent) 8%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 var(--space-3) color-mix(in srgb, var(--color-accent) 14%, transparent),
+      0 0 0 var(--space-8) color-mix(in srgb, var(--color-accent) 4%, transparent);
+  }
+}
+.now:active {
+  transform: scale(0.97);
+}
+.count {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-body);
+  background: var(--color-on-accent-faint);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-1);
+}
+.nowMain {
+  font-size: var(--text-display-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-wide);
+}
+.nowSub {
+  font-size: var(--text-h3);
+  font-weight: var(--weight-bold);
+}
+.nowNote {
+  font-size: var(--text-xs);
+  color: var(--color-on-accent-soft);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* 時間帯の選択：ヒーローの上に浮かぶ半透明のパネル */
+.panel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-panel);
+  background: var(--color-glass);
+  border: var(--size-hairline) solid var(--color-glass-line);
+  backdrop-filter: saturate(1.5) blur(var(--blur-glass));
+  box-shadow: var(--shadow-2);
+}
+.floating {
+  position: relative;
+  z-index: var(--z-raised);
+}
+.window {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-half);
+  min-height: var(--size-control-xl);
+  padding: var(--space-1);
+  border: none;
+  border-radius: calc(var(--radius-panel) - var(--space-1));
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-short) var(--ease-standard),
+    opacity var(--motion-standard) var(--ease-standard);
+}
+.window:hover {
+  background: var(--color-veil);
+}
+.window[aria-pressed="true"] {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+/* 0件の時間帯は薄く見せる（文字は 4.5:1 を保つため、透明にはせず色と太さで弱める） */
+.window[data-empty] {
+  background: transparent;
+}
+.window[data-empty] .windowLabel {
+  color: var(--color-ink-muted);
+  font-weight: var(--weight-medium);
+}
+.windowLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+  line-height: var(--leading-tight);
+  white-space: nowrap;
+}
+.windowCount {
+  font-size: var(--text-h2);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-accent-strong);
+}
+.window[data-empty] .windowCount {
+  color: var(--color-ink-muted);
+  font-weight: var(--weight-regular);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .now::before {
+    animation: none;
+    box-shadow: 0 0 0 var(--space-1) color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+}

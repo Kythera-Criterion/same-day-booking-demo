@@ -7,7 +7,8 @@
 
 | 画面 | URL | 内容 |
 |---|---|---|
-| 利用者 | `/` | 大きなボタン → 時間帯 → 近い順に最大3件 → 予約の確認 → 予約確定（開始までの時間・地図・電話）→ アンケート |
+| 利用者 | `/` | 大きな丸い「今すぐ」（または浮いたパネルの時間帯）→ 近い順に最大3件（距離レーダーつき）→ 予約の確認（スライドか長押しで確定）→ 予約の画面（開始までの残り時間・予約番号・地図・電話）→ アンケート。画面の下に「ホーム／予約／マイページ」のタブ |
+| | `/bookings` | 予約のタブ（ご予約中と、これまでの予約） |
 | | `/signup` `/login` `/mypage` | 新規登録（Google・Yahoo! JAPAN ID、またはメールアドレス＋確認メールのリンク）・ログイン（タブを閉じても残る）・マイページ（予約・履歴・カルテ・会話の好み・予約停止の再開日・ログインの方法〔パスワード・外部 ID の連携と解除〕・アカウントの削除） |
 | | `/signup/complete` | 登録の仕上げ（外部 ID で登録した方が、予約に必要な電話番号・18歳以上の確認・規約への同意などを入力） |
 | | `/auth/complete` | 確認メールのリンク・外部 ID から戻る先（ログインして、続きの画面へ進める） |
@@ -223,13 +224,28 @@ PSQL="psql -h localhost -p 5432 -U postgres" ./tests/local/run.sh
 
 ---
 
+## 見た目（CSS）の作り
+
+- **Tailwind は使わず、全体の CSS＋CSS Modules**。読み込む順は `app/layout.tsx` のとおり：
+  1. `@digital-go-jp/design-tokens/dist/tokens.css`（デジタル庁デザインシステムのトークン。MIT License、全文は `THIRD_PARTY_LICENSES.md`）
+  2. `app/styles/tokens.css`：基本トークン（色の段階・余白・大きさ・時間）と、その上の**意味のトークン**（`--color-accent`・`--color-status-booked`・`--radius-card`・`--motion-standard` など）、役割ごとのテーマ（お客様＝緑・サロン＝青・運営＝紫）、動きを減らす設定
+  3. `app/styles/base.css`：リセット・本文・フォーカスの枠（黒 4px＋黄色の輪。デジタル庁の考え方）
+  4. `app/styles/components.css`：共通の部品（ボタン・入力欄・シートなど）
+  5. 画面ごと：`app/styles/user.css`・`salon.css`・`admin.css`・`demo.css` と、部品ごとの CSS Modules（`components/**/*.module.css`）
+- **各画面の CSS には色の値や数値を直接書かず**、意味のトークンだけを使います（`tokens.css` 以外に色・px・ms を書いていないことを検査の台本で確かめています）。
+- 色はアクセント `#1f6f5c` を 600 とした 50〜900 の段階が基本。文字の大きさはデジタル庁の段、余白は 4px の倍数、角丸は小・中・大・完全な丸の 4 段、影は 3 段、動きは短い・標準・長いの 3 段です。`prefers-reduced-motion` では動きを止めます。
+- 参考にしたサイトから借りたのは「比率・リズム・構成・考え方」だけです。測った値・変換のしかた・使った場所・見比べた結果は `docs/design-references.md`。参考サイトのスクリーンショットと測定値（`.design-refs/`）はリポジトリに入れていません。
+- アクセシビリティ：`@axe-core/playwright`（WCAG 2.x の A・AA）を主な画面に 2 つの幅でかけて 0 件。押せる部品は 44px 四方以上、文字のコントラストは 4.5:1 以上。
+
 ## 画面イメージ（docs/screens）
 
-390×844（スマートフォン）と 1024×768（タブレット横向き）の両方を撮っています。
+390×844（スマートフォン）と 1024×768（タブレット横向き）の両方を撮っています。候補・予約の画面・サロンの今日の枠は、深夜に撮ったため**見本のデータ**で表示しています（ブラウザの通信を差し替えたもので、データベースは変えていません。サロンの画面の時計は 14:20 にしています）。
 
 | 利用者 | サロン |
 |---|---|
-| `user-candidates-*`（候補3件と距離レーダー）・`user-empty-*`（0件）・`user-sheet-390`（確定のボトムシート）・`user-booked-*`（予約確定）・`user-completed-*`（来店済み）・`user-cancelled-*`（サロン都合のキャンセル） | `salon-gate-*`（営業の始め）・`salon-incoming-*`（予約の通知中）・`salon-overdue-*`（記録漏れの警告）・`salon-paused-*`（「今日はここまで」のあと）・`salon-split-*`（空いた時間を切り分けた案） |
+| `user-home-*`（ホーム）・`user-candidates-*`（候補3件と距離レーダー）・`user-gone-*`（候補が埋まった）・`user-empty-*`（0件）・`user-sheet-*`（確定のボトムシート）・`user-sheet-taken-*`（確認中に埋まった）・`user-booked-*`（予約確定）・`user-completed-*`（来店済み）・`user-cancelled-*`（サロン都合のキャンセル）・`user-bookings-*`（予約のタブ）・`user-delete-*`（アカウントの削除の確認） | `salon-gate-*`（営業の始め）・`salon-overdue-*`（記録漏れの警告）・`salon-today-*`（担当ごとの帯／時刻の一覧）・`salon-booking-*`（予約の詳細）・`salon-incoming-*`（予約の通知中）・`salon-split-*`（空いた時間を切り分けた案）・`salon-paused-*`（「今日はここまで」）・`salon-welcome-*`（はじめの設定）・`salon-place-*`（お店の情報と場所） |
+
+運営は `admin-dashboard`・`admin-salons-1280`・`admin-new-application-1280`・`admin-welcome-mail`、デモ用の舞台は `demo-stage`。`demo-race`・`admin-delete-salon-1280` は前の見た目のときのものです（同時予約は日中の実際の枠が要るため、撮り直していません）。
 
 ![候補3件](docs/screens/user-candidates-390.png)
 
@@ -241,7 +257,7 @@ PSQL="psql -h localhost -p 5432 -U postgres" ./tests/local/run.sh
 |---|---|---|
 | 0:00〜0:15 | 「デモをリセット」（過去7日分も作る） | 今の時刻を基準に、今日の空き枠と状態がそろう。運営の数字も埋まる（デモ用の架空データと明記） |
 | 0:15〜0:45 | サロン：「＋ 枠を出す」→ メニュー → 「30分後」「60分後」→ 公開 | 片手・数タップで、複数の枠をまとめて出せる。「いつもの枠」なら1タップ |
-| 0:45〜1:20 | 利用者：大きなボタン → 「1時間以内」→ 近い順の3件 → 「予約」→ 「この内容で予約する」 | 電話不要・店頭払いで1タップ確定。開始までの時間が大きく出る。サロンの画面に「新しい予約が入りました」（音・振動つき） |
+| 0:45〜1:20 | 利用者：「今すぐ」（またはパネルの「1時間」）→ 近い順の3件 → 「予約する」→ スライドして確定 | 電話不要・店頭払い。開始までの残り時間が大きく出る。サロンの画面全体に新しい予約の知らせ（音・振動つき。どこを押しても確認） |
 | 1:20〜1:40 | サロン：予約を開く → 「キャンセル」→「サロンの都合」 | 利用者の画面がその場で変わる。通知ログにメールのプレビュー（シミュレーション送信） |
 | 1:40〜2:10 | 「同時予約チャレンジ」 | 10人が同時に予約しても成立は1件、9件は「すでに埋まっています」 |
 | 2:10〜2:40 | 「シナリオ再生」 | 枠の公開 → 予約 → 通知 → 来店済み → 運営の数字が増える、が自動で流れる |
@@ -262,7 +278,8 @@ supabase/
   seed.sql / seed_0002.sql        デモ用データ
   demo_slots.sql                  今日の空き枠を手作業で作る（「デモをリセット」と同じ内容の簡易版）
 app/
-  page.tsx, book/, booking/, signup/, login/, mypage/   利用者
+  page.tsx, book/, booking/, bookings/, signup/, login/, mypage/   利用者
+  styles/  tokens.css・base.css・components.css と画面ごとの CSS
   salon/  admin/  apply/  demo/                          サロン・運営・掲載申込・デモ用の舞台
   api/notifications/dispatch   通知の送信（直後の呼び出し・定期実行）
   api/admin/approve            掲載希望の承認（自己登録は掲載開始、フォームはスタッフのアカウント作成）
@@ -279,6 +296,8 @@ lib/         時刻（日本時間）・エラー文言・通知の文面と送�
 scripts/     setup-demo / race-test / rls-check / verify-all
 tests/local/ ローカルの PostgreSQL での確認
 docs/screens/ 画面イメージ
+docs/design-references.md   参考サイトの観察・変換のルール・使った場所・見比べた結果
+THIRD_PARTY_LICENSES.md     デジタル庁のデザイントークン（MIT）の表記
 ```
 
 ## 本番に向けて残っていること

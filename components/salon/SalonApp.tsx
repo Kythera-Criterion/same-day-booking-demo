@@ -24,6 +24,7 @@ import { fmtTime, fmtYen } from '@/lib/time';
 import { keepScreenOn, rekeepOnVisible, wakeLockSupported } from '@/lib/wakelock';
 import { AlertGate, NewBookingAlert, type IncomingBooking } from './Alerts';
 import Onboarding from './Onboarding';
+import styles from './SalonApp.module.css';
 import PublishSheet, { publishFree, publishOffsets, type PublishResult } from './PublishSheet';
 import SalonSettings from './SalonSettings';
 import SlotPanel from './SlotPanel';
@@ -54,6 +55,7 @@ export default function SalonApp({
   linked,
   initialTab = 'today',
   loggedOut = false,
+  previewIncoming = false,
 }: {
   demoMode: boolean;
   providers: Providers;
@@ -61,6 +63,7 @@ export default function SalonApp({
   linked?: string | null;
   initialTab?: 'today' | 'settings';
   loggedOut?: boolean;
+  previewIncoming?: boolean;
 }) {
   const { client, session, ready, signedOut } = useRoleSession('salon');
   const { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
@@ -68,7 +71,12 @@ export default function SalonApp({
   const [sheet, setSheet] = useState<{ start: Date | null; stylistId: string | null } | null>(null);
   const [selected, setSelected] = useState<SalonSlot | null>(null);
   const [freshIds, setFreshIds] = useState<string[]>([]);
-  const [incoming, setIncoming] = useState<IncomingBooking[]>([]);
+  // デモの見本表示（DEMO_MODE のときだけ。予約の知らせの見た目を確かめる）
+  const [incoming, setIncoming] = useState<IncomingBooking[]>(() =>
+    demoMode && previewIncoming
+      ? [{ bookingId: 'preview', slotId: 'preview', name: '見本 花子', startAt: new Date(Date.now() + 45 * 60_000).toISOString(), menu: 'カット', bookingNo: 12 }]
+      : [],
+  );
   const [started, setStarted] = useState(false);
   const [wake, setWake] = useState<'idle' | 'on' | 'unsupported'>('idle');
   const [confirmPause, setConfirmPause] = useState(false);
@@ -343,19 +351,57 @@ export default function SalonApp({
             <h1 className="screen-title salon-title">{salon.name}</h1>
             {tab === 'today' && (openCount > 0 || pausedFuture > 0) && (
               <div className="pause-ctl">
-                {openCount > 0 && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => setConfirmPause(true)}>
-                    今日はここまで
-                  </button>
-                )}
-                {pausedFuture > 0 && (
-                  <button className="btn btn-quiet btn-sm" onClick={resumeToday}>
-                    元に戻す（{pausedFuture}枠）
+                {/* 受付中／今日はここまで：押すと切り替わる（受付を止めるときは確認する） */}
+                <button
+                  type="button"
+                  className={styles.status}
+                  data-state={openCount > 0 ? 'open' : 'paused'}
+                  onClick={() => (openCount > 0 ? setConfirmPause(true) : resumeToday())}
+                >
+                  <span className={styles.knob} aria-hidden>
+                    {openCount > 0 ? '●' : 'Ⅱ'}
+                  </span>
+                  {openCount > 0 ? '受付中' : '今日はここまで'}
+                  <span className={`${styles.statusSub} num`}>{openCount > 0 ? `${openCount}枠` : `${pausedFuture}枠を止め中`}</span>
+                  <span className="sr-only">{openCount > 0 ? '。押すと今日の受付を止めます' : '。押すと受付を再開します'}</span>
+                </button>
+                {openCount > 0 && pausedFuture > 0 && (
+                  <button className="btn btn-text btn-sm" onClick={resumeToday}>
+                    止めた枠を戻す（{pausedFuture}）
                   </button>
                 )}
               </div>
             )}
           </div>
+
+          {tab === 'today' && overdue.length > 0 && (
+            <section className={styles.overdue} role="alert">
+              <div className={styles.overdueHead}>
+                <p className={styles.overdueTitle}>来店の記録がまだです（{overdue.length}件）</p>
+                <p className={styles.overdueSub}>開始から{UI_OPTIONS.overdueMinutes}分以上</p>
+              </div>
+              <ul className={styles.overdueList}>
+                {overdue.map((s) => {
+                  const b = activeBooking(s)!;
+                  return (
+                    <li key={s.id} className={styles.overdueItem}>
+                      <span className={`${styles.overdueWho} num`}>
+                        {fmtTime(s.start_at)} {b.contact_name} 様{UI_OPTIONS.showBookingNo && b.booking_no !== null && `（${b.booking_no}）`}
+                      </span>
+                      <span className={styles.overdueActions}>
+                        <button className="btn btn-primary btn-sm" onClick={() => record(b.id, 'complete')}>
+                          来店済み
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => record(b.id, 'no_show')}>
+                          無断キャンセル
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           {listingBanner}
           {!started && <AlertGate wake={wake} onStart={start} />}
@@ -377,33 +423,6 @@ export default function SalonApp({
                       <strong>{fmtYen(achievement.yen)}</strong>
                       <small>（来店済みの合計）</small>
                     </p>
-                  </section>
-                )}
-
-                {overdue.length > 0 && (
-                  <section className="overdue" role="alert">
-                    <p className="overdue-title">来店の記録がまだです（{overdue.length}件）</p>
-                    <p className="overdue-sub">開始から{UI_OPTIONS.overdueMinutes}分以上たっています。記録すると、来店率が正しく数えられます。</p>
-                    <ul>
-                      {overdue.map((s) => {
-                        const b = activeBooking(s)!;
-                        return (
-                          <li key={s.id}>
-                            <span className="num">
-                              {fmtTime(s.start_at)} {b.contact_name} 様{UI_OPTIONS.showBookingNo && b.booking_no !== null && `（${b.booking_no}）`}
-                            </span>
-                            <span className="overdue-actions">
-                              <button className="btn btn-primary btn-sm" onClick={() => record(b.id, 'complete')}>
-                                来店済み
-                              </button>
-                              <button className="btn btn-danger btn-sm" onClick={() => record(b.id, 'no_show')}>
-                                無断キャンセル
-                              </button>
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
                   </section>
                 )}
 

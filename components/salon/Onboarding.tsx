@@ -8,11 +8,12 @@ import { useState } from 'react';
 import { toMessage } from '@/lib/errors';
 import SalonSettings from './SalonSettings';
 import type { Menu, SalonInfo, Stylist } from './useSalonData';
+import styles from './Onboarding.module.css';
 
 const STEPS = [
-  { title: 'メニューと価格・受付の締切', note: '当日価格と、開始の何分前まで予約を受けるかを決めます。1つ以上登録してください。' },
-  { title: '担当', note: '担当を指定しない場合は、そのまま次へ進めます。' },
-  { title: 'お店の場所・受け付ける性別・LINE の連絡先', note: 'お店の位置は、利用者の画面の距離に使います。LINE の連絡用グループは、デモでは空のままで動きます。' },
+  { title: 'メニューと当日価格', note: '当日価格と、開始の何分前まで予約を受けるかを決めます。1つ以上登録してください。' },
+  { title: '担当の名前', note: '担当を指定しない場合は、そのまま次へ進めます。' },
+  { title: 'お店の場所と連絡先', note: '位置は、お客様の画面の距離に使います。受け付ける性別と LINE の連絡先もここで決めます（LINE はデモでは空のままで動きます）。' },
 ];
 
 export default function Onboarding({
@@ -47,19 +48,25 @@ export default function Onboarding({
 
   return (
     <div className="stack onboarding">
-      <section className="card">
-        <p className="card-title">はじめに、3つだけ設定してください</p>
-        <ol className="onb-steps">
-          {STEPS.map((s, i) => (
-            <li key={s.title} className={i < current ? 'is-done' : i === current ? 'is-now' : ''}>
-              <span className="onb-no">{i < current ? '✓' : i + 1}</span>
-              {s.title}
-            </li>
-          ))}
+      <section className={styles.intro} aria-labelledby="onb-title">
+        <p className={styles.kicker}>はじめの設定 {current + 1} / {STEPS.length}</p>
+        <h1 id="onb-title" className={styles.title}>
+          {STEPS[current].title}
+        </h1>
+        <p className={styles.note}>{STEPS[current].note}</p>
+        <ol className={styles.dots} aria-label="設定の進み具合（途中でやめても、次回は続きから始まります）">
+          {STEPS.map((s, i) => {
+            const state = i < current ? 'done' : i === current ? 'now' : 'todo';
+            return (
+              <li key={s.title} className={styles.dot} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
+                <span className={styles.dotLabel}>
+                  {i + 1}. {s.title}
+                  {state === 'done' ? '（済み）' : ''}
+                </span>
+              </li>
+            );
+          })}
         </ol>
-        <p className="card-sub" style={{ margin: 0 }}>
-          {STEPS[current].note} 途中でやめても、次回は続きから始まります。
-        </p>
       </section>
 
       <SalonSettings

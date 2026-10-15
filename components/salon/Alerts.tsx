@@ -7,6 +7,7 @@
 import { useEffect, useRef } from 'react';
 import { chime, unlockSound, vibrate } from '@/lib/alerts';
 import { fmtTime } from '@/lib/time';
+import styles from './IncomingAlert.module.css';
 
 export function AlertGate({
   wake,
@@ -62,7 +63,7 @@ export function NewBookingAlert({
   onAcknowledge: () => void;
 }) {
   const first = items[0];
-  const ackRef = useRef<HTMLDivElement>(null);
+  const ackRef = useRef<HTMLButtonElement>(null);
 
   // 確認されるまで、音を繰り返す（3.5秒ごと）。振動は対応している端末だけ
   useEffect(() => {
@@ -77,29 +78,31 @@ export function NewBookingAlert({
   }, [first, soundOn]);
 
   if (!first) return null;
+  // レイヤー全体を1つのボタンにする（どこを押しても「確認しました」）
   return (
-    <div
+    <button
       ref={ackRef}
-      className="incoming"
-      role="alertdialog"
-      aria-label="新しい予約が入りました。どこかを押すと確認します"
-      tabIndex={-1}
+      type="button"
+      className={styles.layer}
       onClick={onAcknowledge}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') && onAcknowledge()}
+      onKeyDown={(e) => e.key === 'Escape' && onAcknowledge()}
     >
-      <div className="incoming-inner">
-        <p className="incoming-label">新しい予約が入りました{items.length > 1 ? `（ほか${items.length - 1}件）` : ''}</p>
-        <p className="incoming-main num">
-          {first.startAt ? fmtTime(first.startAt) : ''} <span>{first.menu ?? ''}</span>
-        </p>
-        <p className="incoming-name">{first.name} 様</p>
+      {/* 読み上げの名前は、画面に見えている文字そのもの（WCAG 2.5.3） */}
+      <span className={styles.inner}>
+        <span className={styles.label}>
+          <span className={styles.labelDot} aria-hidden />
+          新しい予約{items.length > 1 ? `（ほか${items.length - 1}件）` : ''}
+        </span>
+        <span className={`${styles.time} num`}>{first.startAt ? fmtTime(first.startAt) : ''}</span>
+        <span className={styles.menu}>{first.menu ?? ''}</span>
+        <span className={styles.name}>{first.name} 様</span>
         {showNo && first.bookingNo !== null && (
-          <p className="incoming-no num">
+          <span className={`${styles.no} num`}>
             予約番号 <strong>{first.bookingNo}</strong>
-          </p>
+          </span>
         )}
-        <p className="incoming-tap">画面のどこかを押すと「確認しました」になり、詳細が開きます</p>
-      </div>
-    </div>
+        <span className={styles.tap}>画面のどこかを押すと「確認しました」になり、詳細が開きます</span>
+      </span>
+    </button>
   );
 }
