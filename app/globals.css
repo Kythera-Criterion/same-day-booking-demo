@@ -468,3 +468,54 @@ button { font: inherit; color: inherit; }
 .overview-list li { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
 .overview-list li:first-child { border-top: none; }
 .overview-list small { color: var(--sub); }
+
+/* =========================================================
+   デモ用の舞台（/demo）：3画面を横に並べる。画面録画にそのまま使う
+   ========================================================= */
+.stage { min-height: 100vh; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; background: #e9e5dc; }
+.stage-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.stage-title { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.stage-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage-select .select { min-height: 44px; padding: 8px 12px; font-size: 14px; width: auto; }
+.stage-check { padding: 0; font-size: 13px; align-items: center; }
+.stage-message { margin: 0; }
+.stage-grid { flex: 1; display: grid; grid-template-columns: 390px minmax(560px, 1fr) minmax(480px, 1fr); gap: 16px; align-items: stretch; min-height: 0; }
+.device { margin: 0; display: flex; flex-direction: column; gap: 6px; min-height: 0; transition: transform 0.3s var(--ease); }
+.device figcaption { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.08em; text-align: center; }
+.device iframe { flex: 1; width: 100%; min-height: 720px; border: none; background: var(--bg); box-shadow: 0 18px 44px rgba(26, 29, 27, 0.16); }
+.device-phone iframe { border-radius: 36px; border: 10px solid #1d201e; max-height: 844px; }
+.device-tablet iframe { border-radius: 22px; border: 10px solid #2a2d2b; }
+.device-desk iframe { border-radius: 12px; border: 1px solid var(--line-strong); }
+.device.is-focus iframe { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent), 0 18px 44px rgba(26, 29, 27, 0.2); }
+@media (max-width: 1500px) {
+  .stage-grid { grid-template-columns: 390px 1fr; }
+  .device-desk { grid-column: 1 / -1; }
+}
+@media (max-width: 960px) {
+  .stage-grid { grid-template-columns: 1fr; }
+}
+
+.scenario { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.scenario li { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--surface); color: var(--sub); font-size: 13px; transition: background 0.3s, color 0.3s; }
+.scenario li.is-done { color: var(--accent-deep); background: var(--accent-soft); }
+.scenario li.is-now { color: #fff; background: var(--accent); font-weight: 700; animation: fresh 2.4s var(--ease); }
+.scenario-no { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, 0.08); font-size: 11px; }
+.scenario-error { color: var(--warn) !important; background: var(--warn-soft) !important; }
+
+.race-backdrop { align-items: center; }
+.race { width: min(760px, calc(100% - 32px)); background: var(--surface); border-radius: 24px; padding: 24px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3); animation: sheetUp 0.3s var(--ease) both; }
+.race-title { margin: 0; font-size: 22px; font-weight: 700; }
+.race-sub { margin: 4px 0 18px; color: var(--ink-2); font-size: 14px; }
+.race-grid { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.race-grid li { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 6px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); text-align: center; transition: background 0.3s, border-color 0.3s; }
+.race-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-size: 20px; font-weight: 700; background: #dcd7cc; color: var(--ink-2); }
+.race-name { font-size: 12px; }
+.race-result { font-size: 11px; font-weight: 700; color: var(--sub); }
+.race-grid .is-wait .race-avatar { animation: pulseDot 0.9s ease-in-out infinite alternate; }
+@keyframes pulseDot { from { opacity: 0.45; } to { opacity: 1; } }
+.race-grid .is-win { background: var(--accent-soft); border-color: var(--accent); animation: fresh 2.6s var(--ease); }
+.race-grid .is-win .race-avatar { background: var(--accent); color: #fff; }
+.race-grid .is-win .race-result { color: var(--accent-deep); }
+.race-grid .is-lose { opacity: 0.75; }
+.race-why { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; }
+@media (max-width: 600px) { .race-grid { grid-template-columns: repeat(2, 1fr); } }
