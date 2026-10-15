@@ -1,60 +1,93 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { demoLogin } from '@/lib/demo-login';
 
-type Account = { email: string; label: string };
+type Account = { email: string; label: string; sub?: string };
 
+// メールアドレスとパスワードでのログイン。デモモードでは、ワンタップのデモログインも出す
 export default function LoginBox({
   client,
   title,
-  accounts,
+  demoAccounts = [],
+  demoMode = false,
+  footer,
 }: {
   client: SupabaseClient;
   title: string;
-  accounts: Account[];
+  demoAccounts?: Account[];
+  demoMode?: boolean;
+  footer?: ReactNode;
 }) {
-  const [email, setEmail] = useState(accounts[0]?.email ?? '');
-  const [password, setPassword] = useState(process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    setBusy('form');
     setError(null);
     const { error: signInError } = await client.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (signInError) setError('ログインできませんでした。メールアドレスとパスワードをご確認ください。');
+    setBusy(null);
+    if (signInError) {
+      setError(
+        signInError.message.includes('Email not confirmed')
+          ? 'メールアドレスの確認がまだ済んでいません。届いたメールのリンクを開いてください。'
+          : 'ログインできませんでした。メールアドレスとパスワードをご確認ください。',
+      );
+    }
+  }
+
+  async function oneTap(account: Account) {
+    setBusy(account.email);
+    setError(null);
+    const message = await demoLogin(client, account.email);
+    setBusy(null);
+    if (message) setError(message);
   }
 
   return (
-    <form className="card" onSubmit={submit}>
+    <section className="card fade-in">
       <h2 className="card-title">{title}</h2>
-      <div className="chips">
-        {accounts.map((a) => (
-          <button
-            key={a.email}
-            type="button"
-            className={`chip ${email === a.email ? 'chip-on' : ''}`}
-            onClick={() => setEmail(a.email)}
-          >
-            {a.label}
-          </button>
-        ))}
-      </div>
-      <label className="field">
-        <span>メールアドレス</span>
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </label>
-      <label className="field">
-        <span>パスワード</span>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      </label>
-      {error && <p className="msg msg-error">{error}</p>}
-      <button className="btn btn-primary" type="submit" disabled={busy}>
-        {busy ? 'ログイン中…' : 'ログイン'}
-      </button>
-    </form>
+
+      {demoMode && demoAccounts.length > 0 && (
+        <>
+          <p className="card-sub">デモ用のアカウントで、ワンタップでログインできます。</p>
+          <div className="chips" style={{ marginBottom: 16 }}>
+            {demoAccounts.map((a) => (
+              <button key={a.email} type="button" className="chip" disabled={busy !== null} onClick={() => oneTap(a)}>
+                {busy === a.email ? 'ログイン中…' : a.label}
+                {a.sub && <small>{a.sub}</small>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <form onSubmit={submit}>
+        <label className="field">
+          <span className="field-label">メールアドレス</span>
+          <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label className="field">
+          <span className="field-label">パスワード</span>
+          <input
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </label>
+        {error && <p className="notice notice-error">{error}</p>}
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy !== null}>
+          {busy === 'form' ? 'ログイン中…' : 'ログイン'}
+        </button>
+      </form>
+      {footer}
+    </section>
   );
 }

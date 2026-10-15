@@ -64,6 +64,26 @@ export function minutesUntil(value: string | Date, now = new Date()): number {
   return Math.round((new Date(value).getTime() - now.getTime()) / MINUTE);
 }
 
+// 「あと○分」「あと1時間5分」
+export function fmtRemaining(minutes: number): string {
+  if (minutes <= 0) return 'まもなく';
+  if (minutes < 60) return `あと${minutes}分`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `あと${h}時間` : `あと${h}時間${m}分`;
+}
+
+const dateFmt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short' });
+
+// 「10月15日(木)」
+export function fmtDate(value: string | Date): string {
+  return dateFmt.format(new Date(value));
+}
+
+export function fmtYen(value: number): string {
+  return `¥${value.toLocaleString('ja-JP')}`;
+}
+
 export function fmtUntil(minutes: number): string {
   if (minutes < 60) return `${minutes}分後`;
   const h = Math.floor(minutes / 60);

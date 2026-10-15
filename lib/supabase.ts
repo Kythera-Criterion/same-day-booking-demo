@@ -1,15 +1,18 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import { useEffect, useMemo, useState } from 'react';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 export const isConfigured = url !== '' && anonKey !== '';
 
+export type Role = 'user' | 'salon' | 'admin';
+
 const clients = new Map<string, SupabaseClient>();
 
-// 同じブラウザで「利用者」と「サロン」に別々にログインできるよう、ログイン情報の保存先を分ける。
+// 同じブラウザで「利用者」「サロン」「運営」に別々にログインできるよう、ログイン情報の保存先を役割ごとに分ける。
 // また、タブごとに別の利用者でログインできるよう sessionStorage を使う（同時予約の実演用）。
-export function getClient(kind: 'user' | 'salon'): SupabaseClient {
+export function getClient(kind: Role): SupabaseClient {
   const existing = clients.get(kind);
   if (existing) return existing;
 
@@ -19,10 +22,36 @@ export function getClient(kind: 'user' | 'salon'): SupabaseClient {
       storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
+      // メールのリンクで戻ってきたときのログインは、利用者の画面だけで受け取る
+      detectSessionInUrl: kind === 'user',
     },
   });
   clients.set(kind, client);
   return client;
+}
+
+// 役割ごとのログイン状態
+export function useRoleSession(kind: Role) {
+  const client = useMemo(() => (isConfigured ? getClient(kind) : null), [kind]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!client) return;
+    let active = true;
+    client.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session);
+      setReady(true);
+    });
+    const { data: sub } = client.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [client]);
+
+  return { client, session, ready };
 }
 
 // 埋め込みで取得した関連データは、配列でも単体でも扱えるようにする

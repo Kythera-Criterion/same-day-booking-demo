@@ -209,7 +209,7 @@ export default function SalonPage() {
         <Link href="/">利用者の画面へ</Link>
       </header>
 
-      {ready && !session && <LoginBox client={supabase} title="サロンのスタッフとしてログイン" accounts={ACCOUNTS} />}
+      {ready && !session && <LoginBox client={supabase} title="サロンのスタッフとしてログイン" demoAccounts={ACCOUNTS} />}
 
       {session && (
         <div className="whoami">
