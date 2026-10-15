@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import PasswordInput from './PasswordInput';
-import { startSocial } from './SocialButtons';
+import { ProviderIcon, startSocial } from './SocialButtons';
 import { AUTH_ERROR, PROVIDER_IDS, PROVIDER_LABEL, type FlowRole, type ProviderId, type Providers } from '@/lib/oauth-shared';
 
 type Identity = { provider: ProviderId; email: string | null; created_at: string; last_used_at: string };
@@ -143,8 +143,8 @@ export default function AccountSecurity({
             const id = identities?.find((i) => i.provider === p);
             return (
               <li key={p}>
-                <span className={`social-mark social-${p}`} aria-hidden>
-                  {p === 'google' ? 'G' : 'Y!'}
+                <span className="linked-icon">
+                  <ProviderIcon provider={p} height={p === 'google' ? 20 : 14} />
                 </span>
                 <span className="linked-body">
                   <strong>{PROVIDER_LABEL[p]}</strong>

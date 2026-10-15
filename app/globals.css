@@ -914,17 +914,16 @@ button { font: inherit; color: inherit; }
 
 /* ---------- 新規登録・ログイン（外部の ID・パスワード） ---------- */
 .social { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 2px; }
+/* 各社のガイドライン：白地・#747775 の1pxの枠・#1F1F1F の文字。アイコンの左右に余白を取り、文言は折り返さない */
 .social-btn {
-  position: relative; justify-content: center; gap: 10px; min-height: 52px; font-weight: 700;
-  background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong);
+  position: relative; justify-content: center; gap: 12px; min-height: 52px; padding: 8px 12px; font-weight: 600;
+  background: #ffffff; color: #1f1f1f; border: 1px solid #747775; box-shadow: none;
 }
-.social-btn:hover:not(:disabled) { background: var(--surface-2); }
-.social-mark {
-  display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 8px;
-  font-size: 13px; font-weight: 800; letter-spacing: -0.02em; color: #fff; background: var(--slate);
-}
-.social-google .social-mark, .social-mark.social-google { background: #3c6fd8; }
-.social-yahoo .social-mark, .social-mark.social-yahoo { background: #b8323f; }
+.social-btn:hover:not(:disabled) { background: #f6f6f6; }
+.social-btn:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+.social-text { white-space: nowrap; }
+.provider-icon { display: block; flex: none; }
+.linked-icon { display: grid; place-items: center; width: 40px; height: 32px; flex: none; background: #ffffff; }
 .social-demo {
   flex: none;
   font-size: 11px; font-weight: 700; color: #7a520a; background: var(--amber-soft); border-radius: 999px; padding: 2px 8px;
