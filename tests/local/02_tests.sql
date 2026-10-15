@@ -668,6 +668,64 @@ delete from public.slots where id = '54000000-0000-4000-8000-000000000001';
 delete from public.salons where id = '44444444-4444-4444-8444-444444444444';
 
 -- ---------------------------------------------------------
+-- T43 掲載を止めたサロンを、利用者の画面に出さない（0008）
+-- ---------------------------------------------------------
+-- サロンBに公開中の枠を用意しておく
+insert into public.slots (id, salon_id, menu_id, start_at, end_at, price) values
+  ('5b000000-0000-4000-8000-000000000043', '22222222-2222-4222-8222-222222222222', 'd2222221-2222-4222-8222-222222222222', t.at(280), t.at(330), 5200);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T43 運営がサロンBの掲載を止める', $$select public.admin_set_salon_approved('22222222-2222-4222-8222-222222222222', false)$$);
+commit;
+select t.ok('T43 掲載を止めると、公開中の枠はその場で取り下げられる',
+  (select status = 'closed' and closed_reason = 'suspended' from public.slots where id = '5b000000-0000-4000-8000-000000000043'));
+-- 止めている間にサロンが出した枠（公開中のまま）
+insert into public.slots (id, salon_id, menu_id, start_at, end_at, price) values
+  ('5b000000-0000-4000-8000-000000000044', '22222222-2222-4222-8222-222222222222', 'd2222221-2222-4222-8222-222222222222', t.at(340), t.at(390), 5200);
+begin; set local role anon;
+select t.ok('T43 掲載中でないサロンの枠は、表から直接読んでも見えない（ログインなし）',
+  (select count(*) from public.slots where salon_id = '22222222-2222-4222-8222-222222222222') = 0);
+select t.ok('T43 掲載中でないサロンは、ログインしていない人から見えない',
+  (select count(*) from public.salons where id = '22222222-2222-4222-8222-222222222222') = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T43 掲載中でないサロンの枠は、ほかの利用者から直接読んでも見えない',
+  (select count(*) from public.slots where id = '5b000000-0000-4000-8000-000000000044') = 0);
+select t.ok('T43 予約したことのない利用者からは、サロンも見えない',
+  (select count(*) from public.salons where id = '22222222-2222-4222-8222-222222222222') = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000005';
+select t.ok('T43 予約しているお客様には、来店のためにサロンの情報が見える',
+  (select count(*) from public.salons where id = '22222222-2222-4222-8222-222222222222') = 1);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.raises('T43 掲載中でないサロンの枠は予約できない',
+  $$select public.book_slot('5b000000-0000-4000-8000-000000000044')$$, 'slot_not_found');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.ok('T43 サロンBのスタッフは、自店の枠を見られる',
+  (select count(*) from public.slots where id in ('5b000000-0000-4000-8000-000000000043', '5b000000-0000-4000-8000-000000000044')) = 2);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T43 運営がサロンBの掲載を再開する', $$select public.admin_set_salon_approved('22222222-2222-4222-8222-222222222222', true)$$);
+commit;
+select t.ok('T43 再開すると、止めたときに取り下げた枠（締切前）が戻る',
+  (select status = 'open' and closed_reason is null from public.slots where id = '5b000000-0000-4000-8000-000000000043'));
+select t.ok('T43 掲載の停止で取り下げた枠の数が記録に残る',
+  exists (select 1 from public.audit_logs where action = 'suspend_salon' and (detail ->> 'closed_slots')::int >= 1));
+begin; set local role anon;
+select t.ok('T43 掲載の停止と再開は、誰でも受け取れる知らせとして流れる（利用者の画面がすぐ読み直す）',
+  (select count(*) from public.listing_events where salon_id = '22222222-2222-4222-8222-222222222222' and kind in ('suspended', 'resumed')) >= 2);
+select t.raises('T43 掲載の変化の知らせは、画面側から書けない',
+  $$insert into public.listing_events (salon_id, kind) values (gen_random_uuid(), 'deleted')$$, 'permission denied');
+commit;
+-- サロンが取り下げた枠は「受付を終えた枠」として断る
+update public.slots set status = 'closed', closed_reason = 'withdrawn' where id = '5b000000-0000-4000-8000-000000000044';
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000007';
+select t.ok('T43 取り下げた枠を予約しようとすると「受付を終えた枠」として断る',
+  t.val($$select public.book_slot('5b000000-0000-4000-8000-000000000044')$$) ~ 'slot_closed|has_active_booking');
+commit;
+
+-- ---------------------------------------------------------
 -- T34 デモ用の関数（サーバー側だけ）
 -- ---------------------------------------------------------
 begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';

@@ -101,7 +101,7 @@ export default function BookingForm({
       const code = errorCode(bookError);
       setBusy(false);
       setError({ code, text: toMessage(bookError) });
-      if (code === 'already_booked' || code === 'too_late') onUnavailable?.();
+      if (code === 'already_booked' || code === 'too_late' || code === 'slot_not_found' || code === 'slot_closed') onUnavailable?.();
       return;
     }
     setBooked(true);

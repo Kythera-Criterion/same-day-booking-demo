@@ -200,11 +200,23 @@ export default function Salons({ client }: { client: SupabaseClient }) {
           <p className="card-title">
             {target.name} の{target.is_approved ? '掲載を止めますか？' : '掲載を再開しますか？'}
           </p>
-          <p className="card-sub">
-            {target.is_approved
-              ? '止めると、このサロンの枠は利用者の検索に出なくなり、新しい予約もできなくなります。入っている予約はそのままです。'
-              : '再開すると、このサロンの公開中の枠が、すぐに利用者の検索に出ます。'}
-          </p>
+          {(() => {
+            const mine = today.filter((t) => t.salon_id === target.id);
+            const open = mine.filter((t) => t.status === 'open').length;
+            const upcoming = mine.filter((t) => (t.bookings ?? []).some((b) => b.status === 'confirmed')).length;
+            return target.is_approved ? (
+              <ul className="delete-list">
+                <li>公開中の枠（今日 {open}件）をすぐに取り下げ、利用者の画面から消します。新しい予約もできなくなります。</li>
+                <li>
+                  これからの予約（今日 {upcoming}件）はそのまま残ります。予約したお客様には、来店のためにお店の情報が表示され続けます。
+                  {upcoming > 0 && '必要に応じて、サロンへご連絡ください。'}
+                </li>
+                <li>サロンの画面には「掲載が止められています」と表示されます。再開はいつでもできます。</li>
+              </ul>
+            ) : (
+              <p className="card-sub">再開すると、止めたときに取り下げた枠のうち、受付の締切前のものを再び公開し、利用者の検索に出します。</p>
+            );
+          })()}
           <div className="action-pair">
             <button className="btn btn-quiet" onClick={() => setTarget(null)}>
               やめる

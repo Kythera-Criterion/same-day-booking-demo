@@ -280,6 +280,12 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
             )}
           </div>
 
+          {!salon.is_approved && (
+            <div className="notice notice-error suspended-banner" role="alert">
+              <strong>現在、掲載が止められています。</strong>
+              公開中だった枠は取り下げられ、利用者の画面には表示されません。入っている予約はそのままです。再開については運営事務局へお問い合わせください。
+            </div>
+          )}
           {!started && <AlertGate wake={wake} onStart={start} />}
           {started && wake === 'unsupported' && (
             <p className="notice notice-info">この端末では、画面が自動で消えるのを止められません。端末の設定で、自動ロックを長めにしてください。</p>

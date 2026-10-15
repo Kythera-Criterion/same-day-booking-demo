@@ -109,6 +109,8 @@ export default function UserHome() {
     const channel = client
       .channel('user-home-slots')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => search())
+      // サロンの掲載が止まった・削除されたときも、すぐに読み直す（取り下げた枠の変更は利用者に届かないため）
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_events' }, () => search())
       .subscribe();
     const timer = setInterval(search, 20_000);
     return () => {
@@ -437,7 +439,7 @@ export default function UserHome() {
             activeBookingId={active?.id ?? null}
             suspendedUntil={suspendedUntil}
             now={now}
-            unavailable={sheetGone ? 'この枠は、ほかの方の予約が入ったか、受付の締切を過ぎたため、予約できなくなりました。' : null}
+            unavailable={sheetGone ? 'この枠は予約できなくなりました（ほかの方の予約・受付の締切・お店の受付終了など）。' : null}
             onChooseOther={() => setSheet(null)}
             onBooked={(id) => router.push(`/booking/${id}?new=1`)}
             onUnavailable={search}

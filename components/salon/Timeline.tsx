@@ -18,6 +18,7 @@ export const STATE_LABEL: Record<string, string> = {
   expired: '受付終了',
   closed: '取り下げ',
   paused: '今日はここまで',
+  suspended: '掲載停止で取り下げ',
   booked: '予約あり',
 };
 
@@ -25,6 +26,7 @@ export function slotState(slot: SalonSlot): string {
   const b = activeBooking(slot);
   if (b) return b.status;
   if (slot.status === 'closed' && slot.closed_reason === 'paused') return 'paused';
+  if (slot.status === 'closed' && slot.closed_reason === 'suspended') return 'suspended';
   return slot.status === 'booked' ? 'closed' : slot.status;
 }
 

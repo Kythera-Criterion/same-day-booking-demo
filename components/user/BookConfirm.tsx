@@ -79,6 +79,21 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
     load();
   }, [load]);
 
+  // 開いている間に、枠が埋まった・お店が受付を終えた・掲載が止まったら、その場で表示を変える
+  useEffect(() => {
+    if (!client) return;
+    const channel = client
+      .channel(`book-${slotId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots', filter: `id=eq.${slotId}` }, () => load())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_events' }, () => load())
+      .subscribe();
+    const timer = setInterval(load, 20_000);
+    return () => {
+      client.removeChannel(channel);
+      clearInterval(timer);
+    };
+  }, [client, slotId, load]);
+
   if (!client) return <NotConfigured />;
   const closed = slot && (slot.status !== 'open' || new Date(slot.deadline_at).getTime() <= now.getTime());
 

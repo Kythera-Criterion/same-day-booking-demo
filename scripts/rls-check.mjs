@@ -90,7 +90,29 @@ try {
     const { data } = await salonB.from('salon_private').select('salon_id').eq('salon_id', slot.salon_id);
     check('ほかのサロンの LINE グループ ID は見えない', (data?.length ?? 0) === 0);
   }
-  // 12. デモ用の関数は画面側から呼べない
+  // 12. 掲載を止めたサロンの枠は、検索にも表にも出ず、予約もできない（確かめたら元に戻す）
+  {
+    const SALON_C = '33333333-3333-4333-8333-333333333333';
+    const user5 = await signIn('user5@demo.test');
+    const { data: before } = await user5.from('slots').select('id').eq('salon_id', SALON_C).eq('status', 'open');
+    await operator.rpc('admin_set_salon_approved', { p_salon_id: SALON_C, p_approved: false });
+    try {
+      const { data: found } = await user5.rpc('search_open_slots', { p_until: new Date(Date.now() + 86400000).toISOString() });
+      const { data: direct } = await user5.from('slots').select('id').eq('salon_id', SALON_C).in('status', ['open', 'closed']).eq('demo_history', false);
+      const { data: anonDirect } = await anon().from('slots').select('id').eq('salon_id', SALON_C);
+      check(
+        '掲載を止めたサロンの枠は、検索にも表にも出ない',
+        !(found ?? []).some((s) => s.salon_id === SALON_C) && (direct?.length ?? 0) === 0 && (anonDirect?.length ?? 0) === 0,
+      );
+      if ((before?.length ?? 0) > 0) {
+        const { error } = await user5.rpc('book_slot', { p_slot_id: before[0].id });
+        check('掲載を止めたサロンの枠は予約できない', !!error && /slot_not_found|has_active_booking/.test(error.message), error?.message);
+      }
+    } finally {
+      await operator.rpc('admin_set_salon_approved', { p_salon_id: SALON_C, p_approved: true });
+    }
+  }
+  // 13. デモ用の関数は画面側から呼べない
   {
     const { error } = await operator.rpc('demo_reset', { p_with_history: false });
     check('デモのリセットは画面側から呼べない（運営でも）', !!error, error?.message);

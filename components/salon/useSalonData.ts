@@ -14,6 +14,7 @@ export type SalonInfo = {
   area_id: string | null;
   lat: number;
   lng: number;
+  is_approved: boolean;
 };
 export type Menu = { id: string; name: string; duration_min: number; price: number; booking_deadline_min: number; is_active: boolean };
 export type Stylist = { id: string; name: string; is_active: boolean };
@@ -84,7 +85,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     setError(null);
     const { data: member, error: e } = await client
       .from('salon_members')
-      .select('salon_id,salons(id,name,address,phone,accepts_genders,area_id,lat,lng)')
+      .select('salon_id,salons(id,name,address,phone,accepts_genders,area_id,lat,lng,is_approved)')
       .eq('user_id', session.user.id)
       .limit(1)
       .maybeSingle();
@@ -130,8 +131,10 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
       stylist: one(r.stylists),
       bookings: r.bookings ?? [],
     }));
-    // 1枠ずつ取り下げて予約もない枠は表示しない（「今日はここまで」で取り下げた枠は、元に戻せるよう残す）
-    setSlots(rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.bookings.length === 0)));
+    // 1枠ずつ取り下げて予約もない枠は表示しない（「今日はここまで」・掲載の停止で取り下げた枠は残す）
+    setSlots(
+      rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.closed_reason !== 'suspended' && r.bookings.length === 0)),
+    );
   }, [client, salon]);
 
   useEffect(() => {
