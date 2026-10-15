@@ -91,6 +91,26 @@ export function fmtUntil(minutes: number): string {
   return m === 0 ? `${h}時間後` : `${h}時間${m}分後`;
 }
 
+// 「○分後」の開始時刻（5分単位に切り上げ）
+export function startAfter(minutes: number, now = new Date()): Date {
+  const step = 5 * MINUTE;
+  return new Date(Math.ceil((now.getTime() + minutes * MINUTE) / step) * step);
+}
+
+// その開始時刻で枠を出せるか（今日・9時以降・受付の締切がまだ先）。理由を返す
+export function slotStartProblem(start: Date, deadlineMin: number, now = new Date()): string | null {
+  if (start.getTime() >= jstTodayEnd(now).getTime()) return '今日中に収まりません';
+  if (jstHour(start) < 9) return '9時より前です';
+  if (start.getTime() - deadlineMin * MINUTE <= now.getTime() + 30 * 1000) return '受付の締切を過ぎます';
+  return null;
+}
+
+// 日本時間の「時」と「分」を、0時からの分数で
+export function jstMinuteOfDay(value: string | Date): number {
+  const d = new Date(new Date(value).getTime() + JST_OFFSET_MS);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+
 // サロンが枠を出すときの開始時刻の候補（15分刻み、今から15分以上先、今日中、9時以降）
 export function startTimeOptions(now = new Date(), count = 8): Date[] {
   const step = 15 * MINUTE;
