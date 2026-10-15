@@ -8,7 +8,7 @@ import { activeBooking, type SalonSlot } from './useSalonData';
 
 const START = 9 * 60;
 const END = 24 * 60;
-const PX_PER_MIN = 1.3;
+const PX_PER_MIN = 2.4; // 15分 = 36px（短い枠どうしが重ならない高さ）
 
 export const STATE_LABEL: Record<string, string> = {
   open: '予約待ち',
@@ -90,7 +90,7 @@ export default function Timeline({
           {placed.map(({ slot, s, e, lane }) => {
             const state = slotState(slot);
             const b = activeBooking(slot);
-            const height = Math.max(30, (e - s) * PX_PER_MIN - 3);
+            const height = Math.max(24, (e - s) * PX_PER_MIN - 3);
             return (
               <button
                 key={slot.id}

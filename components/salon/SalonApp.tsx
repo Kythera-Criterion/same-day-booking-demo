@@ -21,6 +21,7 @@ import Onboarding from './Onboarding';
 import PublishSheet, { publishFree, publishOffsets, type PublishResult } from './PublishSheet';
 import SalonSettings from './SalonSettings';
 import SlotPanel from './SlotPanel';
+import SlotList from './SlotList';
 import StaffBands from './StaffBands';
 import Timeline from './Timeline';
 import { activeBooking, useSalonData, type Preset, type SalonSlot } from './useSalonData';
@@ -54,6 +55,8 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const [permission, setPermission] = useState<string>('default');
   const [now, setNow] = useState(() => new Date());
+  const [view, setView] = useState<'chart' | 'list'>('chart');
+  const [showEnded, setShowEnded] = useState(false);
 
   useDispatchTicker(client, !!salon);
 
@@ -214,6 +217,14 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
     .sort((a, b) => a.start_at.localeCompare(b.start_at));
   const onboarding = onboardingStep !== null && onboardingStep < 3;
 
+  // 受付を終えた枠（予約のないまま締切を過ぎた・取り下げた・キャンセルだけが残った）は、ふだんは表示しない
+  const isEnded = (s: SalonSlot) =>
+    !activeBooking(s) &&
+    (s.status === 'expired' ||
+      (s.status === 'closed' && !(s.closed_reason === 'paused' && new Date(s.deadline_at).getTime() > now.getTime())));
+  const endedCount = list.filter(isEnded).length;
+  const visibleSlots = showEnded ? list : list.filter((s) => !isEnded(s));
+
   return (
     <main className="app app-salon">
       <AppHeader role="サロン" home="/salon">
@@ -361,21 +372,42 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
               </div>
 
               <section className="card card-flush timeline-card">
-                <div className="row-between card-pad">
+                <div className="plan-head card-pad">
                   <h2 className="card-title">今日の予定</h2>
+                  <div className="segmented plan-view" role="group" aria-label="表示の切り替え">
+                    <button aria-pressed={view === 'chart'} onClick={() => setView('chart')}>
+                      <span className="only-wide">担当ごとの帯</span>
+                      <span className="only-narrow">タイムライン</span>
+                    </button>
+                    <button aria-pressed={view === 'list'} onClick={() => setView('list')}>
+                      時刻の順の一覧
+                    </button>
+                  </div>
+                </div>
+                <div className="plan-sub card-pad">
                   <span className="legend">
-                    <i className="lg-open" />公開中 <i className="lg-confirmed" />予約あり <i className="lg-completed" />来店済み <i className="lg-closed" />取り下げ
+                    <i className="lg-open" />公開中 <i className="lg-confirmed" />予約あり <i className="lg-completed" />来店済み <i className="lg-closed" />取り下げ・受付終了
                   </span>
+                  {endedCount > 0 && (
+                    <label className="check plan-toggle">
+                      <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} />
+                      <span>受付終了・取り下げの枠も表示（{endedCount}件）</span>
+                    </label>
+                  )}
                 </div>
                 {slots === null ? (
                   <div className="card-pad">
                     <Loading rows={2} />
                   </div>
+                ) : visibleSlots.length === 0 ? (
+                  <Empty>{slots.length === 0 ? '今日はまだ枠を出していません。下の「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
+                ) : view === 'list' ? (
+                  <SlotList slots={visibleSlots} now={now} freshIds={freshIds} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
                 ) : (
                   <>
                     <div className="only-wide">
                       <StaffBands
-                        slots={slots}
+                        slots={visibleSlots}
                         stylists={stylists}
                         now={now}
                         freshIds={freshIds}
@@ -383,14 +415,12 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
                         onSelect={setSelected}
                         onEmpty={(startAt, stylistId) => setSheet({ start: startAt, stylistId })}
                       />
-                      <p className="fine-print card-pad">空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。</p>
+                      <p className="fine-print card-pad">
+                        横にスクロールできます。枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。
+                      </p>
                     </div>
                     <div className="only-narrow">
-                      {slots.length === 0 ? (
-                        <Empty>今日はまだ枠を出していません。下の「枠を出す」から公開できます。</Empty>
-                      ) : (
-                        <Timeline slots={slots} now={now} freshIds={freshIds} onSelect={setSelected} />
-                      )}
+                      <Timeline slots={visibleSlots} now={now} freshIds={freshIds} onSelect={setSelected} />
                     </div>
                   </>
                 )}

@@ -771,3 +771,64 @@ button { font: inherit; color: inherit; }
 }
 
 .origin .btn { white-space: nowrap; flex: none; }
+
+/* ---------- 今日の予定（担当ごとの帯・一覧）：時刻を正確に読めるように ---------- */
+.plan-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 6px; }
+.plan-view { min-width: 300px; }
+.plan-view button { font-size: 13px; }
+.plan-sub { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 14px; padding-top: 0; padding-bottom: 8px; }
+.plan-toggle { min-height: 36px; padding: 0; font-size: 12px; color: var(--ink-2); }
+.plan-toggle input { width: 18px; height: 18px; }
+
+.bands { min-width: 0; padding: 4px 12px 6px 0; }
+.bands-head, .band-row { display: grid; gap: 0; }
+.band-corner { position: sticky; left: 0; z-index: 5; background: var(--surface); }
+.bands-scale { position: relative; height: 22px; }
+.bands-scale span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bands-scale .is-hour { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.bands-scale .is-half { font-size: 10px; color: var(--sub); }
+.band-row { padding: 4px 0; border-top: 1px solid var(--line); }
+.band-name { width: 92px; border-right: 1px solid var(--line); }
+.band-track { border-radius: 0; background: var(--surface); }
+.band-past { border-radius: 0; background: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0 5px, transparent 5px 10px); }
+.band-hour { display: none; }
+.band-tick { position: absolute; top: 0; bottom: 0; border-left: 1px dotted #ebe7df; pointer-events: none; }
+.band-tick.is-half { border-left: 1px dashed #e0dbd1; }
+.band-tick.is-hour { border-left: 1px solid #d9d4c9; }
+.band-block {
+  flex-direction: column; justify-content: center; align-items: flex-start; gap: 0; padding: 2px 7px;
+  border-radius: 7px; font-size: 12px; line-height: 1.3; box-shadow: 0 0 0 2px var(--surface);
+}
+.band-block .band-time { font-weight: 700; font-size: 12px; white-space: nowrap; }
+.band-block .band-label { font-size: 12px; font-weight: 500; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.band-block.is-narrow { align-items: center; padding: 0 2px; }
+.band-block.is-narrow .band-time { font-size: 11px; letter-spacing: -0.02em; }
+.band-no { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 11px; font-weight: 700; background: rgba(255, 255, 255, 0.25); }
+.tl-open .band-no { background: var(--accent-soft); }
+
+.slot-table-wrap { overflow-x: auto; padding: 0 12px 12px; }
+.slot-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.slot-table th { text-align: left; font-size: 12px; font-weight: 500; color: var(--sub); padding: 8px 10px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+.slot-table td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.slot-table td small { display: block; font-size: 11px; color: var(--sub); }
+.slot-table tbody tr { cursor: pointer; }
+.slot-table tbody tr:hover { background: var(--surface-2); }
+.slot-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.slot-table-time { font-weight: 700; font-size: 16px; white-space: nowrap; }
+.slot-table-time span { font-weight: 500; font-size: 13px; color: var(--ink-2); }
+.slot-table tr.is-past td { color: var(--sub); }
+.slot-table tr.is-past .slot-table-time { color: var(--sub); }
+.slot-table tr.is-next td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.pill-paused { color: var(--sub); background: #efece6; }
+
+/* 公開中の枠は、帯でも点線の枠で空き時間と見分けられるようにする */
+.band-block.tl-open { border: 1.5px dashed var(--accent); background: var(--accent-soft); color: var(--accent-deep); }
+.band-block.tl-confirmed { border-color: var(--accent-deep); }
+.band-block.tl-completed { border: 1.5px solid #c6d0d7; }
+.band-block.tl-expired, .band-block.tl-closed { border: 1.5px solid #e2ddd3; }
+.timeline { max-height: 620px; }
+
+/* 現在時刻の線は枠の後ろに通し、枠の文字にかからないようにする */
+.timeline-now { z-index: 1; }
+.timeline-now span { z-index: 3; background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
+.band-now { z-index: 1; }
