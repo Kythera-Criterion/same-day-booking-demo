@@ -134,7 +134,8 @@ export default function AdminApp({
   if (!client) return <NotConfigured />;
 
   return (
-    <main className="app app-wide">
+    // ログインの画面は、利用者の画面と同じスマートフォンの幅にそろえる（運営の画面だけ広く使う）
+    <main className={!session || isAdmin === false ? 'app' : 'app app-wide'}>
       <AppHeader role="運営" home="/admin">
         {session && <button onClick={() => client.auth.signOut()}>ログアウト</button>}
       </AppHeader>

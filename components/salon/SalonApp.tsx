@@ -263,7 +263,8 @@ export default function SalonApp({
     ) : null;
 
   return (
-    <main className="app app-salon">
+    // ログイン・登録の案内は、利用者の画面と同じスマートフォンの幅にそろえる（営業中の画面だけ広く使う）
+    <main className={!session || salon === null ? 'app' : 'app app-salon'}>
       <AppHeader role="サロン" home="/salon">
         {session && (
           <button onClick={() => client.auth.signOut()} aria-label="ログアウト">
