@@ -4,7 +4,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
@@ -42,7 +42,8 @@ export default function ApplyForm() {
 
   return (
     <main className="app">
-      <AppHeader role="サロンの方へ" />
+      <AppHeader role="サロンの方へ" home="/salon" />
+      <RoleIntro kind="salon" />
       <h1 className="screen-title">掲載のお申し込み</h1>
       {!done && (
         <Link href="/salon/signup" className="notice notice-ok finish-banner">

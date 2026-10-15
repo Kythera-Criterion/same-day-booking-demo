@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
 import SocialButtons, { AuthErrorNotice, LoggedOutNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
@@ -288,6 +288,7 @@ export default function SalonApp({
 
       {ready && !session && (
         <>
+          <RoleIntro kind="salon" />
           {(loggedOut || signedOut) && <LoggedOutNotice />}
           <AuthErrorNotice code={authError} />
           <LoginBox

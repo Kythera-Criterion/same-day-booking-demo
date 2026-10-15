@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import { Loading, NotConfigured } from '@/components/States';
 import PasswordInput from '@/components/auth/PasswordInput';
 import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
@@ -278,6 +278,7 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
   return (
     <main className="app">
       {header}
+      <RoleIntro kind="salon" compact />
       <h1 className="screen-title screen-title-tight">掲載のお申し込み（無料）</h1>
       <AuthErrorNotice code={authError} />
       <section className="card form-compact">

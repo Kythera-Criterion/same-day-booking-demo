@@ -5,7 +5,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro, type RoleKind } from '@/components/AppHeader';
 import { Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 
@@ -14,6 +14,8 @@ const LOGIN: Record<string, { href: string; label: string }> = {
   salon: { href: '/salon', label: 'サロンのログインへ' },
   admin: { href: '/admin', label: '運営のログインへ' },
 };
+
+const HEADER_LABEL: Record<RoleKind, string> = { user: '利用者', salon: 'サロン', admin: '運営' };
 
 export default function ResetPassword({ role }: { role: string }) {
   const { client, session, ready } = useRoleSession('user');
@@ -24,6 +26,7 @@ export default function ResetPassword({ role }: { role: string }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const login = LOGIN[role] ?? LOGIN.user;
+  const kind: RoleKind = role === 'salon' || role === 'admin' ? role : 'user';
 
   // リンクのログイン情報を読み取るまで、少し待つ
   useEffect(() => {
@@ -52,7 +55,8 @@ export default function ResetPassword({ role }: { role: string }) {
 
   return (
     <main className="app">
-      <AppHeader />
+      <AppHeader role={HEADER_LABEL[kind]} home={kind === 'user' ? '/' : `/${kind}`} />
+      <RoleIntro kind={kind} />
       <h1 className="screen-title">新しいパスワード</h1>
       {done ? (
         <section className="card fade-in">

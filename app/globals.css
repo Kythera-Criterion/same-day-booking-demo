@@ -94,7 +94,7 @@ button { font: inherit; color: inherit; }
 }
 .btn:active { transform: scale(0.98); }
 .btn:disabled { opacity: 0.4; cursor: default; transform: none; }
-.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 16px rgba(31, 111, 92, 0.22); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 22%, transparent); }
 .btn-primary:hover:not(:disabled) { background: var(--accent-deep); }
 .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
 .btn-quiet { background: var(--surface-2); color: var(--ink-2); border-color: var(--line); font-weight: 500; }
@@ -210,7 +210,7 @@ button { font: inherit; color: inherit; }
   position: relative; width: min(280px, 78vw); aspect-ratio: 1; border-radius: 50%; border: none; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   color: #fff; background: radial-gradient(circle at 30% 25%, #2b8a72 0%, var(--accent) 45%, var(--accent-deep) 100%);
-  box-shadow: 0 22px 50px rgba(23, 87, 74, 0.35), inset 0 -6px 18px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 22px 50px color-mix(in srgb, var(--accent-deep) 35%, transparent), inset 0 -6px 18px rgba(0, 0, 0, 0.12);
   transition: transform 0.18s var(--ease), box-shadow 0.18s;
 }
 .hero-button::after {
@@ -444,7 +444,7 @@ button { font: inherit; color: inherit; }
 .chart-grid { stroke: var(--line); stroke-width: 1; }
 .chart-base { stroke: var(--line-strong); stroke-width: 1; }
 .chart-axis { font-size: 11px; fill: var(--sub); font-variant-numeric: tabular-nums; }
-.chart-hover { fill: rgba(31, 111, 92, 0.06); }
+.chart-hover { fill: color-mix(in srgb, var(--accent) 6%, transparent); }
 .chart-tip { position: absolute; top: 0; transform: translateX(-50%); background: var(--ink); color: #fff; font-size: 12px; border-radius: 8px; padding: 6px 10px; pointer-events: none; display: flex; flex-direction: column; white-space: nowrap; box-shadow: var(--shadow-m); }
 .chart-note { font-size: 12px; color: var(--sub); }
 .chart-table { margin-top: 8px; font-size: 12px; }
@@ -619,7 +619,7 @@ button { font: inherit; color: inherit; }
 .slide-text { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; color: var(--accent-deep); letter-spacing: 0.04em; padding-left: 40px; }
 .slide-thumb {
   position: absolute; top: 4px; left: 4px; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--accent); color: #fff; font-size: 22px; font-weight: 700; cursor: grab; box-shadow: 0 6px 16px rgba(31, 111, 92, 0.3);
+  background: var(--accent); color: #fff; font-size: 22px; font-weight: 700; cursor: grab; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
   transition: transform 0.25s var(--ease);
 }
 .slide-thumb:active { cursor: grabbing; }
@@ -999,3 +999,35 @@ button { font: inherit; color: inherit; }
 .social-btn { min-height: 48px; }
 .social { gap: 8px; }
 .or-divider { margin: 12px 0 10px; }
+
+/* =========================================================
+   役割ごとのテーマ（お客様：緑／サロン：青／運営：紫）
+   画面上部の帯の data-role をもとに、色・背景・上端の線をページ全体で切り替える
+   ========================================================= */
+:root { --track: #ebe7df; }
+.segmented, .admin-tabs { background: var(--track); }
+:root:has(.topbar[data-role="salon"]) {
+  --accent: #2c5aa0; --accent-deep: #1f437c; --accent-soft: #e3ebf8;
+  --bg: #eef2f8; --surface-2: #f7f9fc; --line: #dfe5ee; --line-strong: #cbd4e2; --track: #dfe6f1;
+}
+:root:has(.topbar[data-role="admin"]) {
+  --accent: #5b3f99; --accent-deep: #452f78; --accent-soft: #ece6f7;
+  --bg: #f1eef7; --surface-2: #f9f7fc; --line: #e5e0ee; --line-strong: #d3cbe2; --track: #e6e0f0;
+}
+:root:has(.topbar[data-role]) body { border-top: 4px solid var(--accent); }
+
+.role-pill { display: inline-flex; align-items: center; gap: 4px; }
+.role-pill-user, .role-pill-salon, .role-pill-admin {
+  font-size: 12px; font-weight: 700; color: #fff; background: var(--accent); border-color: var(--accent); padding: 2px 9px 2px 7px;
+}
+.role-intro {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 10px 14px;
+  border-radius: var(--r-m); background: var(--accent-soft); color: var(--accent-deep);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.role-intro-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: var(--accent); color: #fff; }
+.role-intro-body { display: flex; flex-direction: column; line-height: 1.45; min-width: 0; }
+.role-intro-body strong { font-size: 15px; }
+.role-intro-body small { font-size: 12px; color: var(--ink-2); }
+.role-eyebrow { display: flex; align-items: center; gap: 6px; margin: 2px 2px 0; font-size: 13px; font-weight: 700; color: var(--accent); }
+.role-eyebrow + .screen-title-tight { margin-top: 0; }

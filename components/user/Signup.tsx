@@ -11,7 +11,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
 import PasswordInput from '@/components/auth/PasswordInput';
 import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
@@ -208,6 +208,7 @@ export default function Signup({ providers, authError, next = '/' }: { providers
       <AppHeader role="利用者">
         <Link href="/login">ログイン</Link>
       </AppHeader>
+      <RoleIntro kind="user" compact />
       <h1 className="screen-title screen-title-tight">新規登録（無料）</h1>
       <AuthErrorNotice code={authError} />
 

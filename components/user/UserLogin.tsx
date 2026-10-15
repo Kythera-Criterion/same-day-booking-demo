@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import { Loading, NotConfigured } from '@/components/States';
 import SocialButtons, { AuthErrorNotice, LoggedOutNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
@@ -45,7 +45,8 @@ export default function UserLogin({
   return (
     <main className="app">
       <AppHeader role="利用者" />
-      {verified && <p className="notice notice-ok">メールアドレスを確認しました。ログインしてください。</p>}
+      <RoleIntro kind="user" />
+      {verified &&<p className="notice notice-ok">メールアドレスを確認しました。ログインしてください。</p>}
       {loggedOut && !session && <LoggedOutNotice />}
       <AuthErrorNotice code={authError} />
       {!ready || session ? (

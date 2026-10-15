@@ -4,7 +4,7 @@
 // 運営が見ていない間に届いた掲載希望は、ログインした最初の画面で知らせ、承認の画面へ案内する
 
 import { useCallback, useEffect, useState } from 'react';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
@@ -154,6 +154,7 @@ export default function AdminApp({
 
       {ready && !session && (
         <>
+          <RoleIntro kind="admin" />
           {(loggedOut || signedOut) && <LoggedOutNotice />}
           <AuthErrorNotice code={authError} />
           <LoginBox

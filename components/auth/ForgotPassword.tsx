@@ -5,7 +5,7 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import AppHeader from '@/components/AppHeader';
+import AppHeader, { RoleIntro, type RoleKind } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 
@@ -15,6 +15,8 @@ const BACK: Record<string, { href: string; label: string }> = {
   admin: { href: '/admin', label: '運営のログインへ戻る' },
 };
 
+const HEADER_LABEL: Record<RoleKind, string> = { user: '利用者', salon: 'サロン', admin: '運営' };
+
 export default function ForgotPassword({ role }: { role: string }) {
   const { client } = useRoleSession('user');
   const [email, setEmail] = useState('');
@@ -22,6 +24,7 @@ export default function ForgotPassword({ role }: { role: string }) {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const back = BACK[role] ?? BACK.user;
+  const kind: RoleKind = role === 'salon' || role === 'admin' ? role : 'user';
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -47,7 +50,8 @@ export default function ForgotPassword({ role }: { role: string }) {
 
   return (
     <main className="app">
-      <AppHeader />
+      <AppHeader role={HEADER_LABEL[kind]} home={kind === 'user' ? '/' : `/${kind}`} />
+      <RoleIntro kind={kind} />
       <h1 className="screen-title">パスワードの再設定</h1>
       {sent ? (
         <section className="card fade-in">
