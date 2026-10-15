@@ -70,6 +70,13 @@ select t.ok('C2 別々の枠へ同時に予約しても、成立は1件だけ',
   (select count(*) from public.bookings where user_id = '$U7' and status = 'confirmed') = 1);
 EOF
 
+$P <<EOF
+select t.ok('C4 同じサロンに同時に予約が入っても、予約番号は重ならない',
+  (select count(distinct b.booking_no) = count(*) from public.bookings b join public.slots s on s.id = b.slot_id
+   where s.salon_id = '11111111-1111-4111-8111-111111111111' and b.booking_no is not null
+     and (s.start_at at time zone 'Asia/Tokyo')::date = (now() at time zone 'Asia/Tokyo')::date));
+EOF
+
 echo "--- 3. 2つの送信処理が同時に取り出す"
 ( $P <<EOF 2>&1 | sed "s/^/[送信処理1] /" ) &
 begin;

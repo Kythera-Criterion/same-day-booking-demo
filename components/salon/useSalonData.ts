@@ -8,10 +8,19 @@ import { jstTodayEnd, jstTodayStart } from '@/lib/time';
 export type SalonInfo = { id: string; name: string; address: string; phone: string | null; accepts_genders: string[] };
 export type Menu = { id: string; name: string; duration_min: number; price: number; booking_deadline_min: number; is_active: boolean };
 export type Stylist = { id: string; name: string; is_active: boolean };
-export type Preset = { id: string; label: string; menu_id: string; stylist_id: string | null; offsets_min: number[] };
+export type Preset = {
+  id: string;
+  label: string;
+  menu_id: string;
+  stylist_id: string | null;
+  offsets_min: number[];
+  kind: 'offsets' | 'free';
+  free_minutes: number | null;
+};
 export type Booking = {
   id: string;
   status: string;
+  booking_no: number | null;
   contact_name: string;
   contact_phone: string | null;
   contact_email: string | null;
@@ -28,8 +37,10 @@ export type SalonSlot = {
   end_at: string;
   deadline_at: string;
   status: string;
+  closed_reason: string | null;
   price: number;
   created_at: string;
+  stylist_id: string | null;
   menu: { name: string; duration_min: number } | null;
   stylist: { name: string } | null;
   bookings: Booking[];
@@ -52,6 +63,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
   const [stylists, setStylists] = useState<Stylist[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [lineGroup, setLineGroup] = useState<string | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [slots, setSlots] = useState<SalonSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,13 +89,14 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     const [m, st, p, priv] = await Promise.all([
       client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price'),
       client.from('stylists').select('id,name,is_active').eq('salon_id', s.id).order('name'),
-      client.from('slot_presets').select('id,label,menu_id,stylist_id,offsets_min').eq('salon_id', s.id).order('created_at'),
-      client.from('salon_private').select('line_group_id').eq('salon_id', s.id).maybeSingle(),
+      client.from('slot_presets').select('id,label,menu_id,stylist_id,offsets_min,kind,free_minutes').eq('salon_id', s.id).order('created_at'),
+      client.from('salon_private').select('line_group_id,onboarding_step').eq('salon_id', s.id).maybeSingle(),
     ]);
     setMenus((m.data ?? []) as Menu[]);
     setStylists((st.data ?? []) as Stylist[]);
     setPresets((p.data ?? []) as Preset[]);
     setLineGroup((priv.data?.line_group_id as string | null | undefined) ?? null);
+    setOnboardingStep((priv.data?.onboarding_step as number | undefined) ?? 0);
   }, [client, session]);
 
   const loadSlots = useCallback(async () => {
@@ -91,8 +104,8 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     const { data, error: e } = await client
       .from('slots')
       .select(
-        'id,start_at,end_at,deadline_at,status,price,created_at,menus(name,duration_min),stylists(name),' +
-          'bookings(id,status,contact_name,contact_phone,contact_email,karte,conversation_pref,note,photo_path,photo_note,created_at)',
+        'id,start_at,end_at,deadline_at,status,closed_reason,price,created_at,stylist_id,menus(name,duration_min),stylists(name),' +
+          'bookings(id,status,booking_no,contact_name,contact_phone,contact_email,karte,conversation_pref,note,photo_path,photo_note,created_at)',
       )
       .eq('salon_id', salon.id)
       .gte('start_at', jstTodayStart().toISOString())
@@ -108,8 +121,8 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
       stylist: one(r.stylists),
       bookings: r.bookings ?? [],
     }));
-    // 取り下げて予約もない枠は表示しない
-    setSlots(rows.filter((r) => !(r.status === 'closed' && r.bookings.length === 0)));
+    // 1枠ずつ取り下げて予約もない枠は表示しない（「今日はここまで」で取り下げた枠は、元に戻せるよう残す）
+    setSlots(rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.bookings.length === 0)));
   }, [client, salon]);
 
   useEffect(() => {
@@ -120,5 +133,5 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     loadSlots();
   }, [loadSlots]);
 
-  return { salon, menus, stylists, presets, lineGroup, slots, error, loadSalon, loadSlots };
+  return { salon, menus, stylists, presets, lineGroup, onboardingStep, slots, error, loadSalon, loadSlots };
 }

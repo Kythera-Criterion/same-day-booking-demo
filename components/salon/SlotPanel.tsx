@@ -8,6 +8,7 @@ import { toMessage } from '@/lib/errors';
 import { requestDispatch } from '@/lib/dispatch-client';
 import { CONVERSATION_PREFS, label } from '@/lib/profile-options';
 import { fmtTime, fmtYen } from '@/lib/time';
+import { UI_OPTIONS } from '@/lib/ui-options';
 import { activeBooking, type SalonSlot } from './useSalonData';
 import { STATE_LABEL, slotState } from './Timeline';
 
@@ -112,7 +113,10 @@ export default function SlotPanel({
 
         {b ? (
           <div className="guest">
-            <p className="guest-name">{b.contact_name} 様</p>
+            <p className="guest-name">
+              {b.contact_name} 様
+              {UI_OPTIONS.showBookingNo && b.booking_no !== null && <span className="no-tag num">予約番号 {b.booking_no}</span>}
+            </p>
             <dl className="detail-dl">
               <dt>電話</dt>
               <dd>{b.contact_phone ? <a href={`tel:${b.contact_phone}`}>{b.contact_phone}</a> : '—'}</dd>

@@ -1,16 +1,22 @@
 'use client';
 
-// 利用者のホーム：大きなボタン1つ → 時間帯を選ぶ → 今行ける枠が近い順に最大3件（「もっと見る」で続き）
+// 利用者のホーム：大きなボタン → 時間帯 → 候補3件（距離レーダーつき）→ ボトムシートで確認してスライドで確定
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
-import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
+import { RemainBar } from '@/components/RemainRing';
+import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
-import { distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
-import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
+import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
+import { saveOrigin } from '@/lib/origin';
+import { ROLE_LABEL, pickThree, restByStart, type PickRole } from '@/lib/picks';
+import { UI_OPTIONS } from '@/lib/ui-options';
+import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
+import BookingForm from './BookingForm';
+import Radar from './Radar';
 import { useUserState } from './useUserState';
 import VoiceSearch from './VoiceSearch';
 
@@ -28,20 +34,21 @@ type FoundSlot = {
   lat: number;
   lng: number;
 };
+type Shown = FoundSlot & { id: string; startMs: number; km: number | null; bearing: number | null; role: PickRole | null };
 
 const WINDOW_SUB: Record<WindowKey, string> = {
-  now: '30分以内',
-  '1h': '60分以内に始まる枠',
-  '3h': '3時間以内に始まる枠',
+  now: '30分以内に始まる',
+  '1h': '60分以内に始まる',
+  '3h': '3時間以内に始まる',
   today: '今日の最後まで',
 };
-
-const PAGE = 3;
+const WIDER: Record<WindowKey, WindowKey | null> = { now: '1h', '1h': '3h', '3h': 'today', today: null };
+const MORE = 3;
 
 export default function UserHome() {
   const router = useRouter();
   const { client, session, ready } = useRoleSession('user');
-  const { areas, profile, active, suspendedUntil, loaded, error: stateError, reload } = useUserState(client, session);
+  const { areas, profile, active, suspendedUntil, error: stateError, reload } = useUserState(client, session);
 
   const [step, setStep] = useState<'start' | 'pick' | 'results'>('start');
   const [win, setWin] = useState<WindowKey>('1h');
@@ -49,50 +56,51 @@ export default function UserHome() {
   const [areaId, setAreaId] = useState<string | null>(null);
   const [gps, setGps] = useState<LatLng | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [slots, setSlots] = useState<FoundSlot[] | null>(null);
+  const [all, setAll] = useState<FoundSlot[] | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [shown, setShown] = useState(PAGE);
-  const [freshIds, setFreshIds] = useState<string[]>([]);
+  const [moreCount, setMoreCount] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<Shown | null>(null);
+  const [frozen, setFrozen] = useState<{ list: Shown[]; gone: string[] } | null>(null);
+  const [arrival, setArrival] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const lastShown = useRef<Shown[]>([]);
+  const lastWinCount = useRef<number | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLLIElement>());
 
-  // 利用エリア：ログイン中はプロフィールのエリア、そうでなければ最初のエリア
   const currentAreaId = areaId ?? profile?.area_id ?? areas[0]?.id ?? null;
   const currentArea = areas.find((a) => a.id === currentAreaId) ?? null;
+  const origin = useMemo<(LatLng & { label: string }) | null>(
+    () => (gps ? { ...gps, label: '現在地' } : currentArea ? { lat: currentArea.lat, lng: currentArea.lng, label: '基準地点' } : null),
+    [gps, currentArea],
+  );
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
+    if (origin) saveOrigin(origin);
+  }, [origin]);
 
+  // 今日の空き（締切・性別・エリアは DB の関数で絞る）。時間帯ごとの件数も、ここから数える
   const search = useCallback(async () => {
-    if (!client || step !== 'results') return;
-    setSearchError(null);
+    if (!client) return;
     const { data, error } = await client.rpc('search_open_slots', {
-      p_until: windowEnd(win, new Date()).toISOString(),
+      p_until: jstTodayEnd().toISOString(),
       p_area_id: currentAreaId,
     });
     if (error) {
       setSearchError(toMessage(error));
       return;
     }
-    setSlots((prev) => {
-      const next = (data ?? []) as FoundSlot[];
-      if (prev) {
-        const known = new Set(prev.map((s) => s.slot_id));
-        const added = next.filter((s) => !known.has(s.slot_id)).map((s) => s.slot_id);
-        if (added.length > 0) setFreshIds(added);
-      }
-      return next;
-    });
-  }, [client, step, win, currentAreaId]);
+    setSearchError(null);
+    setAll((data ?? []) as FoundSlot[]);
+  }, [client, currentAreaId]);
 
   useEffect(() => {
     search();
   }, [search]);
 
-  // サロンが枠を出した瞬間に一覧へ反映する。締切や他の人の予約に備えて、20秒ごとにも読み直す
+  // サロンが枠を出す・ほかの人が予約する、の両方に追いつく（Realtime と定期的な読み直し）
   useEffect(() => {
-    if (!client || step !== 'results') return;
+    if (!client) return;
     const channel = client
       .channel('user-home-slots')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => search())
@@ -102,29 +110,83 @@ export default function UserHome() {
       client.removeChannel(channel);
       clearInterval(timer);
     };
-  }, [client, step, search]);
+  }, [client, search]);
 
-  const origin = useMemo<LatLng | null>(
-    () => gps ?? (currentArea ? { lat: currentArea.lat, lng: currentArea.lng } : null),
-    [gps, currentArea],
+  const valid = useMemo(
+    () =>
+      (all ?? []).filter(
+        (s) => new Date(s.deadline_at).getTime() > now.getTime() && (!menuWord || s.menu_name.includes(menuWord)),
+      ),
+    [all, now, menuWord],
   );
+  const counts = useMemo(() => {
+    const out = {} as Record<WindowKey, number>;
+    for (const w of WINDOWS) out[w.key] = valid.filter((s) => new Date(s.start_at) < windowEnd(w.key, now)).length;
+    return out;
+  }, [valid, now]);
 
-  const sorted = useMemo(() => {
-    if (!slots) return null;
-    const word = menuWord;
-    return slots
-      .filter((s) => new Date(s.deadline_at).getTime() > now.getTime())
-      .filter((s) => !word || s.menu_name.includes(word))
-      .map((s) => ({ ...s, km: origin ? distanceKm(origin, { lat: s.lat, lng: s.lng }) : null }))
-      .sort((a, b) => (a.km ?? 999) - (b.km ?? 999) || a.start_at.localeCompare(b.start_at));
-  }, [slots, origin, now, menuWord]);
+  const inWindow = useMemo<Shown[]>(
+    () =>
+      valid
+        .filter((s) => new Date(s.start_at) < windowEnd(win, now))
+        .map((s) => ({
+          ...s,
+          id: s.slot_id,
+          startMs: new Date(s.start_at).getTime(),
+          km: origin ? distanceKm(origin, { lat: s.lat, lng: s.lng }) : null,
+          bearing: origin ? bearingDeg(origin, { lat: s.lat, lng: s.lng }) : null,
+          role: null,
+        })),
+    [valid, win, now, origin],
+  );
+  const picks = useMemo(() => pickThree(inWindow, UI_OPTIONS.pickMode) as Shown[], [inWindow]);
+  const rest = useMemo(() => restByStart(inWindow, picks), [inWindow, picks]);
+
+  // 表示中の候補が、ほかの人の予約で消えたら「埋まりました」を見せてから、次の候補を差し込む
+  useEffect(() => {
+    if (step !== 'results' || frozen) return;
+    const ids = new Set(valid.map((s) => s.slot_id));
+    const gone = lastShown.current.filter(
+      (s) => !ids.has(s.id) && new Date(s.deadline_at).getTime() > Date.now(),
+    );
+    if (gone.length > 0) {
+      const before = lastShown.current;
+      lastShown.current = picks;
+      setFrozen({ list: before, gone: gone.map((g) => g.id) });
+      setTimeout(() => setFrozen(null), 2600);
+      return;
+    }
+    lastShown.current = picks;
+  }, [valid, picks, step, frozen]);
+
+  // 空きがない時間帯を開いている間に、空きが出たら知らせる
+  useEffect(() => {
+    if (step !== 'results') {
+      lastWinCount.current = null;
+      return;
+    }
+    const c = counts[win];
+    if (UI_OPTIONS.emptyWatch && lastWinCount.current === 0 && c > 0) {
+      setArrival('新しい空きが出ました');
+      setTimeout(() => setArrival(null), 6000);
+    }
+    lastWinCount.current = c;
+  }, [counts, win, step]);
+
+  // 表示は分ごとに更新。受付の締切が5分を切った候補があれば、10秒ごとに
+  const urgent = picks.some((p) => minutesUntil(p.deadline_at, now) <= 5);
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), urgent ? 10_000 : 60_000);
+    return () => clearInterval(t);
+  }, [urgent]);
 
   function choose(key: WindowKey, word: string | null = null) {
     setWin(key);
     setMenuWord(word);
-    setShown(PAGE);
-    setSlots(null);
-    setFreshIds([]);
+    setMoreCount(0);
+    setSelected(null);
+    setFrozen(null);
+    lastShown.current = [];
     setStep('results');
   }
 
@@ -136,30 +198,42 @@ export default function UserHome() {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setGpsError('現在地を取得できませんでした。エリアの基準地点から距離を出します。'),
+      () => setGpsError('現在地を取得できませんでした。利用エリアの基準地点から距離を出します。'),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
   }
 
-  function openSlot(id: string) {
-    const target = `/book/${id}`;
-    router.push(session ? target : `/login?next=${encodeURIComponent(target)}`);
+  function openSheet(s: Shown) {
+    if (!session) {
+      router.push(`/login?next=${encodeURIComponent(`/book/${s.id}`)}`);
+      return;
+    }
+    setSheet(s);
+  }
+
+  function focusCard(id: string) {
+    setSelected(id);
+    cardRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   if (!client) return <NotConfigured />;
 
+  const shown = frozen?.list ?? picks;
+  const extra = rest.slice(0, moreCount);
+  const total = counts.today;
+
   return (
     <main className="app">
       <AppHeader role="利用者">
-        {ready && session ? (
-          <Link href="/mypage">マイページ</Link>
-        ) : (
-          <Link href="/login">ログイン</Link>
-        )}
+        {ready && session ? <Link href="/mypage">マイページ</Link> : <Link href="/login">ログイン</Link>}
       </AppHeader>
 
+      {arrival && (
+        <p className="arrival" role="status">
+          {arrival}
+        </p>
+      )}
       {stateError && <ErrorState onRetry={reload}>{stateError}</ErrorState>}
-
       {suspendedUntil && (
         <div className="notice notice-error fade-in">
           無断キャンセルが続いたため、新しいご予約をお受けできません。
@@ -185,7 +259,14 @@ export default function UserHome() {
             <section className="hero fade-in">
               <p className="hero-lead">空いた時間だけが、今から届く。</p>
               <button className="hero-button" onClick={() => setStep('pick')}>
-                <span className="hero-button-main">今から行ける<br />お店を探す</span>
+                <span className="hero-count num" aria-live="polite">
+                  {all === null ? '空きを確かめています' : total > 0 ? `今、近くで${total}件の空き` : '今は空きがありません'}
+                </span>
+                <span className="hero-button-main">
+                  今から行ける
+                  <br />
+                  お店を探す
+                </span>
                 <span className="hero-button-sub">電話不要・店頭払い</span>
               </button>
               <p className="hero-note">今日の空き枠だけを、近い順にお届けします。</p>
@@ -198,9 +279,15 @@ export default function UserHome() {
               <h1 className="screen-title">いつ行けますか？</h1>
               <div className="window-grid">
                 {WINDOWS.map((w) => (
-                  <button key={w.key} className="window-option" onClick={() => choose(w.key)}>
+                  <button
+                    key={w.key}
+                    className={`window-option ${counts[w.key] === 0 ? 'is-empty' : ''}`}
+                    aria-disabled={counts[w.key] === 0}
+                    onClick={() => choose(w.key)}
+                  >
+                    <span className="window-count num">{all === null ? '…' : counts[w.key]}</span>
                     <span className="window-main">{w.label}</span>
-                    <span className="window-sub">{WINDOW_SUB[w.key]}</span>
+                    <span className="window-sub">{counts[w.key] === 0 ? 'いまは空きなし' : WINDOW_SUB[w.key]}</span>
                   </button>
                 ))}
               </div>
@@ -214,26 +301,21 @@ export default function UserHome() {
             <section className="fade-in">
               <div className="segmented" role="group" aria-label="時間帯">
                 {WINDOWS.map((w) => (
-                  <button key={w.key} aria-pressed={win === w.key} onClick={() => choose(w.key, menuWord)}>
+                  <button key={w.key} aria-pressed={win === w.key} className={counts[w.key] === 0 ? 'is-empty' : ''} onClick={() => choose(w.key, menuWord)}>
                     {w.label}
+                    <span className="seg-count num">{counts[w.key]}</span>
                   </button>
                 ))}
               </div>
 
               <div className="origin">
                 <span>
-                  {gps ? '現在地から近い順' : `${currentArea?.name ?? 'エリア'}の基準地点から近い順`}
+                  {gps ? '現在地から見た位置' : `${currentArea?.name ?? 'エリア'}の基準地点から見た位置`}
                   {menuWord && ` ・「${menuWord}」`}
                 </span>
-                {gps ? (
-                  <button className="btn btn-text btn-sm" onClick={() => setGps(null)}>
-                    現在地を使わない
-                  </button>
-                ) : (
-                  <button className="btn btn-text btn-sm" onClick={applyLocation}>
-                    現在地を使う
-                  </button>
-                )}
+                <button className="btn btn-text btn-sm" onClick={gps ? () => setGps(null) : applyLocation}>
+                  {gps ? '現在地を使わない' : '現在地を使う'}
+                </button>
               </div>
               {!session && areas.length > 1 && (
                 <label className="field">
@@ -250,60 +332,181 @@ export default function UserHome() {
               {gpsError && <p className="notice notice-info">{gpsError}</p>}
 
               {searchError && <ErrorState onRetry={search}>{searchError}</ErrorState>}
-              {!searchError && (sorted === null || !loaded) && <Loading rows={3} />}
-              {!searchError && sorted !== null && sorted.length === 0 && (
-                <Empty>
-                  この時間帯に行ける枠は、いまはありません。
-                  <br />
-                  サロンが枠を出すと、ここにすぐ表示されます。
-                </Empty>
+              {!searchError && all === null && <Loading rows={3} />}
+
+              {all !== null && shown.length === 0 && (
+                <div className="empty-watch card">
+                  <p className="empty-title">この時間帯に行ける枠は、いまはありません</p>
+                  {UI_OPTIONS.emptyWatch && (
+                    <p className="empty-sub">
+                      <span className="watch-dot" aria-hidden />
+                      この画面を開いている間に空きが出たら、お知らせします。
+                    </p>
+                  )}
+                  {WIDER[win] && (
+                    <button className="btn btn-secondary btn-block" onClick={() => choose(WIDER[win]!, menuWord)}>
+                      時間帯を広げる（{WINDOWS.find((w) => w.key === WIDER[win])?.label}・{counts[WIDER[win]!]}件）
+                    </button>
+                  )}
+                </div>
               )}
 
-              {sorted && sorted.length > 0 && (
+              {shown.length > 0 && origin && (
+                <Radar
+                  originLabel={origin.label}
+                  selected={selected}
+                  onSelect={focusCard}
+                  points={shown
+                    .filter((s) => s.km !== null && s.bearing !== null && !frozen?.gone.includes(s.id))
+                    .map((s, i) => ({ id: s.id, no: i + 1, label: fmtTime(s.start_at), km: s.km!, bearing: s.bearing! }))}
+                />
+              )}
+
+              {shown.length > 0 && (
                 <ul className="slot-list">
-                  {sorted.slice(0, shown).map((s) => {
-                    const min = minutesUntil(s.start_at, now);
-                    return (
-                      <li key={s.slot_id} className={`slot-card fade-in ${freshIds.includes(s.slot_id) ? 'is-fresh' : ''}`}>
-                        <div className="slot-when">
-                          <span className="slot-start num">{fmtTime(s.start_at)}</span>
-                          <span className="slot-left">{fmtRemaining(min)}</span>
-                        </div>
-                        <div className="slot-body">
-                          <p className="slot-menu">{s.menu_name}</p>
-                          <p className="slot-meta">
-                            {s.duration_min}分 ・ {s.salon_name}
-                            {s.km !== null && <> ・ {fmtDistance(s.km)}</>}
-                          </p>
-                          <p className="slot-price">
-                            <span className="price-label">当日価格</span>
-                            <span className="num">{fmtYen(s.price)}</span>
-                          </p>
-                        </div>
-                        <button
-                          className="btn btn-primary slot-cta"
-                          disabled={!!suspendedUntil}
-                          onClick={() => openSlot(s.slot_id)}
-                        >
-                          予約
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {shown.map((s, i) => (
+                    <SlotCard
+                      key={s.id}
+                      slot={s}
+                      no={i + 1}
+                      now={now}
+                      gone={!!frozen?.gone.includes(s.id)}
+                      selected={selected === s.id}
+                      disabled={!!suspendedUntil}
+                      onSelect={() => setSelected(s.id)}
+                      onBook={() => openSheet(s)}
+                      refFn={(el) => (el ? cardRefs.current.set(s.id, el) : cardRefs.current.delete(s.id))}
+                    />
+                  ))}
                 </ul>
               )}
-              {sorted && sorted.length > shown && (
-                <button className="btn btn-secondary btn-block" onClick={() => setShown((n) => n + PAGE)}>
-                  もっと見る（あと{sorted.length - shown}件）
+
+              {extra.length > 0 && (
+                <>
+                  <h2 className="section-title">ほかの枠（開始が早い順）</h2>
+                  <ul className="slot-list">
+                    {extra.map((s) => (
+                      <SlotCard
+                        key={s.id}
+                        slot={s}
+                        now={now}
+                        gone={false}
+                        selected={false}
+                        disabled={!!suspendedUntil}
+                        onSelect={() => undefined}
+                        onBook={() => openSheet(s)}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+              {rest.length > moreCount && !frozen && (
+                <button className="btn btn-secondary btn-block" onClick={() => setMoreCount((n) => n + MORE)}>
+                  もっと見る（あと{rest.length - moreCount}件）
                 </button>
               )}
               <p className="fine-print">
-                現在地は使うと選んだときだけ、この端末の中で距離の計算に使います。サーバーには送りません。受付の締切を過ぎた枠は表示されません。
+                現在地は使うと選んだときだけ、この端末の中で距離と方位の計算に使います。サーバーや地図サービスには送りません。受付の締切を過ぎた枠は表示されません。
               </p>
             </section>
           )}
         </>
       )}
+
+      {sheet && session && (
+        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
+          <section className="sheet sheet-narrow" role="dialog" aria-label="予約の確認" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-grip" aria-hidden />
+            <div className="row-between">
+              <h2 className="card-title">予約の確認</h2>
+              <button className="btn btn-text" onClick={() => setSheet(null)}>
+                閉じる
+              </button>
+            </div>
+            <BookingForm
+              client={client}
+              session={session}
+              slot={{ ...sheet, id: sheet.slot_id }}
+              defaultPref={profile?.conversation_pref ?? null}
+              activeBookingId={active?.id ?? null}
+              suspendedUntil={suspendedUntil}
+              now={now}
+              onBooked={(id) => router.push(`/booking/${id}?new=1`)}
+              onUnavailable={search}
+            />
+          </section>
+        </div>
+      )}
     </main>
+  );
+}
+
+function SlotCard({
+  slot,
+  no,
+  now,
+  gone,
+  selected,
+  disabled,
+  onSelect,
+  onBook,
+  refFn,
+}: {
+  slot: Shown;
+  no?: number;
+  now: Date;
+  gone: boolean;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+  onBook: () => void;
+  refFn?: (el: HTMLLIElement | null) => void;
+}) {
+  const left = minutesUntil(slot.deadline_at, now);
+  return (
+    <li
+      ref={refFn}
+      className={`slot-card ${selected ? 'is-selected' : ''} ${gone ? 'is-gone' : ''}`}
+      onClick={onSelect}
+    >
+      {slot.role && <span className={`role-tag role-${slot.role}`}>{ROLE_LABEL[slot.role]}</span>}
+      <div className="slot-main">
+        <div className="slot-when">
+          {no !== undefined && <span className="slot-no num">{no}</span>}
+          <span className="slot-start num">{fmtTime(slot.start_at)}</span>
+          <span className="slot-left num">{fmtRemaining(minutesUntil(slot.start_at, now))}</span>
+        </div>
+        <div className="slot-body">
+          <p className="slot-menu">{slot.menu_name}</p>
+          <p className="slot-meta">
+            {slot.duration_min}分 ・ {slot.salon_name}
+            {slot.km !== null && <> ・ {fmtDistance(slot.km)}</>}
+          </p>
+          <p className="slot-price">
+            <span className="price-label">当日価格</span>
+            <span className="num">{fmtYen(slot.price)}</span>
+          </p>
+        </div>
+        <button
+          className="btn btn-primary slot-cta"
+          disabled={disabled || gone}
+          onClick={(e) => {
+            e.stopPropagation();
+            onBook();
+          }}
+        >
+          予約
+        </button>
+      </div>
+      <div className={`slot-deadline ${left <= 5 ? 'is-urgent' : ''}`}>
+        <span className="num">受付はあと{Math.max(0, left)}分</span>
+        <RemainBar fraction={left / 60} urgent={left <= 5} />
+      </div>
+      {gone && (
+        <div className="gone-veil" role="status">
+          埋まりました
+        </div>
+      )}
+    </li>
   );
 }

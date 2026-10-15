@@ -17,12 +17,14 @@ export const STATE_LABEL: Record<string, string> = {
   no_show: '無断キャンセル',
   expired: '受付終了',
   closed: '取り下げ',
+  paused: '今日はここまで',
   booked: '予約あり',
 };
 
 export function slotState(slot: SalonSlot): string {
   const b = activeBooking(slot);
   if (b) return b.status;
+  if (slot.status === 'closed' && slot.closed_reason === 'paused') return 'paused';
   return slot.status === 'booked' ? 'closed' : slot.status;
 }
 

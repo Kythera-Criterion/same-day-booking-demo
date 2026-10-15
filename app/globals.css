@@ -525,3 +525,249 @@ button { font: inherit; color: inherit; }
 .voice { width: 100%; text-align: left; margin-top: 18px; }
 .voice-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 10px; }
 .voice-parsed { font-size: 13px; color: var(--accent-deep); background: var(--accent-soft); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; }
+
+/* =========================================================
+   画面の仕上げ（テーマ「今」：残り時間とともに減る円とバーを共通の目印にする）
+   ========================================================= */
+.num, .slot-start, .ticket-time, .kpi-num, .panel-time { font-variant-numeric: tabular-nums; }
+
+/* 残り時間の円・バー */
+.ring { position: relative; display: grid; place-items: center; margin: 0 auto; }
+.ring svg { position: absolute; inset: 0; }
+.ring-track { fill: none; stroke: rgba(255, 255, 255, 0.18); }
+.ring-value { fill: none; stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); }
+.ring-inner { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.remain-bar { display: block; height: 4px; border-radius: 2px; background: #ece8df; overflow: hidden; flex: 1; }
+.remain-bar > span { display: block; height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.8s var(--ease); }
+.remain-bar.is-urgent > span { background: var(--amber); }
+
+/* ホーム */
+.hero-count { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; background: rgba(255, 255, 255, 0.16); border-radius: 999px; padding: 3px 12px; }
+.window-option { position: relative; }
+.window-count { position: absolute; top: 12px; right: 14px; font-size: 22px; font-weight: 700; }
+.window-option.is-empty { opacity: 0.45; box-shadow: none; }
+.window-option:first-child.is-empty { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.window-option:first-child.is-empty .window-sub { color: var(--sub); }
+.segmented button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+.segmented button.is-empty { opacity: 0.5; }
+.seg-count { font-size: 11px; font-weight: 700; color: var(--sub); line-height: 1.1; }
+.segmented button[aria-pressed="true"] .seg-count { color: var(--accent); }
+
+.radar { margin: 6px auto 4px; max-width: 300px; }
+.radar svg { width: 100%; height: auto; display: block; overflow: visible; }
+.radar-edge { fill: var(--surface); stroke: var(--line); }
+.radar-ring { fill: none; stroke: var(--line-strong); stroke-dasharray: 3 4; }
+.radar-axis { stroke: var(--line); }
+.radar-scale { font-size: 10px; fill: var(--sub); }
+.radar-me { fill: var(--ink); stroke: #fff; stroke-width: 3; }
+.radar-me-label { font-size: 10px; fill: var(--ink-2); }
+.radar-pt { cursor: pointer; outline: none; }
+.radar-hit { fill: transparent; }
+.radar-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; transition: r 0.2s var(--ease); }
+.radar-no { font-size: 11px; font-weight: 700; fill: var(--accent-deep); pointer-events: none; }
+.radar-time { font-size: 11px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.radar-pt.is-on .radar-dot { fill: var(--accent); stroke: var(--accent-deep); }
+.radar-pt.is-on .radar-no { fill: #fff; }
+.radar-pt.is-out .radar-dot { stroke-dasharray: 3 2; }
+.radar-pt:focus-visible .radar-hit { stroke: var(--accent); stroke-width: 2; }
+
+.slot-card { position: relative; display: block; padding: 12px 14px 12px 16px; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s; }
+.slot-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.slot-main { display: grid; grid-template-columns: 84px 1fr auto; gap: 12px; align-items: center; }
+.slot-when { position: relative; }
+.slot-no { position: absolute; top: -2px; left: -2px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); transform: translate(-60%, -40%); }
+.role-tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; border-radius: 6px; padding: 1px 8px; margin-bottom: 6px; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line); }
+.role-earliest { color: var(--accent-deep); background: var(--accent-soft); border-color: transparent; }
+.slot-deadline { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.slot-deadline > span:first-child { white-space: nowrap; }
+.slot-deadline.is-urgent { color: #7a520a; font-weight: 700; }
+.slot-card.is-gone { pointer-events: none; }
+.gone-veil {
+  position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit;
+  background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--ink-2); font-weight: 700; font-size: 15px;
+  animation: goneOut 2.6s var(--ease) both;
+}
+@keyframes goneOut { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0.9; } }
+
+.empty-watch { text-align: center; }
+.empty-title { font-weight: 700; margin: 4px 0 6px; }
+.empty-sub { font-size: 13px; color: var(--ink-2); margin: 0 0 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.watch-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulseDot 1.2s ease-in-out infinite alternate; }
+.arrival {
+  position: sticky; top: 64px; z-index: 25; margin: 0 0 10px; padding: 12px 14px; border-radius: 12px;
+  background: var(--accent); color: #fff; font-weight: 700; text-align: center; box-shadow: var(--shadow-m); animation: fadeIn 0.3s var(--ease) both;
+}
+
+/* 予約の確認（ボトムシート） */
+.sheet-narrow { width: min(480px, 100%); }
+.promise { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r-m); background: var(--surface); }
+.promise li { display: flex; flex-direction: column; padding: 10px 14px; }
+.promise li + li { border-top: 1px solid var(--line); }
+.promise strong { font-size: 14px; }
+.promise span { font-size: 12px; color: var(--sub); }
+.promise li.is-urgent strong { color: #7a520a; }
+.choice-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice {
+  min-height: 44px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface);
+  font-size: 15px; color: var(--ink); cursor: pointer;
+}
+.choice[aria-pressed="true"], .choice[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.confirm-ctl { display: flex; flex-direction: column; gap: 8px; position: sticky; bottom: 0; padding: 10px 0 calc(6px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, transparent, var(--surface) 25%); }
+.slide { position: relative; height: 60px; border-radius: 30px; background: var(--accent-soft); overflow: hidden; user-select: none; touch-action: none; }
+.slide.is-off { opacity: 0.45; }
+.slide-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 22%, transparent); border-radius: 30px; }
+.slide-text { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; color: var(--accent-deep); letter-spacing: 0.04em; padding-left: 40px; }
+.slide-thumb {
+  position: absolute; top: 4px; left: 4px; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-size: 22px; font-weight: 700; cursor: grab; box-shadow: 0 6px 16px rgba(31, 111, 92, 0.3);
+  transition: transform 0.25s var(--ease);
+}
+.slide-thumb:active { cursor: grabbing; }
+.hold-btn { position: relative; min-height: 44px; border: 1px dashed var(--line-strong); border-radius: 12px; background: var(--surface); overflow: hidden; cursor: pointer; color: var(--ink-2); font-size: 13px; }
+.hold-btn:disabled { opacity: 0.45; cursor: default; }
+.hold-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); }
+.hold-text { position: relative; }
+
+/* 来店までのライブ画面 */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; counter-reset: flow; }
+.flow li { position: relative; text-align: center; font-size: 12px; font-weight: 700; color: var(--sub); padding-top: 14px; }
+.flow li::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 2px; background: var(--line); }
+.flow li.is-done { color: var(--accent-deep); }
+.flow li.is-done::before { background: var(--accent); }
+.flow li.is-next::before { background: linear-gradient(90deg, var(--accent) 0 30%, var(--line) 30%); }
+.live { text-align: center; color: #fff; border-radius: var(--r-l); padding: 22px 16px 20px; background: linear-gradient(150deg, var(--accent) 0%, var(--accent-deep) 100%); box-shadow: var(--shadow-m); }
+.live-label { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.12em; opacity: 0.9; }
+.live-sub { font-size: 13px; opacity: 0.85; }
+.live-main { font-size: 18px; font-weight: 500; line-height: 1.1; }
+.live-main strong { font-size: 54px; font-weight: 700; margin: 0 2px; letter-spacing: -0.01em; }
+.booking-no { display: flex; align-items: baseline; justify-content: center; gap: 10px; margin: 16px auto 0; padding: 10px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.14); width: fit-content; }
+.booking-no span { font-size: 12px; opacity: 0.9; }
+.booking-no strong { font-size: 34px; line-height: 1; }
+.booking-no small { font-size: 11px; opacity: 0.85; }
+.depart { margin: 14px 0 0; font-size: 14px; }
+.action-big .btn { min-height: 60px; font-size: 17px; }
+
+/* 新規登録 */
+.progress { margin: -6px 0 14px; }
+.progress-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.progress-bar span { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s var(--ease); }
+.progress-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; justify-content: space-between; font-size: 13px; color: var(--sub); }
+.progress-steps .is-on { color: var(--accent-deep); font-weight: 700; }
+.req { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: #fff; background: var(--warn); border-radius: 4px; padding: 0 5px; vertical-align: 1px; }
+.field-error { display: block; font-size: 13px; color: var(--warn); margin-top: 6px; font-weight: 500; }
+.has-error .input, .has-error .choice-row { border-color: var(--warn); }
+.has-error .input { box-shadow: 0 0 0 3px var(--warn-soft); }
+.field-label { font-size: 14px; }
+
+/* =========================================================
+   サロンの画面（タブレット横向き 1024px とスマートフォン）
+   ========================================================= */
+.app-salon { max-width: 1120px; }
+.salon-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pause-ctl { display: flex; gap: 8px; }
+.gate { display: grid; gap: 12px; margin-bottom: 12px; border-color: var(--accent); background: var(--accent-soft); }
+.salon-grid { display: grid; gap: 12px; }
+@media (min-width: 900px) {
+  .salon-grid { grid-template-columns: 340px 1fr; align-items: start; }
+  .salon-grid > .timeline-card { margin-top: 0; }
+}
+.only-wide { display: none; }
+@media (min-width: 900px) {
+  .only-wide { display: block; }
+  .only-narrow { display: none; }
+}
+
+.achieve { border-radius: var(--r-m); padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); }
+.achieve-label { margin: 0; font-size: 12px; color: var(--sub); letter-spacing: 0.04em; }
+.achieve-main { margin: 2px 0 0; font-size: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px; }
+.achieve-main strong { font-size: 24px; color: var(--accent-deep); }
+.achieve-main small { font-size: 11px; color: var(--sub); margin-left: 4px; }
+.achieve-sep { color: var(--line-strong); margin: 0 4px; }
+
+.overdue { border-radius: var(--r-m); padding: 14px 16px; background: var(--amber-soft); border: 1px solid #ecd39b; color: #5e4108; }
+.overdue-title { margin: 0; font-weight: 700; }
+.overdue-sub { margin: 2px 0 10px; font-size: 12px; }
+.overdue ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.overdue li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.6); border-radius: 10px; padding: 8px 10px; }
+.overdue-actions { display: flex; gap: 6px; }
+.no-tag { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 700; color: var(--accent-deep); background: var(--accent-soft); border-radius: 6px; padding: 0 7px; }
+
+.lg-closed { background: #e3dfd6; }
+.tl-paused { background: repeating-linear-gradient(135deg, #efece6 0 6px, #e6e2da 6px 12px); color: var(--sub); border: 1px dashed var(--line-strong); }
+
+.bands { padding: 6px 14px 4px; }
+.bands-head, .band-row { display: grid; grid-template-columns: 76px 1fr; gap: 8px; align-items: center; }
+.bands-scale { position: relative; height: 18px; }
+.bands-scale span { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.band-row { min-height: 64px; border-top: 1px solid var(--line); }
+.band-name { font-size: 13px; font-weight: 700; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.band-track { position: relative; height: 52px; border-radius: 10px; background: var(--surface-2); cursor: copy; }
+.band-past { position: absolute; inset: 0 auto 0 0; border-radius: 10px 0 0 10px; background: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.045) 0 5px, transparent 5px 10px); pointer-events: none; }
+.band-hour { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); pointer-events: none; }
+.band-now { position: absolute; top: -6px; bottom: -6px; border-left: 2px solid var(--warn); z-index: 3; pointer-events: none; }
+.band-now::before { content: ""; position: absolute; top: -3px; left: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.band-block {
+  position: absolute; top: 4px; bottom: 4px; z-index: 2; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  padding: 2px 6px; border-radius: 8px; border: 1.5px solid transparent; font-size: 11px; line-height: 1.25; overflow: hidden; white-space: nowrap; cursor: pointer; text-align: left;
+}
+
+/* 新しい予約（画面全体の穏やかな点滅。どこを押しても確認） */
+.incoming {
+  position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; cursor: pointer; outline: none;
+  background: var(--accent-deep); color: #fff; animation: incomingPulse 1.6s ease-in-out infinite;
+}
+@keyframes incomingPulse { 0%, 100% { background: var(--accent-deep); } 50% { background: #2a8a72; } }
+.incoming-inner { text-align: center; padding: 24px; }
+.incoming-label { margin: 0 0 10px; font-size: 20px; letter-spacing: 0.1em; opacity: 0.95; }
+.incoming-main { margin: 0; font-size: clamp(56px, 12vw, 120px); font-weight: 700; line-height: 1.05; }
+.incoming-main span { display: block; font-size: clamp(22px, 4vw, 40px); font-weight: 500; margin-top: 6px; }
+.incoming-name { margin: 14px 0 0; font-size: clamp(30px, 6vw, 60px); font-weight: 700; }
+.incoming-no { margin: 14px auto 0; font-size: clamp(18px, 3vw, 28px); background: rgba(255, 255, 255, 0.16); border-radius: 14px; padding: 6px 18px; width: fit-content; }
+.incoming-no strong { font-size: 1.6em; margin-left: 8px; }
+.incoming-tap { margin: 26px 0 0; font-size: 15px; opacity: 0.9; }
+
+/* 空いた時間を切り分けた案 */
+.plan { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.plan li + li { border-top: 1px solid var(--line); }
+.plan li.is-off { background: var(--surface-2); color: var(--sub); }
+.plan-row { display: grid; grid-template-columns: 28px auto 1fr; gap: 10px; align-items: center; min-height: 48px; padding: 6px 12px; cursor: pointer; }
+.plan-row input { width: 20px; height: 20px; accent-color: var(--accent); }
+.plan-time { font-weight: 700; font-size: 15px; }
+.plan-note { font-size: 12px; color: var(--sub); text-align: right; }
+.preset-edit summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 13px; color: var(--ink-2); }
+
+/* 初期設定 */
+.onb-steps { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.onb-steps li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--sub); }
+.onb-steps li.is-now { color: var(--ink); font-weight: 700; }
+.onb-steps li.is-done { color: var(--accent-deep); }
+.onb-no { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--line); color: var(--ink-2); }
+.onb-steps .is-now .onb-no { background: var(--ink); color: #fff; }
+.onb-steps .is-done .onb-no { background: var(--accent); color: #fff; }
+
+/* 動きを減らす設定を尊重する */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  .hero-button::after { display: none; }
+  .incoming { animation: none; }
+}
+
+/* 担当ごとの帯：横にスクロールして、1時間を十分な幅で見せる */
+.bands-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.bands { min-width: 1560px; padding: 6px 14px 4px 0; }
+.bands-head, .band-row { grid-template-columns: 84px 1fr; }
+.band-name { position: sticky; left: 0; z-index: 4; background: var(--surface); padding: 0 8px 0 14px; align-self: stretch; display: flex; align-items: center; }
+.band-row { min-height: 0; padding: 6px 0; }
+.band-track { height: auto; }
+.band-block { top: auto; bottom: auto; flex-direction: row; align-items: center; gap: 6px; padding: 0 8px; font-size: 12px; }
+.band-label { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+
+/* タブレット横向き：予定の帯を上に全幅で、まとめ・記録漏れ・これからの予約を下に2列で */
+@media (min-width: 900px) {
+  .salon-grid { grid-template-columns: 1fr; }
+  .salon-grid > .timeline-card { order: -1; }
+  .salon-grid > .stack { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  .salon-grid > .stack > .achieve { grid-column: 1 / -1; }
+}
+
+.origin .btn { white-space: nowrap; flex: none; }

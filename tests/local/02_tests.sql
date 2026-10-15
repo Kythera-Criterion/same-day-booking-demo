@@ -495,6 +495,93 @@ select t.ok('T33 試し実行では何も消さない',
   and (select p from before_counts) = (select count(*) from public.profiles));
 
 -- ---------------------------------------------------------
+-- T35 予約番号（0005）
+-- ---------------------------------------------------------
+select t.ok('T35 関数で作った予約には予約番号が付く',
+  not exists (select 1 from public.bookings where booking_no is null and not demo_history
+              and id not in ('b0000000-0000-4000-8000-0000000000e1', 'b0000000-0000-4000-8000-0000000000e2', 'b0000000-0000-4000-8000-0000000000fe')));
+select t.ok('T35 予約番号は、その日そのサロンで重ならない',
+  not exists (select 1 from public.bookings b join public.slots s on s.id = b.slot_id
+              where b.booking_no is not null
+              group by s.salon_id, (s.start_at at time zone 'Asia/Tokyo')::date, b.booking_no having count(*) > 1));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T35 サロンは自店の予約の予約番号を見られる',
+  (select booking_no from public.bookings where slot_id = '5a000000-0000-4000-8000-000000000001' and status = 'confirmed') is not null);
+select t.raises('T35 番号の払い出し表は画面側から見えない', 'select count(*) from public.booking_counters', 'permission denied');
+select t.raises('T35 番号の払い出しは画面側から呼べない', $$select public.next_booking_no('11111111-1111-4111-8111-111111111111', now())$$, 'permission denied');
+commit;
+
+-- ---------------------------------------------------------
+-- T36 「今日はここまで」と「元に戻す」（0005）
+-- ---------------------------------------------------------
+insert into t.ctx values ('a_open', (select count(*) from public.slots where salon_id = '11111111-1111-4111-8111-111111111111'
+  and status = 'open' and start_at >= public.jst_today_start() and start_at < public.jst_today_end())::text);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T36 ほかのサロンの枠はまとめて取り下げられない', $$select public.salon_pause_today('11111111-1111-4111-8111-111111111111')$$, 'forbidden');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T36 今日の公開中の枠を、まとめて取り下げられる',
+  public.salon_pause_today('11111111-1111-4111-8111-111111111111')::text = (select value from t.ctx where key = 'a_open'));
+commit;
+select t.ok('T36 取り下げた枠は「今日はここまで」として残る',
+  (select status = 'closed' and closed_reason = 'paused' from public.slots where id = '5a000000-0000-4000-8000-000000000002'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.ok('T36 取り下げた枠は利用者の検索に出ない',
+  not exists (select 1 from public.search_open_slots(public.jst_today_end()) where salon_id = '11111111-1111-4111-8111-111111111111'));
+commit;
+-- 取り下げのあとに、同じ担当の重なる枠を出しておく（元に戻すときに、その枠は戻さない）
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.runs('T36 取り下げ中は、同じ時間に別の枠を出せる',
+  $$select public.create_slot('d1111111-1111-4111-8111-111111111111', t.at(170), 'a1111111-1111-4111-8111-111111111111')$$);
+create temp table resumed as select public.salon_resume_today('11111111-1111-4111-8111-111111111111') as r;
+select t.ok('T36 元に戻すと、締切前の枠だけが再び公開される',
+  (select (r ->> 'reopened')::int >= 1 and (r ->> 'skipped')::int >= 1 from resumed), (select r::text from resumed));
+commit;
+select t.ok('T36 戻した枠は公開中になる', (select status from public.slots where id = '5a000000-0000-4000-8000-000000000002') = 'open');
+select t.ok('T36 重なる枠があるものは取り下げのまま',
+  (select status = 'closed' and closed_reason = 'paused' from public.slots
+   where stylist_id = 'a1111111-1111-4111-8111-111111111111' and start_at = t.at(150)));
+select t.ok('T36 まとめての取り下げと再公開が記録に残る',
+  (select count(distinct action) from public.audit_logs where action in ('pause_today', 'resume_today')) = 2);
+
+-- ---------------------------------------------------------
+-- T37 空いた時間を切り分けた枠を、まとめて作る（0005）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+create temp table bulk as select public.create_slots('d1111111-1111-4111-8111-111111111111',
+  array[t.at(200), now() + interval '1 minute', t.at(0) + interval '1 day']) as r;
+select t.ok('T37 作れる枠だけを作る', (select jsonb_array_length(r -> 'created') = 1 from bulk), (select r::text from bulk));
+select t.ok('T37 作れなかった枠は理由を返す',
+  (select jsonb_agg(f ->> 'reason' order by f ->> 'reason') = '["today_only", "too_late"]'::jsonb
+   from bulk, jsonb_array_elements(r -> 'failed') f));
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T37 ほかのサロンのメニューでは、まとめて作れない',
+  $$select public.create_slots('d1111111-1111-4111-8111-111111111111', array[t.at(210)])$$, 'forbidden');
+commit;
+
+-- ---------------------------------------------------------
+-- T38 いつもの空き方・初期設定（0005）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.runs('T38 いつもの空き方を保存できる',
+  $$select public.salon_save_free_preset('11111111-1111-4111-8111-111111111111', '空き90分・カット', 'd1111111-1111-4111-8111-111111111111', null, 90)$$);
+select t.raises('T38 空き時間の長さが範囲外なら受け付けない',
+  $$select public.salon_save_free_preset('11111111-1111-4111-8111-111111111111', 'x', 'd1111111-1111-4111-8111-111111111111', null, 300)$$, 'invalid_input');
+select t.runs('T38 初期設定の進み具合を残せる', $$select public.salon_set_onboarding('11111111-1111-4111-8111-111111111111', 2)$$);
+select t.ok('T38 進み具合は自店だけ読める',
+  (select onboarding_step from public.salon_private where salon_id = '11111111-1111-4111-8111-111111111111') = 2);
+select public.salon_set_onboarding('11111111-1111-4111-8111-111111111111', 3);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T38 ほかのサロンのいつもの空き方は保存できない',
+  $$select public.salon_save_free_preset('11111111-1111-4111-8111-111111111111', 'x', 'd1111111-1111-4111-8111-111111111111', null, 60)$$, 'forbidden');
+select t.raises('T38 ほかのサロンの初期設定は変えられない', $$select public.salon_set_onboarding('11111111-1111-4111-8111-111111111111', 0)$$, 'forbidden');
+select t.ok('T38 メニューのある既存のサロンは、設定済みとして扱う',
+  (select onboarding_step from public.salon_private where salon_id = '22222222-2222-4222-8222-222222222222') = 3);
+commit;
+
+-- ---------------------------------------------------------
 -- T34 デモ用の関数（サーバー側だけ）
 -- ---------------------------------------------------------
 begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';

@@ -19,6 +19,7 @@ for round in 1 2; do
   $DB -f "$ROOT/supabase/migrations/0002_rules.sql"
   $DB -f "$ROOT/supabase/migrations/0003_automation.sql"
   $DB -f "$ROOT/supabase/migrations/0004_demo.sql"
+  $DB -f "$ROOT/supabase/migrations/0005_ui.sql"
   $DB -f "$ROOT/supabase/seed_0002.sql"
 done
 echo "追加のマイグレーションを2回流しても、エラーはありませんでした"

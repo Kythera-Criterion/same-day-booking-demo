@@ -59,7 +59,8 @@ Supabase の **SQL Editor** で、次の順に実行します（`psql` でも同
 | 3 | `supabase/migrations/0002_rules.sql` | 業務ルール（締切・1アカウント1件・キャンセル理由・写し・写真・アンケート・同意・運営・掲載希望） |
 | 4 | `supabase/migrations/0003_automation.sql` | 時間切れの処理・通知の送信待ち・実証の数字・終了処理の試し実行・pg_cron の登録 |
 | 5 | `supabase/migrations/0004_demo.sql` | デモ用の関数（サーバー側からだけ呼べる） |
-| 6 | `supabase/seed_0002.sql` | エリア・カラーのメニュー・アンケートの質問・いつもの枠 |
+| 6 | `supabase/migrations/0005_ui.sql` | 予約番号・「今日はここまで」と元に戻す・枠のまとめて作成・いつもの空き方・サロンの初期設定 |
+| 7 | `supabase/seed_0002.sql` | エリア・カラーのメニュー・アンケートの質問・いつもの枠 |
 
 0002 以降は、既存のデータがあっても適用でき、2回流しても壊れません。
 
@@ -93,6 +94,12 @@ Supabase の **SQL Editor** で、次の順に実行します（`psql` でも同
 | `LINE_CHANNEL_ACCESS_TOKEN` | 任意 | LINE Messaging API。未設定ならシミュレーション送信 |
 | `RESEND_API_KEY` / `MAIL_FROM` | 任意 | Resend。未設定ならシミュレーション送信 |
 | `NEXT_PUBLIC_TERMS_URL` / `NEXT_PUBLIC_PRIVACY_URL` | 任意 | 登録画面から開く利用規約・プライバシーポリシー |
+| `NEXT_PUBLIC_PICK_MODE` | 任意 | 【提案】候補3件の選び方。`roles`（既定：いちばん早く始まる・いちばん近い・もうひとつの候補）／`nearest`（近い順） |
+| `NEXT_PUBLIC_SHOW_DEPARTURE` | 任意 | 【提案】予約確定画面の「○時○分ごろに出れば間に合います」。`false` で出さない |
+| `NEXT_PUBLIC_SHOW_BOOKING_NO` | 任意 | 【提案】予約番号の表示（利用者・サロン）。`false` で出さない（番号は DB で振り続ける） |
+| `NEXT_PUBLIC_EMPTY_WATCH` | 任意 | 【提案】空きがないときの「空きが出たらお知らせします」。`false` で出さない |
+| `NEXT_PUBLIC_SALON_ACHIEVEMENT` | 任意 | 【提案】サロンの画面上部の「今日、空き時間から生まれた予約」。`false` で出さない |
+| `NEXT_PUBLIC_OVERDUE_MINUTES` | 任意 | 来店の記録がまだの予約を知らせるまでの分数（既定 15・仮の値） |
 
 規約の版は `lib/profile-options.ts` の `TERMS_VERSION`（仮置き）です。公開中の規約の版に合わせて書き換えてください。
 
@@ -143,7 +150,8 @@ Supabase 標準のメール送信は、送信数が少なく制限されてい�
 | コマンド | 確認すること | 必要なもの |
 |---|---|---|
 | `npm run lint` / `npm run typecheck` / `npm run build` | リンター・型・ビルド | — |
-| `tests/local/run.sh` | DB のルールと権限 140 項目＋同時処理 3 項目（下記） | ローカルの PostgreSQL 16 以上 |
+| `npm run test:unit` | 候補の選び方・空き時間の切り分け・徒歩の目安・方位（19 項目） | — |
+| `tests/local/run.sh` | DB のルールと権限 164 項目＋同時処理 4 項目（下記） | ローカルの PostgreSQL 16 以上 |
 | `npm run test:race` | 10人が同じ枠に同時に予約 → 成立1件・「すでに埋まっています」9件 | Supabase |
 | `npm run test:rls` | 権限の分離 15 項目 | Supabase |
 | `npm run verify` | リセット → 枠の公開 → 予約（写真つき）→ Realtime → 通知 → キャンセル → 集計 → pg_cron（25 項目） | Supabase（アプリを起動していれば通知の送信まで） |
@@ -160,6 +168,16 @@ PSQL="psql -h localhost -p 5432 -U postgres" ./tests/local/run.sh
 - pg_cron：`select * from cron.job_run_details order by start_time desc limit 5;` で毎分の実行結果を見る
 
 ---
+
+## 画面イメージ（docs/screens）
+
+390×844（スマートフォン）と 1024×768（タブレット横向き）の両方を撮っています。
+
+| 利用者 | サロン |
+|---|---|
+| `user-candidates-*`（候補3件と距離レーダー）・`user-empty-*`（0件）・`user-sheet-390`（確定のボトムシート）・`user-booked-*`（予約確定）・`user-completed-*`（来店済み）・`user-cancelled-*`（サロン都合のキャンセル） | `salon-gate-*`（営業の始め）・`salon-incoming-*`（予約の通知中）・`salon-overdue-*`（記録漏れの警告）・`salon-paused-*`（「今日はここまで」のあと）・`salon-split-*`（空いた時間を切り分けた案） |
+
+![候補3件](docs/screens/user-candidates-390.png)
 
 ## 3分間のデモの手順
 

@@ -27,6 +27,7 @@ export default function SalonSettings({
   stylists,
   lineGroup,
   onSaved,
+  only,
 }: {
   client: SupabaseClient;
   salon: SalonInfo;
@@ -34,6 +35,7 @@ export default function SalonSettings({
   stylists: Stylist[];
   lineGroup: string | null;
   onSaved: () => void;
+  only?: 'menus' | 'stylists' | 'contact';
 }) {
   const [menuDraft, setMenuDraft] = useState<MenuDraft | null>(null);
   const [stylistName, setStylistName] = useState('');
@@ -95,6 +97,7 @@ export default function SalonSettings({
     <div className="stack">
       {message && <p className={`notice ${message.kind === 'ok' ? 'notice-ok' : 'notice-error'}`}>{message.text}</p>}
 
+      {(!only || only === 'menus') && (
       <section className="card">
         <div className="row-between">
           <h2 className="card-title">メニュー</h2>
@@ -178,7 +181,9 @@ export default function SalonSettings({
           </div>
         )}
       </section>
+      )}
 
+      {(!only || only === 'stylists') && (
       <section className="card">
         <h2 className="card-title">美容師</h2>
         <ul className="setting-list">
@@ -201,7 +206,9 @@ export default function SalonSettings({
           </button>
         </div>
       </section>
+      )}
 
+      {(!only || only === 'contact') && (
       <section className="card">
         <h2 className="card-title">受付と連絡</h2>
         <div className="field">
@@ -239,12 +246,15 @@ export default function SalonSettings({
           設定を保存
         </button>
       </section>
+      )}
 
+      {!only && (
       <section className="card">
         <h2 className="card-title">通知ログ</h2>
         <p className="card-sub">LINE のキーがないときは「シミュレーション送信」として記録し、中身をここで確認できます。</p>
         <NotificationLog client={client} salonId={salon.id} limit={15} />
       </section>
+      )}
     </div>
   );
 }

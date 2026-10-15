@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:unit": "node --test tests/unit/*.test.ts",
     "setup:demo": "node --env-file=.env.local scripts/setup-demo.mjs",
     "test:race": "node --env-file=.env.local scripts/race-test.mjs",
     "test:rls": "node --env-file=.env.local scripts/rls-check.mjs",
