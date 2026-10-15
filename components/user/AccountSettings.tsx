@@ -46,8 +46,9 @@ export default function AccountSettings({
       setDelError(DELETE_ERROR[body.error ?? ''] ?? `削除できませんでした（${body.error ?? res.status}）`);
       return;
     }
-    await client.auth.signOut({ scope: 'local' });
+    // 先に「削除しました」の表示に切り替えてから、この端末のログイン情報を消す（ログインの画面へ飛ばさない）
     onDeleted();
+    await client.auth.signOut({ scope: 'local' });
   }
 
   return (

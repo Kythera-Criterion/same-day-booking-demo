@@ -100,6 +100,14 @@ export function OrDivider({ children = 'または' }: { children?: string }) {
   );
 }
 
+export function LoggedOutNotice() {
+  return (
+    <p className="notice notice-ok" role="status">
+      ログアウトしました。続けて使うときは、もう一度ログインしてください。
+    </p>
+  );
+}
+
 export function AuthErrorNotice({ code }: { code?: string | null }) {
   if (!code) return null;
   return (

@@ -53,7 +53,7 @@ const ENDED: Record<string, { title: string; tone: string; text: string; search:
 
 export default function BookingDetail({ bookingId, isNew }: { bookingId: string; isNew: boolean }) {
   const router = useRouter();
-  const { client, session, ready } = useRoleSession('user');
+  const { client, session, ready, signedOut } = useRoleSession('user');
   const [d, setD] = useState<Detail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [changed, setChanged] = useState(false);
@@ -61,8 +61,8 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
   const [walk, setWalk] = useState<{ min: number; label: string } | null>(null);
 
   useEffect(() => {
-    if (ready && !session) router.replace(`/login?next=${encodeURIComponent(`/booking/${bookingId}`)}`);
-  }, [ready, session, router, bookingId]);
+    if (ready && !session) router.replace(`/login?${signedOut ? 'logged_out=1&' : ''}next=${encodeURIComponent(`/booking/${bookingId}`)}`);
+  }, [ready, session, signedOut, router, bookingId]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 15_000);

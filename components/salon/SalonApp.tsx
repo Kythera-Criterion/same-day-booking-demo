@@ -10,7 +10,8 @@ import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
-import SocialButtons, { AuthErrorNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import SocialButtons, { AuthErrorNotice, LoggedOutNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import { logout } from '@/lib/logout';
 import AccountSecurity from '@/components/auth/AccountSecurity';
 import type { Providers } from '@/lib/oauth-shared';
 import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
@@ -52,14 +53,16 @@ export default function SalonApp({
   authError,
   linked,
   initialTab = 'today',
+  loggedOut = false,
 }: {
   demoMode: boolean;
   providers: Providers;
   authError?: string | null;
   linked?: string | null;
   initialTab?: 'today' | 'settings';
+  loggedOut?: boolean;
 }) {
-  const { client, session, ready } = useRoleSession('salon');
+  const { client, session, ready, signedOut } = useRoleSession('salon');
   const { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
   const [tab, setTab] = useState<'today' | 'settings'>(initialTab);
   const [sheet, setSheet] = useState<{ start: Date | null; stylistId: string | null } | null>(null);
@@ -76,6 +79,16 @@ export default function SalonApp({
   const [showEnded, setShowEnded] = useState(false);
 
   useDispatchTicker(client, !!salon);
+
+  // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、前のスタッフの画面の状態を残さない
+  useEffect(() => {
+    if (!signedOut || session) return;
+    setTab('today');
+    setSheet(null);
+    setSelected(null);
+    setIncoming([]);
+    setConfirmPause(false);
+  }, [signedOut, session]);
 
   useEffect(() => {
     setPermission(notificationPermission());
@@ -267,7 +280,7 @@ export default function SalonApp({
     <main className={!session || salon === null ? 'app' : 'app app-salon'}>
       <AppHeader role="サロン" home="/salon">
         {session && (
-          <button onClick={() => client.auth.signOut()} aria-label="ログアウト">
+          <button onClick={() => logout('salon')} aria-label="ログアウト">
             ログアウト
           </button>
         )}
@@ -275,6 +288,7 @@ export default function SalonApp({
 
       {ready && !session && (
         <>
+          {(loggedOut || signedOut) && <LoggedOutNotice />}
           <AuthErrorNotice code={authError} />
           <LoginBox
             client={client}

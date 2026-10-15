@@ -21,7 +21,7 @@ type Errors = Partial<Record<keyof Form, string>>;
 export default function ProfileComplete({ next: nextParam, isNew }: { next: string | null; isNew: boolean }) {
   const router = useRouter();
   const next = safePath(nextParam, '/');
-  const { client, session, ready } = useRoleSession('user');
+  const { client, session, ready, signedOut } = useRoleSession('user');
   const { areas, profile, loaded } = useUserState(client, session);
   const [form, setForm] = useState<Form | null>(null);
   const [errors, setErrors] = useState<Errors>({});
@@ -29,8 +29,8 @@ export default function ProfileComplete({ next: nextParam, isNew }: { next: stri
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready && !session) router.replace(`/login?next=${encodeURIComponent(`/signup/complete?next=${next}`)}`);
-  }, [ready, session, router, next]);
+    if (ready && !session) router.replace(`/login?${signedOut ? 'logged_out=1&' : ''}next=${encodeURIComponent(`/signup/complete?next=${next}`)}`);
+  }, [ready, session, signedOut, router, next]);
 
   useEffect(() => {
     if (!profile || form) return;

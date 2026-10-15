@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
+import { AFTER_LOGOUT, logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/profile-options';
 import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
@@ -30,7 +31,7 @@ type Draft = Pick<
 
 export default function MyPage({ providers, linked, authError }: { providers: Providers; linked?: string | null; authError?: string | null }) {
   const router = useRouter();
-  const { client, session, ready } = useRoleSession('user');
+  const { client, session, ready, signedOut } = useRoleSession('user');
   const [deleted, setDeleted] = useState(false);
   const { areas, profile, bookings, active, suspendedUntil, loaded, error, reload } = useUserState(client, session);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -38,11 +39,10 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [now, setNow] = useState(() => new Date());
 
-  // ログアウトしたときは、ログインの画面ではなくホームへ
-  const [leaving, setLeaving] = useState(false);
+  // ログインしていなければログインの画面へ（別のタブでログアウトしたときは「ログアウトしました」を出す）
   useEffect(() => {
-    if (ready && !session && !deleted && !leaving) router.replace('/login?next=/mypage');
-  }, [ready, session, router, deleted, leaving]);
+    if (ready && !session && !deleted) router.replace(signedOut ? AFTER_LOGOUT.user : '/login?next=/mypage');
+  }, [ready, session, signedOut, router, deleted]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -95,10 +95,10 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
     reload();
   }
 
-  async function logout() {
+  const [leaving, setLeaving] = useState(false);
+  async function signOutHere() {
     setLeaving(true);
-    await client?.auth.signOut();
-    router.replace('/');
+    await logout('user');
   }
 
   if (!client) return <NotConfigured />;
@@ -297,8 +297,8 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
             authError={authError}
           />
 
-          <button className="btn btn-text" onClick={logout}>
-            ログアウト
+          <button className="btn btn-text" disabled={leaving} onClick={signOutHere}>
+            {leaving ? 'ログアウトしています…' : 'ログアウト'}
           </button>
         </div>
       )}

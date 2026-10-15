@@ -25,15 +25,15 @@ type RawSlot = {
 
 export default function BookConfirm({ slotId }: { slotId: string }) {
   const router = useRouter();
-  const { client, session, ready } = useRoleSession('user');
+  const { client, session, ready, signedOut } = useRoleSession('user');
   const { profile, active, suspendedUntil } = useUserState(client, session);
   const [slot, setSlot] = useState<(BookTarget & { status: string }) | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    if (ready && !session) router.replace(`/login?next=${encodeURIComponent(`/book/${slotId}`)}`);
-  }, [ready, session, router, slotId]);
+    if (ready && !session) router.replace(`/login?${signedOut ? 'logged_out=1&' : ''}next=${encodeURIComponent(`/book/${slotId}`)}`);
+  }, [ready, session, signedOut, router, slotId]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);

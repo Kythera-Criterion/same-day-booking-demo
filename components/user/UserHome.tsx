@@ -9,6 +9,7 @@ import AppHeader from '@/components/AppHeader';
 import { RemainBar } from '@/components/RemainRing';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
+import { AFTER_LOGOUT } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import { saveOrigin } from '@/lib/origin';
@@ -50,8 +51,13 @@ const MORE = 3;
 
 export default function UserHome() {
   const router = useRouter();
-  const { client, session, ready } = useRoleSession('user');
+  const { client, session, ready, signedOut } = useRoleSession('user');
   const { areas, profile, active, suspendedUntil, error: stateError, reload } = useUserState(client, session);
+
+  // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、ログインの画面へ
+  useEffect(() => {
+    if (signedOut && !session) router.replace(AFTER_LOGOUT.user);
+  }, [signedOut, session, router]);
 
   const [step, setStep] = useState<'start' | 'pick' | 'results'>('start');
   const [win, setWin] = useState<WindowKey>('1h');

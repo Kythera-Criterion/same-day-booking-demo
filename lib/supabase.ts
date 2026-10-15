@@ -30,11 +30,13 @@ export function getClient(kind: Role): SupabaseClient {
   return client;
 }
 
-// 役割ごとのログイン状態
+// 役割ごとのログイン状態。
+// signedOut：この画面を開いている間にログアウトした（別のタブでのログアウト・ログインの期限切れを含む）
 export function useRoleSession(kind: Role) {
   const client = useMemo(() => (isConfigured ? getClient(kind) : null), [kind]);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   useEffect(() => {
     if (!client) return;
@@ -44,14 +46,18 @@ export function useRoleSession(kind: Role) {
       setSession(data.session);
       setReady(true);
     });
-    const { data: sub } = client.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: sub } = client.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === 'SIGNED_OUT') setSignedOut(true);
+      else if (s) setSignedOut(false);
+    });
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
   }, [client]);
 
-  return { client, session, ready };
+  return { client, session, ready, signedOut };
 }
 
 // 埋め込みで取得した関連データは、配列でも単体でも扱えるようにする

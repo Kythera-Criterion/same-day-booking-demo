@@ -14,6 +14,7 @@ import PasswordInput from '@/components/auth/PasswordInput';
 import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
 import { Choices, Field } from '@/components/user/FormParts';
 import { useRoleSession } from '@/lib/supabase';
+import { logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import type { Providers } from '@/lib/oauth-shared';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/profile-options';
@@ -157,7 +158,7 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
 
   const header = (
     <AppHeader role="サロン" home="/salon">
-      {session ? <button onClick={() => client.auth.signOut()}>ログアウト</button> : <Link href="/salon">ログイン</Link>}
+      {session ? <button onClick={() => logout('salon')}>ログアウト</button> : <Link href="/salon">ログイン</Link>}
     </AppHeader>
   );
 

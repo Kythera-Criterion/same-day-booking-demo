@@ -10,7 +10,8 @@ import Sheet from '@/components/Sheet';
 import { ErrorState, Loading, NotConfigured } from '@/components/States';
 import { useRoleSession } from '@/lib/supabase';
 import { useDispatchTicker } from '@/lib/dispatch-client';
-import SocialButtons, { AuthErrorNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import SocialButtons, { AuthErrorNotice, LoggedOutNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import { logout } from '@/lib/logout';
 import type { Providers } from '@/lib/oauth-shared';
 import Applications from './Applications';
 import Dashboard from './Dashboard';
@@ -59,14 +60,16 @@ export default function AdminApp({
   authError,
   linked,
   initialTab,
+  loggedOut = false,
 }: {
   demoMode: boolean;
   providers: Providers;
   authError?: string | null;
   linked?: string | null;
   initialTab?: string | null;
+  loggedOut?: boolean;
 }) {
-  const { client, session, ready } = useRoleSession('admin');
+  const { client, session, ready, signedOut } = useRoleSession('admin');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [tab, setTab] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? (initialTab as TabKey) : 'dashboard');
   const [pending, setPending] = useState<Pending[]>([]);
@@ -74,6 +77,15 @@ export default function AdminApp({
   const [toast, setToast] = useState<Pending | null>(null);
 
   useDispatchTicker(client, isAdmin === true);
+
+  // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、前の運営の画面の状態を残さない
+  useEffect(() => {
+    if (!signedOut || session) return;
+    setTab('dashboard');
+    setPending([]);
+    setUnseen(null);
+    setToast(null);
+  }, [signedOut, session]);
 
   useEffect(() => {
     if (!client || !session) {
@@ -137,11 +149,12 @@ export default function AdminApp({
     // ログインの画面は、利用者の画面と同じスマートフォンの幅にそろえる（運営の画面だけ広く使う）
     <main className={!session || isAdmin === false ? 'app' : 'app app-wide'}>
       <AppHeader role="運営" home="/admin">
-        {session && <button onClick={() => client.auth.signOut()}>ログアウト</button>}
+        {session && <button onClick={() => logout('admin')}>ログアウト</button>}
       </AppHeader>
 
       {ready && !session && (
         <>
+          {(loggedOut || signedOut) && <LoggedOutNotice />}
           <AuthErrorNotice code={authError} />
           <LoginBox
             client={client}
@@ -163,7 +176,7 @@ export default function AdminApp({
       {session && isAdmin === false && (
         <ErrorState>
           このアカウント（{session.user.email}）には運営の権限がありません。運営メンバーに招待を依頼してください。
-          <button className="btn btn-text" onClick={() => client.auth.signOut()}>
+          <button className="btn btn-text" onClick={() => logout('admin')}>
             別のアカウントでログイン
           </button>
         </ErrorState>
