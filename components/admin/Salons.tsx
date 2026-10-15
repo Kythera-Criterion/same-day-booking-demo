@@ -20,6 +20,19 @@ type Row = {
   areas: { name: string } | { name: string }[] | null;
   menus: { count: number }[];
   salon_members: { count: number }[];
+  slots: { bookings: { count: number }[] }[];
+};
+
+const DEMO_SALONS = [
+  '11111111-1111-4111-8111-111111111111',
+  '22222222-2222-4222-8222-222222222222',
+  '33333333-3333-4333-8333-333333333333',
+];
+const DELETE_ERROR: Record<string, string> = {
+  has_bookings: '予約の履歴があるため削除できません。実証の数字と、お客様の予約・無断キャンセルの記録を残すためです。代わりに掲載を止めてください。',
+  demo_salon: 'デモ用のサロンは削除できません。',
+  forbidden: 'この操作の権限がありません。',
+  not_found: 'サロンが見つかりませんでした。',
 };
 type Today = { salon_id: string; status: string; bookings: { status: string }[] | null };
 
@@ -28,6 +41,9 @@ export default function Salons({ client }: { client: SupabaseClient }) {
   const [today, setToday] = useState<Today[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<Row | null>(null);
+  const [removing, setRemoving] = useState<Row | null>(null);
+  const [confirmName, setConfirmName] = useState('');
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -35,7 +51,7 @@ export default function Salons({ client }: { client: SupabaseClient }) {
     const [s, t] = await Promise.all([
       client
         .from('salons')
-        .select('id,name,address,phone,is_approved,accepts_genders,areas(name),menus(count),salon_members(count)')
+        .select('id,name,address,phone,is_approved,accepts_genders,areas(name),menus(count),salon_members(count),slots(bookings(count))')
         .order('name'),
       client
         .from('slots')
@@ -71,6 +87,32 @@ export default function Salons({ client }: { client: SupabaseClient }) {
     load();
   }
 
+  async function remove() {
+    if (!removing) return;
+    setBusy(true);
+    setRemoveError(null);
+    const token = (await client.auth.getSession()).data.session?.access_token;
+    const res = await fetch('/api/admin/delete-salon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ salonId: removing.id }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string; name?: string; removedStaff?: string[]; keptStaff?: string[] };
+    setBusy(false);
+    if (!res.ok) {
+      setRemoveError(DELETE_ERROR[body.error ?? ''] ?? `削除できませんでした（${body.error ?? res.status}）`);
+      return;
+    }
+    setMessage(
+      `${body.name} を削除しました。` +
+        ((body.removedStaff?.length ?? 0) > 0 ? `スタッフのアカウント（${body.removedStaff!.join('、')}）も削除しました。` : '') +
+        ((body.keptStaff?.length ?? 0) > 0 ? `ほかでも使われているアカウント（${body.keptStaff!.join('、')}）は残しました。` : ''),
+    );
+    setRemoving(null);
+    setConfirmName('');
+    load();
+  }
+
   if (error) return <ErrorState onRetry={load}>{error}</ErrorState>;
   if (!rows) return <Loading rows={3} />;
   if (rows.length === 0)
@@ -94,6 +136,7 @@ export default function Salons({ client }: { client: SupabaseClient }) {
                 <th scope="col">メニュー・スタッフ</th>
                 <th scope="col">今日</th>
                 <th scope="col">掲載</th>
+                <th scope="col">削除</th>
               </tr>
             </thead>
             <tbody>
@@ -102,6 +145,9 @@ export default function Salons({ client }: { client: SupabaseClient }) {
                 const booked = mine.filter((t) => (t.bookings ?? []).some((b) => !b.status.startsWith('cancelled'))).length;
                 const open = mine.filter((t) => t.status === 'open').length;
                 const noPlace = !r.address.trim();
+                const history = (r.slots ?? []).reduce((sum, s) => sum + (s.bookings?.[0]?.count ?? 0), 0);
+                const isDemo = DEMO_SALONS.includes(r.id);
+                const why = isDemo ? 'デモ用のサロンは削除できません' : history > 0 ? `予約の履歴が${history}件あるため削除できません（掲載を止めてください）` : null;
                 return (
                   <tr key={r.id} style={{ cursor: 'default' }}>
                     <td>
@@ -125,6 +171,21 @@ export default function Salons({ client }: { client: SupabaseClient }) {
                           {r.is_approved ? '掲載を止める' : '掲載を再開'}
                         </button>
                       </div>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-text btn-sm danger-text"
+                        disabled={!!why}
+                        title={why ?? undefined}
+                        onClick={() => {
+                          setRemoving(r);
+                          setConfirmName('');
+                          setRemoveError(null);
+                        }}
+                      >
+                        削除
+                      </button>
+                      <small>{isDemo ? 'デモ用' : history > 0 ? `予約の履歴 ${history}件` : '予約の履歴なし'}</small>
                     </td>
                   </tr>
                 );
@@ -150,6 +211,35 @@ export default function Salons({ client }: { client: SupabaseClient }) {
             </button>
             <button className={`btn ${target.is_approved ? 'btn-danger' : 'btn-primary'}`} disabled={busy} onClick={toggle}>
               {target.is_approved ? '掲載を止める' : '掲載を再開する'}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {removing && (
+        <Sheet label="サロンを削除しますか" role="alertdialog" narrow onClose={() => setRemoving(null)}>
+          <p className="card-title">{removing.name} を削除しますか？</p>
+          <ul className="delete-list">
+            <li>サロン・メニュー・担当・今日までの枠・いつもの枠・LINE の設定を削除します。元に戻せません。</li>
+            <li>このサロンだけのスタッフのアカウントも削除します（ほかのサロン・運営・利用者としても使われているアカウントは残します）。</li>
+            <li>掲載希望の記録と操作の記録は残ります。</li>
+            <li>予約の履歴があるサロンは削除できません。その場合は掲載を止めてください。</li>
+          </ul>
+          <label className="field">
+            <span className="field-label">確認のため、店名「{removing.name}」を入力してください</span>
+            <input className="input" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
+          </label>
+          {removeError && (
+            <p className="notice notice-error" role="alert">
+              {removeError}
+            </p>
+          )}
+          <div className="action-pair">
+            <button className="btn btn-quiet" onClick={() => setRemoving(null)}>
+              やめる
+            </button>
+            <button className="btn btn-danger" disabled={busy || confirmName.trim() !== removing.name} onClick={remove}>
+              {busy ? '削除中…' : '削除する'}
             </button>
           </div>
         </Sheet>

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { adminClient, isServerConfigured, userClient, userFromRequest } from '@/lib/server/supabase-admin';
+import { appOrigin, createStartLink, enqueueWelcome, welcomeStatus, type Application } from '@/lib/server/invite';
+import { dispatchPending } from '@/lib/notify/dispatch';
 
 // 掲載希望の承認：運営だけが呼べる。
 //   1. 呼び出した人が運営かを、その人の権限で確かめる（is_admin）
-//   2. スタッフのアカウントをサーバー側で作り、招待リンクを発行する（メールはまだ送らない）
+//   2. スタッフのアカウントと「ご利用開始」のリンクを、サーバー側で作る
 //   3. サロンの作成とスタッフの紐づけは、運営の権限で DB の関数（admin_approve_application）が行う
+//   4. 申込のメールアドレスへ「ご利用開始のご案内」を自動で送る（キーがなければシミュレーション送信）
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -21,35 +24,39 @@ export async function POST(req: Request) {
 
   const { data: app, error: appError } = await asCaller
     .from('salon_applications')
-    .select('id,email,contact_name,salon_name,status')
+    .select('id,email,contact_name,salon_name,status,salon_id,invite_count')
     .eq('id', body.applicationId)
     .maybeSingle();
   if (appError || !app) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   if (app.status !== 'pending') return NextResponse.json({ error: 'already_closed' }, { status: 409 });
 
-  // スタッフのアカウント（すでにあればそれを使う）。招待リンクを作るだけで、メールは送らない
   const admin = adminClient();
-  const origin = new URL(req.url).origin;
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'invite',
-    email: app.email,
-    options: { data: { display_name: `${app.salon_name} ${app.contact_name}` }, redirectTo: `${origin}/salon` },
-  });
-  let staffId = link?.user?.id ?? null;
-  let inviteLink: string | null = link?.properties?.action_link ?? null;
-  if (linkError) {
-    // すでに登録済みのメールアドレスなら、そのアカウントを紐づける
-    const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    staffId = list?.users.find((u) => u.email === app.email)?.id ?? null;
-    inviteLink = null;
-    if (!staffId) return NextResponse.json({ error: `アカウントを作れませんでした（${linkError.message}）` }, { status: 500 });
+  let start;
+  try {
+    start = await createStartLink(admin, app.email, `${app.salon_name} ${app.contact_name}`, appOrigin(req), 'invite');
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 
   const { data: salonId, error: approveError } = await asCaller.rpc('admin_approve_application', {
     p_application_id: app.id,
-    p_staff_user_id: staffId,
+    p_staff_user_id: start.userId,
   });
-  if (approveError) return NextResponse.json({ error: approveError.message }, { status: 400 });
+  if (approveError) {
+    // 承認できなかったときは、いま作ったばかりのアカウントを残さない
+    if (start.type === 'invite') await admin.auth.admin.deleteUser(start.userId);
+    return NextResponse.json({ error: approveError.message }, { status: 400 });
+  }
 
-  return NextResponse.json({ salonId, staffEmail: app.email, inviteLink });
+  // ご利用開始のご案内メールを積んで、すぐに送る
+  let mailStatus = 'pending';
+  try {
+    const count = await enqueueWelcome(admin, app as Application, salonId as string, start.link);
+    await dispatchPending();
+    mailStatus = await welcomeStatus(admin, app.id, count);
+  } catch {
+    mailStatus = 'failed';
+  }
+
+  return NextResponse.json({ salonId, staffEmail: app.email, inviteLink: start.link, mailStatus });
 }

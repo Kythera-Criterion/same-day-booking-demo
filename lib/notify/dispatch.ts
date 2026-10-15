@@ -58,7 +58,14 @@ async function sendEmail(row: OutboxRow, rendered: Rendered): Promise<SendResult
       'Content-Type': 'application/json',
       'Idempotency-Key': `outbox-${row.id}`,
     },
-    body: JSON.stringify({ from, to: [row.recipient], subject: rendered.subject, text: rendered.text }),
+    body: JSON.stringify({
+      from,
+      to: [row.recipient],
+      subject: rendered.subject,
+      text: rendered.text,
+      ...(rendered.html ? { html: rendered.html } : {}),
+      ...(process.env.MAIL_REPLY_TO ? { reply_to: process.env.MAIL_REPLY_TO } : {}),
+    }),
   });
   const body = await res.text();
   if (res.ok) return { status: 'sent', response: { http: res.status, body: safeJson(body), rendered } };
@@ -90,6 +97,13 @@ export async function dispatchPending(limit = 10): Promise<DispatchSummary> {
 
     if (result.status === 'sent' || result.status === 'simulated') {
       await admin.rpc('finish_notification', { p_id: row.id, p_status: result.status, p_response: result.response });
+      // 実際に送ったご案内メールは、記録からリンクを消す（ログイン用のリンクを残さない）
+      if (result.status === 'sent' && row.kind === 'salon_welcome_mail') {
+        await admin
+          .from('notification_outbox')
+          .update({ payload: { ...row.payload, invite_link: null, link_redacted: true }, response: { http: 200 } })
+          .eq('id', row.id);
+      }
       summary[result.status]++;
     } else {
       const giveUp = result.status === 'failed' || row.attempts >= MAX_ATTEMPTS;

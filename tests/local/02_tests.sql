@@ -629,6 +629,45 @@ select t.ok('T41 掲載の停止と再開が記録に残る',
   (select count(distinct action) from public.audit_logs where action in ('suspend_salon', 'resume_salon')) = 2);
 
 -- ---------------------------------------------------------
+-- T42 ご利用開始のご案内メール・サロンの削除（0007）
+-- ---------------------------------------------------------
+select t.runs('T42 ご利用開始のご案内メールを、通知の送信待ちに積める',
+  $$insert into public.notification_outbox (dedupe_key, kind, channel, recipient, payload)
+    values ('salon_welcome_mail:test:1', 'salon_welcome_mail', 'email', 'owner@example.test', '{"salon_name":"x"}')$$);
+-- 予約の履歴があるサロン（デモ用ではない）を用意する
+insert into public.salons (id, name, address, lat, lng, is_approved) values
+  ('44444444-4444-4444-8444-444444444444', '履歴のあるサロン', '（テスト）', 34.66, 133.92, true);
+insert into public.menus (id, salon_id, name, duration_min, price) values
+  ('d4444441-4444-4444-8444-444444444444', '44444444-4444-4444-8444-444444444444', 'カット', 60, 4000);
+insert into public.slots (id, salon_id, menu_id, start_at, end_at, price, status) values
+  ('54000000-0000-4000-8000-000000000001', '44444444-4444-4444-8444-444444444444', 'd4444441-4444-4444-8444-444444444444', t.at(60), t.at(120), 4000, 'booked');
+insert into public.bookings (slot_id, contact_name, contact_phone, status) values
+  ('54000000-0000-4000-8000-000000000001', 'テスト', '090-0000-9999', 'completed');
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.raises('T42 サロンはサロンを削除できない',
+  $$select public.admin_delete_salon((select id from public.salons where name = 'Hair Studio Demo'))$$, 'forbidden');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.raises('T42 デモ用のサロンは削除できない',
+  $$select public.admin_delete_salon('11111111-1111-4111-8111-111111111111')$$, 'demo_salon');
+select t.raises('T42 予約の履歴があるサロンは削除できない（掲載を止める）',
+  $$select public.admin_delete_salon('44444444-4444-4444-8444-444444444444')$$, 'has_bookings');
+create temp table deleted_salon as
+  select public.admin_delete_salon((select id from public.salons where name = 'Hair Studio Demo')) as r;
+select t.ok('T42 予約の履歴がないサロンは削除でき、スタッフの ID を返す',
+  (select jsonb_array_length(r -> 'staff') = 1 from deleted_salon), (select r::text from deleted_salon));
+commit;
+select t.ok('T42 削除したサロンは、メニュー・スタッフの紐づけごと消える',
+  not exists (select 1 from public.salons where name = 'Hair Studio Demo')
+  and not exists (select 1 from public.salon_members where user_id = '00000000-0000-4000-8000-0000000000c9'));
+select t.ok('T42 掲載希望の記録は残り、サロンとの紐づけだけが外れる',
+  (select salon_id is null and status = 'approved' from public.salon_applications where salon_name = 'Hair Studio Demo'));
+select t.ok('T42 サロンの削除が記録に残る', exists (select 1 from public.audit_logs where action = 'delete_salon'));
+delete from public.bookings where slot_id = '54000000-0000-4000-8000-000000000001';
+delete from public.slots where id = '54000000-0000-4000-8000-000000000001';
+delete from public.salons where id = '44444444-4444-4444-8444-444444444444';
+
+-- ---------------------------------------------------------
 -- T34 デモ用の関数（サーバー側だけ）
 -- ---------------------------------------------------------
 begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
