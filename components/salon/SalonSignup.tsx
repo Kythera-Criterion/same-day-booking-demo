@@ -12,7 +12,7 @@ import AppHeader from '@/components/AppHeader';
 import { Loading, NotConfigured } from '@/components/States';
 import PasswordInput from '@/components/auth/PasswordInput';
 import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
-import { Choices, Field } from '@/components/user/FormParts';
+import { Field, MiniSteps } from '@/components/user/FormParts';
 import { useRoleSession } from '@/lib/supabase';
 import { logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
@@ -31,19 +31,9 @@ const SIGNUP_ERROR: Record<string, string> = {
   rate_limited: '短い時間に何度も送信されたため、少し時間をおいてお試しください。',
 };
 
+const STEP_LABEL = ['アカウント', 'お店の情報', '審査'] as const;
 function Steps({ step }: { step: 1 | 2 | 3 }) {
-  return (
-    <div className="progress" aria-label={`3段階のうち${step}段階目`}>
-      <div className="progress-bar">
-        <span style={{ width: `${(step / 3) * 100}%` }} />
-      </div>
-      <ol className="progress-steps progress-3">
-        <li className={step >= 1 ? 'is-on' : ''}>1. アカウント</li>
-        <li className={step >= 2 ? 'is-on' : ''}>2. お店の情報</li>
-        <li className={step >= 3 ? 'is-on' : ''}>3. 審査</li>
-      </ol>
-    </div>
-  );
+  return <MiniSteps step={step} total={3} label={STEP_LABEL[step - 1]} />;
 }
 
 export default function SalonSignup({ providers, authError }: { providers: Providers; authError?: string | null }) {
@@ -204,36 +194,46 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
     return (
       <main className="app">
         {header}
-        <h1 className="screen-title">掲載のお申し込み</h1>
-        <Steps step={2} />
-        <p className="notice notice-ok">
-          アカウントを作成しました（<span className="break">{session.user.email}</span>）。続けて、お店の情報を入力してください。
-        </p>
-        <form className="card" onSubmit={registerShop} noValidate>
-          <Field id="s-salon" label="店名" required error={shopErrors.salon} hint="利用者の画面に表示されます。">
+        <h1 className="screen-title screen-title-tight">お店の情報</h1>
+        <form className="card form-compact" onSubmit={registerShop} noValidate>
+          <Steps step={2} />
+          <p className="form-account">
+            ✓ アカウントを作成しました：<strong className="break">{session.user.email}</strong>
+          </p>
+          <p className="form-note">（任意）以外は必須です。審査の結果はメールでお知らせします。</p>
+          <Field id="s-salon" label="店名（利用者の画面に表示）" error={shopErrors.salon}>
             <input id="s-salon" className="input" maxLength={80} value={shop.salon} aria-invalid={!!shopErrors.salon} onChange={(e) => setShop({ ...shop, salon: e.target.value })} />
           </Field>
-          <Field id="s-contact" label="ご担当者のお名前" required error={shopErrors.contact}>
-            <input id="s-contact" className="input" maxLength={60} autoComplete="name" value={shop.contact} aria-invalid={!!shopErrors.contact} onChange={(e) => setShop({ ...shop, contact: e.target.value })} />
+          <div className="field-row">
+            <Field id="s-contact" label="ご担当者" error={shopErrors.contact}>
+              <input id="s-contact" className="input" maxLength={60} autoComplete="name" value={shop.contact} aria-invalid={!!shopErrors.contact} onChange={(e) => setShop({ ...shop, contact: e.target.value })} />
+            </Field>
+            <Field id="s-phone" label="お店の電話番号" error={shopErrors.phone}>
+              <input id="s-phone" className="input" type="tel" inputMode="tel" placeholder="086-123-4567" value={shop.phone} aria-invalid={!!shopErrors.phone} onChange={(e) => setShop({ ...shop, phone: e.target.value })} />
+            </Field>
+          </div>
+          <Field id="s-area" label="エリア" error={shopErrors.area}>
+            <select id="s-area" className="select" value={shop.area} aria-invalid={!!shopErrors.area} onChange={(e) => setShop({ ...shop, area: e.target.value })}>
+              <option value="">選択</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
           </Field>
-          <Field id="s-phone" label="お店の電話番号" required error={shopErrors.phone} hint="予約したお客様が、来店前の連絡に使います。">
-            <input id="s-phone" className="input" type="tel" inputMode="tel" value={shop.phone} aria-invalid={!!shopErrors.phone} onChange={(e) => setShop({ ...shop, phone: e.target.value })} />
-          </Field>
-          <Field id="s-area" label="エリア" required error={shopErrors.area}>
-            <Choices id="s-area" options={areas.map((a) => ({ value: a.id, label: a.name }))} value={shop.area} onChange={(v) => setShop({ ...shop, area: v })} />
-          </Field>
-          <Field id="s-address" label="住所" required error={shopErrors.address} hint="地図の位置は、このあとの初期設定で合わせられます。">
+          <Field id="s-address" label="住所（地図の位置はあとで合わせられます）" error={shopErrors.address}>
             <input id="s-address" className="input" maxLength={120} autoComplete="street-address" value={shop.address} aria-invalid={!!shopErrors.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} />
           </Field>
-          <Field id="s-question" label="ご質問・ご要望（任意）">
-            <textarea id="s-question" className="textarea" maxLength={1000} value={shop.question} onChange={(e) => setShop({ ...shop, question: e.target.value })} />
-          </Field>
+          <details className="form-optional">
+            <summary>ご質問・ご要望（任意）</summary>
+            <textarea id="s-question" className="textarea" maxLength={1000} value={shop.question} aria-label="ご質問・ご要望" onChange={(e) => setShop({ ...shop, question: e.target.value })} />
+          </details>
           <div className={`field ${shopErrors.terms ? 'has-error' : ''}`}>
-            <label className="check">
+            <label className="check check-tight">
               <input id="s-terms" type="checkbox" checked={shop.terms} onChange={(e) => setShop({ ...shop, terms: e.target.checked })} />
               <span>
-                <a href={TERMS_URL} target="_blank" rel="noreferrer">利用規約（掲載店の条項）</a>に同意し、お客様の情報を予約の対応だけに使います
-                <span className="req">必須</span>
+                <a href={TERMS_URL} target="_blank" rel="noreferrer">利用規約（掲載店の条項）</a>に同意し、お客様の情報は予約の対応だけに使います
               </span>
             </label>
             {shopErrors.terms && <span className="field-error" role="alert">{shopErrors.terms}</span>}
@@ -242,7 +242,6 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
           <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
             {busy ? '送信中…' : 'この内容で申し込む'}
           </button>
-          <p className="fine-print">審査の結果は、メールでお知らせします（デモでは、運営の画面からすぐに承認できます）。</p>
         </form>
       </main>
     );
@@ -279,37 +278,31 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
   return (
     <main className="app">
       {header}
-      <h1 className="screen-title">掲載のお申し込み（無料）</h1>
-      <Steps step={1} />
+      <h1 className="screen-title screen-title-tight">掲載のお申し込み（無料）</h1>
       <AuthErrorNotice code={authError} />
-      <section className="card">
-        <p className="card-title">はじめに、サロンの画面にログインするためのアカウントを作ります</p>
-        <ul className="delete-list">
-          <li>空いた時間を「当日の空き枠」として公開し、今から行きたいお客様に届けられます。</li>
-          <li>お支払いは店頭で、お客様から直接受け取ります（このサービスでの決済はありません）。</li>
-        </ul>
+      <section className="card form-compact">
+        <Steps step={1} />
         {hasAnyProvider(providers) && (
           <>
             <SocialButtons providers={providers} role="salon" mode="signup" next="/salon/signup" back="/salon/signup" verb="登録" />
-            <OrDivider>またはメールアドレスで登録</OrDivider>
+            <OrDivider>またはメールアドレスで</OrDivider>
           </>
         )}
         <form onSubmit={createAccount} noValidate>
-          <Field id="a-name" label="ご担当者のお名前" required error={accountErrors.name}>
+          <Field id="a-name" label="ご担当者のお名前" error={accountErrors.name}>
             <input id="a-name" className="input" maxLength={60} autoComplete="name" value={account.name} aria-invalid={!!accountErrors.name} onChange={(e) => setAccount({ ...account, name: e.target.value })} />
           </Field>
-          <Field id="a-email" label="メールアドレス" required error={accountErrors.email} hint="ログインと、運営からのご連絡に使います。">
+          <Field id="a-email" label="メールアドレス（ログインと連絡用）" error={accountErrors.email}>
             <input id="a-email" className="input" type="email" inputMode="email" autoComplete="email" value={account.email} aria-invalid={!!accountErrors.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} />
           </Field>
-          <Field id="a-password" label="パスワード" required error={accountErrors.password} hint="8文字以上">
+          <Field id="a-password" label="パスワード（8文字以上）" error={accountErrors.password}>
             <PasswordInput id="a-password" isNew value={account.password} invalid={!!accountErrors.password} onChange={(v) => setAccount({ ...account, password: v })} />
           </Field>
           <div className={`field ${accountErrors.terms ? 'has-error' : ''}`}>
-            <label className="check">
+            <label className="check check-tight">
               <input id="a-terms" type="checkbox" checked={account.terms} onChange={(e) => setAccount({ ...account, terms: e.target.checked })} />
               <span>
                 <a href={TERMS_URL} target="_blank" rel="noreferrer">利用規約</a>と<a href={PRIVACY_URL} target="_blank" rel="noreferrer">プライバシーポリシー</a>に同意します
-                <span className="req">必須</span>
               </span>
             </label>
             {accountErrors.terms && <span className="field-error" role="alert">{accountErrors.terms}</span>}
@@ -320,10 +313,9 @@ export default function SalonSignup({ providers, authError }: { providers: Provi
           </button>
         </form>
         <p className="login-forgot">
-          すでにアカウントをお持ちの方は <Link href="/salon">サロンのログイン</Link>
-        </p>
-        <p className="fine-print" style={{ textAlign: 'center' }}>
-          まずは相談したい方は <Link href="/apply">お問い合わせのフォーム</Link>（アカウントは運営が承認後に作成します）
+          <Link href="/salon">ログイン</Link>
+          <span className="link-sep" aria-hidden>／</span>
+          <Link href="/apply">まずは相談する</Link>
         </p>
       </section>
     </main>

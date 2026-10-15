@@ -974,3 +974,28 @@ button { font: inherit; color: inherit; }
 .pill-row { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 @media (max-width: 480px) { .account-security .field-row, .demo-provider .field-row { grid-template-columns: 1fr; } }
 .linked-hint { display: block; color: var(--ink-2); margin-top: 2px; }
+
+/* ---------- 登録の画面を短くまとめる（スマートフォンの1画面に収める） ---------- */
+.screen-title-tight { margin: 4px 2px 10px; }
+.form-compact .field { margin-bottom: 10px; }
+.form-compact .field-label { margin-bottom: 4px; }
+.form-compact .input, .form-compact .select { min-height: 46px; padding-top: 9px; padding-bottom: 9px; }
+.form-compact .choice-row { flex-wrap: nowrap; }
+.form-compact .field-row { align-items: start; }
+.form-note { margin: 0 0 10px; font-size: 12px; line-height: 1.6; color: var(--sub); }
+.form-account { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); }
+.check-tight { min-height: 0; padding: 4px 0; font-size: 13px; line-height: 1.6; }
+.mini-steps { display: flex; flex-direction: column; gap: 5px; flex: 1; margin: 0 0 12px; }
+.mini-steps-text { font-size: 13px; font-weight: 700; color: var(--accent-deep); display: flex; gap: 8px; align-items: baseline; }
+.mini-steps-text b { font-size: 12px; color: #fff; background: var(--accent); border-radius: 999px; padding: 0 8px; }
+.mini-steps-bar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.mini-steps-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.step-head { align-items: flex-start; gap: 8px; }
+.step-head .btn-text { padding: 0 4px; min-height: 28px; white-space: nowrap; }
+.form-optional { margin: 0 0 10px; font-size: 13px; }
+.form-optional summary { cursor: pointer; color: var(--accent); padding: 4px 0; }
+.form-optional .textarea { margin-top: 6px; min-height: 72px; }
+.link-sep { margin: 0 10px; color: var(--sub); }
+.social-btn { min-height: 48px; }
+.social { gap: 8px; }
+.or-divider { margin: 12px 0 10px; }

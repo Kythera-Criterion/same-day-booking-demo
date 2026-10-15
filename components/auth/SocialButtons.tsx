@@ -101,9 +101,7 @@ export default function SocialButtons({
         </p>
       )}
       {simulated && (
-        <p className="fine-print social-note">
-          「デモ」の表示がある方法は、連携のキーが未設定のため、デモ用の認証画面で流れを試せます（実際の Google・Yahoo! JAPAN には接続しません）。
-        </p>
+        <p className="fine-print social-note">「デモ」は試用の画面です（各社に接続しません）。</p>
       )}
     </div>
   );
