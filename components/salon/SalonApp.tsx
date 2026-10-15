@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AppHeader from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
+import Sheet from '@/components/Sheet';
 import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
 import { one, useRoleSession } from '@/lib/supabase';
 import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
@@ -236,7 +237,7 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
       </AppHeader>
 
       {ready && !session && (
-        <LoginBox client={client} title="サロンのスタッフとしてログイン" demoMode={demoMode} demoAccounts={DEMO_ACCOUNTS} />
+        <LoginBox client={client} title="サロンのスタッフとしてログイン" demoMode={demoMode} demoAccounts={DEMO_ACCOUNTS} forgotHref="/forgot?role=salon" />
       )}
       {error && <ErrorState onRetry={loadSalon}>{error}</ErrorState>}
       {session && salon === undefined && !error && <Loading rows={3} />}
@@ -496,21 +497,18 @@ export default function SalonApp({ demoMode }: { demoMode: boolean }) {
             />
           )}
           {confirmPause && (
-            <div className="sheet-backdrop" onClick={() => setConfirmPause(false)}>
-              <section className="sheet sheet-narrow" role="alertdialog" aria-label="今日はここまで" onClick={(e) => e.stopPropagation()}>
-                <div className="sheet-grip" aria-hidden />
-                <p className="card-title">今日の受付をここまでにしますか？</p>
-                <p className="card-sub">公開中の{openCount}枠をすべて取り下げます。入っている予約はそのままです。取り下げた枠は一覧に残り、「元に戻す」で締切前のものだけ再び公開できます。</p>
-                <div className="action-pair">
-                  <button className="btn btn-quiet" onClick={() => setConfirmPause(false)}>
-                    やめる
-                  </button>
-                  <button className="btn btn-danger" onClick={pauseToday}>
-                    {openCount}枠を取り下げる
-                  </button>
-                </div>
-              </section>
-            </div>
+            <Sheet label="今日の受付をここまでにしますか" role="alertdialog" narrow onClose={() => setConfirmPause(false)}>
+              <p className="card-title">今日の受付をここまでにしますか？</p>
+              <p className="card-sub">公開中の{openCount}枠をすべて取り下げます。入っている予約はそのままです。取り下げた枠は一覧に残り、「元に戻す」で締切前のものだけ再び公開できます。</p>
+              <div className="action-pair">
+                <button className="btn btn-quiet" onClick={() => setConfirmPause(false)}>
+                  やめる
+                </button>
+                <button className="btn btn-danger" onClick={pauseToday}>
+                  {openCount}枠を取り下げる
+                </button>
+              </div>
+            </Sheet>
           )}
           <NewBookingAlert items={incoming} soundOn={started} showNo={UI_OPTIONS.showBookingNo} onAcknowledge={acknowledge} />
         </>

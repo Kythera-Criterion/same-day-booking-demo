@@ -1,4 +1,5 @@
 import AppHeader from '@/components/AppHeader';
+export const metadata = { title: '利用規約・プライバシーポリシー' };
 
 // 利用規約・プライバシーポリシーの置き場所（デモ）。
 // 本番では NEXT_PUBLIC_TERMS_URL / NEXT_PUBLIC_PRIVACY_URL に公開サイトの URL を設定する

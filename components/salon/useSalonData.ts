@@ -5,7 +5,16 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { one } from '@/lib/supabase';
 import { jstTodayEnd, jstTodayStart } from '@/lib/time';
 
-export type SalonInfo = { id: string; name: string; address: string; phone: string | null; accepts_genders: string[] };
+export type SalonInfo = {
+  id: string;
+  name: string;
+  address: string;
+  phone: string | null;
+  accepts_genders: string[];
+  area_id: string | null;
+  lat: number;
+  lng: number;
+};
 export type Menu = { id: string; name: string; duration_min: number; price: number; booking_deadline_min: number; is_active: boolean };
 export type Stylist = { id: string; name: string; is_active: boolean };
 export type Preset = {
@@ -75,7 +84,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     setError(null);
     const { data: member, error: e } = await client
       .from('salon_members')
-      .select('salon_id,salons(id,name,address,phone,accepts_genders)')
+      .select('salon_id,salons(id,name,address,phone,accepts_genders,area_id,lat,lng)')
       .eq('user_id', session.user.id)
       .limit(1)
       .maybeSingle();

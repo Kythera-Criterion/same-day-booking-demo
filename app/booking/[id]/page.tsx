@@ -1,4 +1,5 @@
 import BookingDetail from '@/components/user/BookingDetail';
+export const metadata = { title: 'ご予約' };
 
 export default async function BookingPage({
   params,

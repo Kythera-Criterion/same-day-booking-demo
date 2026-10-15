@@ -329,6 +329,8 @@ create trigger slots_fill_deadline
 -- ---------------------------------------------------------
 
 -- 今行ける枠を探す（締切・性別・エリアを考慮。現在地は受け取らない）
+-- 0006 で戻り値を増やしているため、流し直したときに型が合わなくならないよう、作り直す
+drop function if exists public.search_open_slots(timestamptz, uuid);
 create or replace function public.search_open_slots(
   p_until   timestamptz,
   p_area_id uuid default null

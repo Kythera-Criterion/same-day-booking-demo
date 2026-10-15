@@ -20,7 +20,7 @@ type RawSlot = {
   price: number;
   status: string;
   menus: { name: string; duration_min: number } | { name: string; duration_min: number }[] | null;
-  salons: { name: string; address: string } | { name: string; address: string }[] | null;
+  salons: { name: string; address: string; lat: number; lng: number } | { name: string; address: string; lat: number; lng: number }[] | null;
 };
 
 export default function BookConfirm({ slotId }: { slotId: string }) {
@@ -45,7 +45,7 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
     setLoadError(null);
     const { data, error } = await client
       .from('slots')
-      .select('id,start_at,end_at,deadline_at,price,status,menus(name,duration_min),salons(name,address)')
+      .select('id,start_at,end_at,deadline_at,price,status,menus(name,duration_min),salons(name,address,lat,lng)')
       .eq('id', slotId)
       .maybeSingle();
     if (error) {
@@ -70,6 +70,8 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
       duration_min: menu?.duration_min ?? 0,
       salon_name: salon?.name ?? '',
       salon_address: salon?.address ?? '',
+      lat: salon?.lat,
+      lng: salon?.lng,
     });
   }, [client, slotId]);
 

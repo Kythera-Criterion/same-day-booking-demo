@@ -12,7 +12,7 @@ import type { Menu, SalonInfo, Stylist } from './useSalonData';
 const STEPS = [
   { title: 'メニューと価格・受付の締切', note: '当日価格と、開始の何分前まで予約を受けるかを決めます。1つ以上登録してください。' },
   { title: '担当', note: '担当を指定しない場合は、そのまま次へ進めます。' },
-  { title: '受け付ける性別と LINE の連絡先', note: '予約の知らせを受け取る連絡用グループを設定します（デモでは空のままで動きます）。' },
+  { title: 'お店の場所・受け付ける性別・LINE の連絡先', note: 'お店の位置は、利用者の画面の距離に使います。LINE の連絡用グループは、デモでは空のままで動きます。' },
 ];
 
 export default function Onboarding({

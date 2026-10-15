@@ -832,3 +832,52 @@ button { font: inherit; color: inherit; }
 .timeline-now { z-index: 1; }
 .timeline-now span { z-index: 3; background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
 .band-now { z-index: 1; }
+
+/* =========================================================
+   仕上げ（使い勝手と細部）
+   ========================================================= */
+/* キーボードで操作する人向けの「本文へ移動」 */
+.skip-link { position: absolute; left: 8px; top: -60px; z-index: 100; background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 10px; text-decoration: none; }
+.skip-link:focus { top: 8px; }
+
+/* 通信が切れたとき */
+.net-banner { position: sticky; top: 0; z-index: 90; margin: 0; padding: 10px 16px; text-align: center; font-size: 14px; font-weight: 700; }
+.net-off { background: var(--warn); color: #fff; }
+.net-on { background: var(--accent); color: #fff; }
+
+/* シートの見出し */
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+.sheet:focus { outline: none; }
+.panel-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+/* 候補のカード：時刻と値段を一行目に、お店と徒歩の目安を二行目に */
+.slot-card { padding: 14px 16px; }
+.slot-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.slot-top .role-tag { margin: 0; }
+.slot-top .slot-no { position: static; transform: none; width: 22px; height: 22px; font-size: 12px; }
+.slot-row { display: flex; align-items: baseline; gap: 10px; }
+.slot-row .slot-start { font-size: 28px; line-height: 1.1; }
+.slot-row .slot-left { font-size: 13px; font-weight: 700; color: var(--accent); }
+.slot-row .slot-price { margin-left: auto; display: flex; align-items: baseline; gap: 6px; font-size: 19px; font-weight: 700; }
+.slot-salon { margin: 6px 0 0; font-size: 15px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.slot-walk { font-size: 12px; font-weight: 500; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+.slot-card .slot-meta { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+.slot-foot { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.slot-foot .slot-deadline { flex: 1; margin: 0; }
+.slot-foot .slot-cta { min-width: 104px; min-height: 46px; }
+.live-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 2px; font-size: 12px; color: var(--sub); }
+
+/* 距離レーダーは補助なので、候補が画面に収まる大きさにする */
+.radar { max-width: 214px; margin: 0 auto -4px; }
+
+/* 予約の確認：お店の場所 */
+.ticket-map { margin-top: 12px; }
+
+/* ログイン */
+.login-forgot { text-align: center; margin: 14px 0 0; font-size: 14px; }
+
+/* アカウントの削除 */
+.danger-zone { border-color: color-mix(in srgb, var(--warn) 30%, var(--line)); }
+.delete-list { margin: 4px 0 10px; padding-left: 1.2em; font-size: 13px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+
+.sheet-alert { position: sticky; top: 0; z-index: 3; font-weight: 700; box-shadow: var(--shadow-m); }

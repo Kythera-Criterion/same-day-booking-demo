@@ -66,6 +66,27 @@ export default function Signup() {
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+
+  // 確認メールの再送は60秒おきまで（送りすぎると制限にかかるため）
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function resend() {
+    if (!client || !sentTo) return;
+    setResendMsg(null);
+    const { error } = await client.auth.resend({
+      type: 'signup',
+      email: sentTo,
+      options: { emailRedirectTo: `${window.location.origin}/login?verified=1` },
+    });
+    setCooldown(60);
+    setResendMsg(error ? '送信が混み合っています。少し時間をおいてお試しください。' : '確認メールをもう一度送りました。');
+  }
 
   useEffect(() => {
     client
@@ -155,6 +176,7 @@ export default function Signup() {
       return;
     }
     setSentTo(form.email);
+    setCooldown(60);
   }
 
   if (!client) return <NotConfigured />;
@@ -168,9 +190,15 @@ export default function Signup() {
           <p className="card-sub">
             {sentTo} に届いたメールのリンクを開くと、登録が完了します。届かないときは、迷惑メールのフォルダもご確認ください。
           </p>
-          <Link className="btn btn-secondary btn-block" href="/login">
-            ログイン画面へ
-          </Link>
+          {resendMsg && <p className="notice notice-info">{resendMsg}</p>}
+          <div className="action-pair">
+            <button className="btn btn-quiet" disabled={cooldown > 0} onClick={resend}>
+              {cooldown > 0 ? `もう一度送る（${cooldown}秒後）` : '確認メールをもう一度送る'}
+            </button>
+            <Link className="btn btn-secondary" href="/login">
+              ログイン画面へ
+            </Link>
+          </div>
         </section>
       </main>
     );

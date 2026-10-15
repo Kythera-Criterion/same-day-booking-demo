@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Sheet from '@/components/Sheet';
 import { toMessage } from '@/lib/errors';
 import { requestDispatch } from '@/lib/dispatch-client';
 import { CONVERSATION_PREFS, label } from '@/lib/profile-options';
@@ -95,9 +96,7 @@ export default function SlotPanel({
   const karte = b?.karte ?? {};
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <section className="sheet" role="dialog" aria-label="枠の詳細" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-grip" aria-hidden />
+    <Sheet label={`${fmtTime(slot.start_at)}の枠の詳細`} onClose={onClose}>
         <div className="row-between">
           <div>
             <p className="panel-time num">
@@ -108,7 +107,12 @@ export default function SlotPanel({
               {slot.stylist && ` ・ 担当 ${slot.stylist.name}`}
             </p>
           </div>
-          <span className={`pill pill-${state}`}>{STATE_LABEL[state] ?? state}</span>
+          <div className="panel-side">
+            <span className={`pill pill-${state}`}>{STATE_LABEL[state] ?? state}</span>
+            <button type="button" className="btn btn-text btn-sm" onClick={onClose}>
+              閉じる
+            </button>
+          </div>
         </div>
 
         {b ? (
@@ -215,7 +219,6 @@ export default function SlotPanel({
             </button>
           </div>
         )}
-      </section>
-    </div>
+    </Sheet>
   );
 }

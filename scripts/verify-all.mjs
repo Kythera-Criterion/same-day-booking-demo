@@ -29,9 +29,12 @@ const operator = await signIn('admin@demo.test');
 const { data: me } = await user.auth.getUser();
 
 // 1. 枠の公開（サロンAが関数で出す。締切はメニューの締切から決まる）
+// メニューの受付締切に合わせて、予約を受けられる時刻にする（サロンが締切を変えても確かめられる）
+const { data: menuA } = await admin.from('menus').select('booking_deadline_min').eq('id', MENU_A).single();
+const DEADLINE_A = menuA?.booking_deadline_min ?? 10;
 const start = (() => {
   const step = 5 * 60 * 1000;
-  const t = Math.ceil((Date.now() + 40 * 60 * 1000) / step) * step;
+  const t = Math.ceil((Date.now() + (DEADLINE_A + 30) * 60 * 1000) / step) * step;
   const jst = new Date(t + 9 * 3600 * 1000);
   const nine = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate(), 9, 30) - 9 * 3600 * 1000;
   return new Date(Math.max(t, nine));
@@ -39,7 +42,7 @@ const start = (() => {
 const { data: slot, error: slotError } = await salonA.rpc('create_slot', { p_menu_id: MENU_A, p_start_at: start.toISOString() });
 check('サロンが今日の枠を出せる', !slotError, slotError?.message);
 if (slotError) process.exit(1);
-check('枠の締切がメニューの締切（10分前）になる', new Date(slot.start_at) - new Date(slot.deadline_at) === 10 * 60 * 1000);
+check(`枠の締切がメニューの締切（${DEADLINE_A}分前）になる`, new Date(slot.start_at) - new Date(slot.deadline_at) === DEADLINE_A * 60 * 1000);
 
 // 2. 利用者の検索に出る（締切・性別・エリアを考慮する関数）
 {

@@ -1,4 +1,5 @@
 import SalonApp from '@/components/salon/SalonApp';
+export const metadata = { title: 'サロン' };
 
 // DEMO_MODE を起動時の環境変数から読むため、毎回サーバーで描画する
 export const dynamic = 'force-dynamic';

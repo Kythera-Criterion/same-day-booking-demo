@@ -1,4 +1,5 @@
 import UserLogin from '@/components/user/UserLogin';
+export const metadata = { title: 'ログイン' };
 
 // DEMO_MODE を起動時の環境変数から読むため、毎回サーバーで描画する
 export const dynamic = 'force-dynamic';

@@ -11,7 +11,7 @@ export type Role = 'user' | 'salon' | 'admin';
 const clients = new Map<string, SupabaseClient>();
 
 // 同じブラウザで「利用者」「サロン」「運営」に別々にログインできるよう、ログイン情報の保存先を役割ごとに分ける。
-// また、タブごとに別の利用者でログインできるよう sessionStorage を使う（同時予約の実演用）。
+// 保存先は localStorage：タブを閉じても、次に開いたときにログインしたまま使える。
 export function getClient(kind: Role): SupabaseClient {
   const existing = clients.get(kind);
   if (existing) return existing;
@@ -19,7 +19,7 @@ export function getClient(kind: Role): SupabaseClient {
   const client = createClient(url, anonKey, {
     auth: {
       storageKey: `demo-${kind}-auth`,
-      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
       // メールのリンクで戻ってきたときのログインは、利用者の画面だけで受け取る

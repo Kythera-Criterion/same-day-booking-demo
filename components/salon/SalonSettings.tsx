@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import NotificationLog from '@/components/NotificationLog';
+import PlaceSettings from './PlaceSettings';
 import { toMessage } from '@/lib/errors';
 import { fmtYen } from '@/lib/time';
 import type { Menu, SalonInfo, Stylist } from './useSalonData';
@@ -96,6 +97,8 @@ export default function SalonSettings({
   return (
     <div className="stack">
       {message && <p className={`notice ${message.kind === 'ok' ? 'notice-ok' : 'notice-error'}`}>{message.text}</p>}
+
+      {(!only || only === 'contact') && <PlaceSettings client={client} salon={salon} onSaved={onSaved} />}
 
       {(!only || only === 'menus') && (
       <section className="card">

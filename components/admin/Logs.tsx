@@ -23,6 +23,12 @@ const ACTION_LABEL: Record<string, string> = {
   approve_application: '掲載希望を承認',
   reject_application: '掲載希望を見送り',
   trial_end_dry_run: '終了処理の試し実行',
+  pause_today: '今日はここまで（まとめて取り下げ）',
+  resume_today: '取り下げた枠を元に戻す',
+  update_salon_profile: 'お店の情報と場所を保存',
+  suspend_salon: 'サロンの掲載を停止',
+  resume_salon: 'サロンの掲載を再開',
+  delete_account: 'アカウントを削除',
 };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });

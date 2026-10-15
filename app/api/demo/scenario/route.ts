@@ -25,7 +25,12 @@ export async function POST(req: Request) {
     if (body.step === 'publish') {
       const { client } = await demoSession(SALON_EMAIL);
       const now = new Date();
-      const start = [30, 40, 50, 60, 75, 90].map((m) => startAfter(m, now)).find((d) => !slotStartProblem(d, 10, now));
+      // メニューの受付締切に合わせて、予約を受けられる最初の時刻から選ぶ（サロンが締切を変えても動く）
+      const { data: menu } = await adminClient().from('menus').select('booking_deadline_min').eq('id', MENU_ID).single();
+      const deadline = (menu?.booking_deadline_min as number | undefined) ?? 10;
+      const start = [0, 10, 20, 30, 45, 60, 90]
+        .map((m) => startAfter(deadline + 20 + m, now))
+        .find((d) => !slotStartProblem(d, deadline, now));
       if (!start) return NextResponse.json({ error: '今日はもう枠を出せる時間がありません' }, { status: 409 });
       const { data, error } = await client.rpc('create_slot', { p_menu_id: MENU_ID, p_start_at: start.toISOString() });
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });

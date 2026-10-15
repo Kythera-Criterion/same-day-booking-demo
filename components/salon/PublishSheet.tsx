@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Sheet from '@/components/Sheet';
 import { toMessage } from '@/lib/errors';
 import { SPLIT_PROBLEM_LABEL, splitFreeTime } from '@/lib/split';
 import { fmtTime, fmtYen, jstTodayEnd, slotStartProblem, startAfter } from '@/lib/time';
@@ -193,15 +194,7 @@ export default function PublishSheet({
   const count = mode === 'free' ? chosen.length : offsets.length;
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <section className="sheet" role="dialog" aria-label="枠を出す" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-grip" aria-hidden />
-        <div className="row-between">
-          <h2 className="card-title">今日の空き枠を出す</h2>
-          <button className="btn btn-text" onClick={onClose}>
-            閉じる
-          </button>
-        </div>
+    <Sheet label="今日の空き枠を出す" title="今日の空き枠を出す" onClose={onClose}>
 
         <div className="segmented" role="group" aria-label="出し方">
           <button aria-pressed={mode === 'free'} onClick={() => setMode('free')}>
@@ -369,7 +362,6 @@ export default function PublishSheet({
           </button>
         </div>
         <p className="fine-print">公開した枠は、すぐに利用者の画面に表示されます。担当の時間の重なりや受付の締切は、公開するときにもう一度確かめます。</p>
-      </section>
-    </div>
+    </Sheet>
   );
 }

@@ -12,12 +12,14 @@ export default function LoginBox({
   title,
   demoAccounts = [],
   demoMode = false,
+  forgotHref = '/forgot',
   footer,
 }: {
   client: SupabaseClient;
   title: string;
   demoAccounts?: Account[];
   demoMode?: boolean;
+  forgotHref?: string | null;
   footer?: ReactNode;
 }) {
   const [email, setEmail] = useState('');
@@ -86,6 +88,11 @@ export default function LoginBox({
         <button className="btn btn-primary btn-block" type="submit" disabled={busy !== null}>
           {busy === 'form' ? 'ログイン中…' : 'ログイン'}
         </button>
+        {forgotHref && (
+          <p className="login-forgot">
+            <a href={forgotHref}>パスワードを忘れた方</a>
+          </p>
+        )}
       </form>
       {footer}
     </section>

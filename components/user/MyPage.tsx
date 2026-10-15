@@ -11,6 +11,7 @@ import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/profile-options';
 import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
+import AccountSettings from './AccountSettings';
 import { useUserState, type MyProfile } from './useUserState';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,6 +30,7 @@ type Draft = Pick<
 export default function MyPage() {
   const router = useRouter();
   const { client, session, ready } = useRoleSession('user');
+  const [deleted, setDeleted] = useState(false);
   const { areas, profile, bookings, active, suspendedUntil, loaded, error, reload } = useUserState(client, session);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState<'karte' | 'profile' | null>(null);
@@ -36,8 +38,8 @@ export default function MyPage() {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    if (ready && !session) router.replace('/login?next=/mypage');
-  }, [ready, session, router]);
+    if (ready && !session && !deleted) router.replace('/login?next=/mypage');
+  }, [ready, session, router, deleted]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -96,6 +98,21 @@ export default function MyPage() {
   }
 
   if (!client) return <NotConfigured />;
+
+  if (deleted) {
+    return (
+      <main className="app">
+        <AppHeader role="利用者" />
+        <section className="card fade-in" style={{ marginTop: 16 }}>
+          <p className="card-title">アカウントを削除しました</p>
+          <p className="card-sub">ご利用ありがとうございました。</p>
+          <Link href="/" className="btn btn-secondary btn-block">
+            ホームへ
+          </Link>
+        </section>
+      </main>
+    );
+  }
 
   const history = bookings.filter((b) => b.id !== active?.id);
 
@@ -259,6 +276,8 @@ export default function MyPage() {
               </section>
             </>
           )}
+
+          <AccountSettings client={client} hasActiveBooking={!!active} onDeleted={() => setDeleted(true)} />
 
           <button className="btn btn-text" onClick={logout}>
             ログアウト

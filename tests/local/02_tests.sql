@@ -582,6 +582,53 @@ select t.ok('T38 メニューのある既存のサロンは、設定済みとし
 commit;
 
 -- ---------------------------------------------------------
+-- T39 検索結果の担当の名前（0006）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.ok('T39 担当を指定した枠は、検索結果に担当の名前が出る',
+  exists (select 1 from public.search_open_slots(public.jst_today_end()) where stylist_name = '佐藤'));
+select t.ok('T39 担当を指定しない枠は、担当の名前が空',
+  exists (select 1 from public.search_open_slots(public.jst_today_end()) where stylist_name is null));
+commit;
+
+-- ---------------------------------------------------------
+-- T40 サロンの住所・位置（0006）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.runs('T40 サロンは自店の住所・位置・エリアを設定できる',
+  $$select public.salon_update_profile('11111111-1111-4111-8111-111111111111', 'HAIR ROOM AOI', '駅の東口から徒歩5分（デモ）',
+    'e0000001-0000-4000-8000-000000000001', 34.6655, 133.9235)$$);
+select t.raises('T40 日本の範囲外の位置は受け付けない',
+  $$select public.salon_update_profile('11111111-1111-4111-8111-111111111111', 'HAIR ROOM AOI', 'x', null, 0, 0)$$, 'invalid_input');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T40 ほかのサロンの住所・位置は変えられない',
+  $$select public.salon_update_profile('11111111-1111-4111-8111-111111111111', 'x', 'y', null, 34.6, 133.9)$$, 'forbidden');
+commit;
+
+-- ---------------------------------------------------------
+-- T41 運営による掲載の停止・再開（0006）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.raises('T41 サロンは掲載を止められない',
+  $$select public.admin_set_salon_approved('22222222-2222-4222-8222-222222222222', false)$$, 'forbidden');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T41 運営はサロンの掲載を止められる', $$select public.admin_set_salon_approved('22222222-2222-4222-8222-222222222222', false)$$);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.ok('T41 掲載を止めたサロンの枠は検索に出ない',
+  not exists (select 1 from public.search_open_slots(public.jst_today_end()) where salon_id = '22222222-2222-4222-8222-222222222222'));
+select t.raises('T41 掲載を止めたサロンの枠は予約できない',
+  $$select public.book_slot('5b000000-0000-4000-8000-000000000001')$$, 'slot_not_found');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.runs('T41 運営は掲載を再開できる', $$select public.admin_set_salon_approved('22222222-2222-4222-8222-222222222222', true)$$);
+commit;
+select t.ok('T41 掲載の停止と再開が記録に残る',
+  (select count(distinct action) from public.audit_logs where action in ('suspend_salon', 'resume_salon')) = 2);
+
+-- ---------------------------------------------------------
 -- T34 デモ用の関数（サーバー側だけ）
 -- ---------------------------------------------------------
 begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';

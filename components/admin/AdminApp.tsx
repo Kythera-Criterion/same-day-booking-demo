@@ -12,11 +12,13 @@ import Applications from './Applications';
 import Dashboard from './Dashboard';
 import Logs from './Logs';
 import Overview from './Overview';
+import Salons from './Salons';
 import TrialEnd from './TrialEnd';
 
 const TABS = [
   { key: 'dashboard', label: '実証の数字' },
   { key: 'overview', label: '今日の状況' },
+  { key: 'salons', label: 'サロン' },
   { key: 'applications', label: '掲載希望' },
   { key: 'logs', label: '通知・記録' },
   { key: 'trial', label: '終了処理' },
@@ -52,6 +54,7 @@ export default function AdminApp({ demoMode }: { demoMode: boolean }) {
           title="運営としてログイン"
           demoMode={demoMode}
           demoAccounts={[{ email: 'admin@demo.test', label: '運営（デモ）' }]}
+          forgotHref="/forgot?role=admin"
         />
       )}
       {session && isAdmin === null && <Loading rows={3} />}
@@ -68,6 +71,7 @@ export default function AdminApp({ demoMode }: { demoMode: boolean }) {
           </nav>
           {tab === 'dashboard' && <Dashboard client={client} demoMode={demoMode} />}
           {tab === 'overview' && <Overview client={client} />}
+          {tab === 'salons' && <Salons client={client} />}
           {tab === 'applications' && <Applications client={client} />}
           {tab === 'logs' && <Logs client={client} />}
           {tab === 'trial' && <TrialEnd client={client} />}

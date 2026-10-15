@@ -23,6 +23,8 @@ export type BookTarget = {
   duration_min: number;
   salon_name: string;
   salon_address: string;
+  lat?: number;
+  lng?: number;
 };
 
 export default function BookingForm({
@@ -33,6 +35,8 @@ export default function BookingForm({
   activeBookingId,
   suspendedUntil,
   now,
+  unavailable = null,
+  onChooseOther,
   onBooked,
   onUnavailable,
 }: {
@@ -43,6 +47,8 @@ export default function BookingForm({
   activeBookingId: string | null;
   suspendedUntil: string | null;
   now: Date;
+  unavailable?: string | null;
+  onChooseOther?: () => void;
   onBooked: (bookingId: string) => void;
   onUnavailable?: () => void;
 }) {
@@ -51,6 +57,7 @@ export default function BookingForm({
   const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null);
   const [photoNote, setPhotoNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [booked, setBooked] = useState(false);
   const [error, setError] = useState<{ code: string | null; text: string } | null>(null);
 
   const conversation = pref ?? defaultPref ?? 'either';
@@ -97,12 +104,18 @@ export default function BookingForm({
       if (code === 'already_booked' || code === 'too_late') onUnavailable?.();
       return;
     }
+    setBooked(true);
     requestDispatch(client);
     onBooked((data as { id: string }).id);
   }
 
   return (
     <div className="stack">
+      {unavailable && !busy && !booked && (
+        <p className="notice notice-error sheet-alert" role="alert">
+          {unavailable}
+        </p>
+      )}
       <section className="ticket">
         <p className="ticket-date">{fmtDate(slot.start_at)}（今日）</p>
         <p className="ticket-time num">
@@ -124,6 +137,16 @@ export default function BookingForm({
           <dt>当日価格</dt>
           <dd className="ticket-price num">{fmtYen(slot.price)}</dd>
         </dl>
+        {slot.lat !== undefined && slot.lng !== undefined && (
+          <a
+            className="btn btn-quiet btn-block ticket-map"
+            href={`https://www.google.com/maps/search/?api=1&query=${slot.lat},${slot.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            お店の場所を地図で見る
+          </a>
+        )}
       </section>
 
       <ul className="promise">
@@ -210,7 +233,20 @@ export default function BookingForm({
       )}
       {suspendedUntil && <p className="notice notice-error">{fmtDate(suspendedUntil)}から予約できます。</p>}
 
-      <SlideToConfirm label="スライドして予約を確定" busy={busy} disabled={!!suspendedUntil || deadlineLeft < 0} onConfirm={confirm} />
+      {unavailable && !busy && !booked && onChooseOther ? (
+        <div className="confirm-ctl">
+          <button className="btn btn-primary btn-lg btn-block" onClick={onChooseOther}>
+            ほかの枠を選ぶ
+          </button>
+        </div>
+      ) : (
+        <SlideToConfirm
+          label="スライドして予約を確定"
+          busy={busy || booked}
+          disabled={!!suspendedUntil || deadlineLeft < 0 || (!!unavailable && !busy && !booked)}
+          onConfirm={confirm}
+        />
+      )}
     </div>
   );
 }

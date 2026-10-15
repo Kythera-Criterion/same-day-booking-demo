@@ -108,6 +108,22 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
     reload();
   }, [reload]);
 
+  // 自分の予約が変わったら（別の端末での予約・サロンによる来店済みやキャンセル）すぐに読み直す
+  useEffect(() => {
+    if (!client || !session) return;
+    const channel = client
+      .channel(`my-bookings-${session.user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings', filter: `user_id=eq.${session.user.id}` },
+        () => reload(),
+      )
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [client, session, reload]);
+
   const now = Date.now();
   const active =
     bookings.find((b) => b.status === 'confirmed' && b.slot && new Date(b.slot.end_at).getTime() > now) ?? null;

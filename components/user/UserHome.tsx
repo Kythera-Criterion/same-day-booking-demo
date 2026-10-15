@@ -12,6 +12,8 @@ import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import { saveOrigin } from '@/lib/origin';
+import { walkMinutes } from '@/lib/walk';
+import Sheet from '@/components/Sheet';
 import { ROLE_LABEL, pickThree, restByStart, type PickRole } from '@/lib/picks';
 import { UI_OPTIONS } from '@/lib/ui-options';
 import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
@@ -33,6 +35,7 @@ type FoundSlot = {
   salon_address: string;
   lat: number;
   lng: number;
+  stylist_name: string | null;
 };
 type Shown = FoundSlot & { id: string; startMs: number; km: number | null; bearing: number | null; role: PickRole | null };
 
@@ -64,6 +67,7 @@ export default function UserHome() {
   const [frozen, setFrozen] = useState<{ list: Shown[]; gone: string[] } | null>(null);
   const [arrival, setArrival] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null);
   const lastShown = useRef<Shown[]>([]);
   const lastWinCount = useRef<number | null>(null);
   const cardRefs = useRef(new Map<string, HTMLLIElement>());
@@ -92,6 +96,7 @@ export default function UserHome() {
     }
     setSearchError(null);
     setAll((data ?? []) as FoundSlot[]);
+    setLoadedAt(new Date());
   }, [client, currentAreaId]);
 
   useEffect(() => {
@@ -141,6 +146,8 @@ export default function UserHome() {
   );
   const picks = useMemo(() => pickThree(inWindow, UI_OPTIONS.pickMode) as Shown[], [inWindow]);
   const rest = useMemo(() => restByStart(inWindow, picks), [inWindow, picks]);
+  // 確認のシートを開いている間に、その枠が埋まった・締切を過ぎた
+  const sheetGone = !!sheet && all !== null && !valid.some((s) => s.slot_id === sheet.slot_id);
 
   // 表示中の候補が、ほかの人の予約で消えたら「埋まりました」を見せてから、次の候補を差し込む
   useEffect(() => {
@@ -351,6 +358,13 @@ export default function UserHome() {
                 </div>
               )}
 
+              {all !== null && loadedAt && shown.length > 0 && (
+                <p className="live-note num" aria-live="off">
+                  <span className="watch-dot" aria-hidden />
+                  空きの状況は自動で更新しています（{fmtTime(loadedAt)}時点）
+                </p>
+              )}
+
               {shown.length > 0 && origin && (
                 <Radar
                   originLabel={origin.label}
@@ -414,28 +428,21 @@ export default function UserHome() {
       )}
 
       {sheet && session && (
-        <div className="sheet-backdrop" onClick={() => setSheet(null)}>
-          <section className="sheet sheet-narrow" role="dialog" aria-label="予約の確認" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-grip" aria-hidden />
-            <div className="row-between">
-              <h2 className="card-title">予約の確認</h2>
-              <button className="btn btn-text" onClick={() => setSheet(null)}>
-                閉じる
-              </button>
-            </div>
-            <BookingForm
-              client={client}
-              session={session}
-              slot={{ ...sheet, id: sheet.slot_id }}
-              defaultPref={profile?.conversation_pref ?? null}
-              activeBookingId={active?.id ?? null}
-              suspendedUntil={suspendedUntil}
-              now={now}
-              onBooked={(id) => router.push(`/booking/${id}?new=1`)}
-              onUnavailable={search}
-            />
-          </section>
-        </div>
+        <Sheet label="予約の確認" title="予約の確認" narrow onClose={() => setSheet(null)}>
+          <BookingForm
+            client={client}
+            session={session}
+            slot={{ ...sheet, id: sheet.slot_id }}
+            defaultPref={profile?.conversation_pref ?? null}
+            activeBookingId={active?.id ?? null}
+            suspendedUntil={suspendedUntil}
+            now={now}
+            unavailable={sheetGone ? 'この枠は、ほかの方の予約が入ったか、受付の締切を過ぎたため、予約できなくなりました。' : null}
+            onChooseOther={() => setSheet(null)}
+            onBooked={(id) => router.push(`/booking/${id}?new=1`)}
+            onUnavailable={search}
+          />
+        </Sheet>
       )}
     </main>
   );
@@ -469,23 +476,35 @@ function SlotCard({
       className={`slot-card ${selected ? 'is-selected' : ''} ${gone ? 'is-gone' : ''}`}
       onClick={onSelect}
     >
-      {slot.role && <span className={`role-tag role-${slot.role}`}>{ROLE_LABEL[slot.role]}</span>}
-      <div className="slot-main">
-        <div className="slot-when">
+      {(slot.role || no !== undefined) && (
+        <div className="slot-top">
           {no !== undefined && <span className="slot-no num">{no}</span>}
-          <span className="slot-start num">{fmtTime(slot.start_at)}</span>
-          <span className="slot-left num">{fmtRemaining(minutesUntil(slot.start_at, now))}</span>
+          {slot.role && <span className={`role-tag role-${slot.role}`}>{ROLE_LABEL[slot.role]}</span>}
         </div>
-        <div className="slot-body">
-          <p className="slot-menu">{slot.menu_name}</p>
-          <p className="slot-meta">
-            {slot.duration_min}分 ・ {slot.salon_name}
-            {slot.km !== null && <> ・ {fmtDistance(slot.km)}</>}
-          </p>
-          <p className="slot-price">
-            <span className="price-label">当日価格</span>
-            <span className="num">{fmtYen(slot.price)}</span>
-          </p>
+      )}
+      <div className="slot-row">
+        <span className="slot-start num">{fmtTime(slot.start_at)}</span>
+        <span className="slot-left num">開始まで{fmtRemaining(minutesUntil(slot.start_at, now)).replace('あと', '')}</span>
+        <span className="slot-price">
+          <span className="price-label">当日価格</span>
+          <span className="num">{fmtYen(slot.price)}</span>
+        </span>
+      </div>
+      <p className="slot-salon">
+        {slot.salon_name}
+        {slot.km !== null && (
+          <span className="slot-walk num">
+            徒歩約{walkMinutes(slot.km)}分・{fmtDistance(slot.km)}
+          </span>
+        )}
+      </p>
+      <p className="slot-meta">
+        {slot.menu_name}・{slot.duration_min}分{slot.stylist_name && `・担当 ${slot.stylist_name}`}
+      </p>
+      <div className="slot-foot">
+        <div className={`slot-deadline ${left <= 5 ? 'is-urgent' : ''}`}>
+          <span className="num">予約受付 残り{Math.max(0, left)}分</span>
+          <RemainBar fraction={left / 60} urgent={left <= 5} />
         </div>
         <button
           className="btn btn-primary slot-cta"
@@ -494,13 +513,10 @@ function SlotCard({
             e.stopPropagation();
             onBook();
           }}
+          aria-label={`${fmtTime(slot.start_at)} ${slot.salon_name} を予約する`}
         >
-          予約
+          予約する
         </button>
-      </div>
-      <div className={`slot-deadline ${left <= 5 ? 'is-urgent' : ''}`}>
-        <span className="num">受付はあと{Math.max(0, left)}分</span>
-        <RemainBar fraction={left / 60} urgent={left <= 5} />
       </div>
       {gone && (
         <div className="gone-veil" role="status">
