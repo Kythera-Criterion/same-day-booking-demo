@@ -12,6 +12,7 @@ import { toMessage } from '@/lib/errors';
 import { distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
 import { useUserState } from './useUserState';
+import VoiceSearch from './VoiceSearch';
 
 type FoundSlot = {
   slot_id: string;
@@ -188,6 +189,7 @@ export default function UserHome() {
                 <span className="hero-button-sub">電話不要・店頭払い</span>
               </button>
               <p className="hero-note">今日の空き枠だけを、近い順にお届けします。</p>
+              <VoiceSearch onResult={(key, word) => choose(key, word)} />
             </section>
           )}
 

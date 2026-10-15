@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "setup:demo": "node --env-file=.env.local scripts/setup-demo.mjs",
     "test:race": "node --env-file=.env.local scripts/race-test.mjs",
-    "test:rls": "node --env-file=.env.local scripts/rls-check.mjs"
+    "test:rls": "node --env-file=.env.local scripts/rls-check.mjs",
+    "verify": "node --env-file=.env.local scripts/verify-all.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
