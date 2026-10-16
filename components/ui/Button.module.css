@@ -74,27 +74,33 @@
   border-color: var(--color-ink-sub);
 }
 
+/* 控えめ：沈んだ面に線を足し、ただの面（文字の背景）ではなく押せるものだと分かるようにする */
 .quiet {
   background: var(--color-surface-sunken);
+  border-color: var(--color-line-strong);
   color: var(--color-ink-2);
   font-weight: var(--weight-medium);
 }
 
 .quiet:hover:not(:disabled) {
   background: var(--color-line);
+  border-color: var(--color-ink-sub);
 }
 
+/* 文字の操作（戻る・閉じる・現在地を使う・ログアウトなど）：文字だけだと本文と見分けにくいため、
+   文字の色で薄く塗った面と線を付ける（危険の操作で文字が赤なら、面と線も赤になる） */
 .text {
   min-block-size: var(--tap-min);
-  padding-inline: var(--space-2);
-  background: none;
+  padding-inline: var(--space-3);
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+  background: color-mix(in srgb, currentColor 7%, transparent);
   color: var(--color-action-text);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-bold);
 }
 
 .text:hover:not(:disabled) {
-  text-decoration: underline;
-  text-underline-offset: 0.25em;
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 14%, transparent);
 }
 
 .danger {

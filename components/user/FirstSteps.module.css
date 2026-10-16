@@ -84,6 +84,6 @@
 
 .close {
   position: absolute;
-  inset-block-start: var(--space-1);
-  inset-inline-end: var(--space-1);
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
 }

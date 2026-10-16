@@ -51,26 +51,31 @@
   gap: var(--space-1);
 }
 
+/* 上部の帯の移動先（ホーム・マイページ・ログアウトなど）：文字だけに見えないよう、白い面と線のボタンにする */
 .nav a,
 .nav button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   min-block-size: var(--tap-min);
-  padding-inline: var(--space-2);
-  border: 0;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-control);
-  background: none;
-  color: var(--color-ink-2);
+  background: var(--color-surface);
+  color: var(--color-ink);
   font-size: var(--text-small);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-bold);
   text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-short) var(--ease-out),
+    border-color var(--motion-short) var(--ease-out);
 }
 
 .nav a:hover,
 .nav button:hover {
+  border-color: var(--color-ink-sub);
   background: var(--color-surface-sunken);
-  color: var(--color-ink);
 }
 
 /* 入口の画面の「どのページか」の帯 */

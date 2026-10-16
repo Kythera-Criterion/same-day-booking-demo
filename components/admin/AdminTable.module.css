@@ -75,13 +75,11 @@
   text-align: end;
 }
 
-/* セルの中の操作（文字のボタン）を縦にそろえる */
+/* セルの中の操作（面と線のボタン）を横に並べる */
 .actions {
   display: flex;
   flex-wrap: nowrap;
   white-space: nowrap;
   align-items: center;
-  gap: 0 var(--space-1);
-  margin-block: calc(-1 * var(--space-2));
-  margin-inline-start: calc(-1 * var(--space-2));
+  gap: 0 var(--space-2);
 }

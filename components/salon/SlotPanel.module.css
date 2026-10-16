@@ -163,8 +163,9 @@
 }
 
 /* 電話番号は押しやすい大きさの文字のリンク */
+/* お客様の電話番号（押すと電話をかける）：ほかの文字の操作と同じく、面と線のボタンとして見せる */
 .tel {
-  margin-inline-start: calc(-1 * var(--space-2));
+  align-self: flex-start;
   font-family: var(--font-num);
   font-size: var(--text-body);
   font-variant-numeric: tabular-nums;

@@ -169,18 +169,36 @@
   border-block-start: 1px solid var(--color-line);
 }
 
+/* これからの予約の行：行全体が予約の詳細を開くボタン。右端の「›」と、ポインタを重ねたときの面で、押せる行だと分かるようにする */
 .upItem {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: var(--space-3);
   inline-size: 100%;
   min-block-size: var(--space-16);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--space-2);
   border: 0;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--color-ink);
   text-align: start;
+  cursor: pointer;
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.upItem::after {
+  content: "";
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  margin-inline-end: var(--space-1);
+  border-block-start: 2px solid var(--color-ink-sub);
+  border-inline-end: 2px solid var(--color-ink-sub);
+  transform: rotate(45deg);
+}
+
+.upItem:hover {
+  background: var(--color-surface-sunken);
 }
 
 .upItem:hover .upName {

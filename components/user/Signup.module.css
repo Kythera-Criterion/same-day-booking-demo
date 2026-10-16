@@ -16,7 +16,6 @@
 
 .stepHead > button {
   flex: none;
-  margin-block-start: calc(-1 * var(--space-2));
   white-space: nowrap;
 }
 

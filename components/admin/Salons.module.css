@@ -25,11 +25,10 @@ td small.warn {
   font-weight: var(--weight-bold);
 }
 
-/* セルの中の文字のボタン：押せる大きさを保ったまま、行の高さを抑える */
+/* セルの中の操作のボタン：ラベルとの間を少しあけ、面と線のボタンとして並べる */
 .cellAction {
   white-space: nowrap;
-  margin-block: calc(-1 * var(--space-1));
-  margin-inline-start: calc(-1 * var(--space-2));
+  margin-block-start: var(--space-1);
 }
 
 button.danger {
