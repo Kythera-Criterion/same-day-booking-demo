@@ -1,7 +1,8 @@
 'use client';
 
 // お客様の下部のタブ：ホーム（House）・予約（CalendarCheck）・マイページ（UserCircle）
-//   予約：ご予約中なら、その予約の画面へ。なければマイページの「予約」の欄へ
+//   予約：いつも「予約」の画面（/bookings：現在の予約と履歴）へ。マイページ（カルテ・登録情報・アカウント）とは分ける
+//   ご予約中は、予約のタブに点を付けて知らせる。予約の画面（/bookings）と個別の予約（/booking/…）で、予約のタブを選んだ状態にする
 //   選んでいるタブは、アイコンを塗り（fill）にして、文字を太くする（色だけに頼らない）
 
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import s from './TabBar.module.css';
 
 export default function TabBar({ activeBookingId = null, signedIn = true }: { activeBookingId?: string | null; signedIn?: boolean }) {
   const path = usePathname() ?? '/';
-  const bookingHref = activeBookingId ? `/booking/${activeBookingId}` : signedIn ? '/mypage#bookings' : `/login?next=${encodeURIComponent('/mypage')}`;
+  const bookingHref = signedIn ? '/bookings' : `/login?next=${encodeURIComponent('/bookings')}`;
   const tabs: { href: string; label: string; icon: PhosphorIcon; on: boolean; dot?: boolean }[] = [
     { href: '/', label: 'ホーム', icon: House, on: path === '/' },
     { href: bookingHref, label: '予約', icon: CalendarCheck, on: path.startsWith('/booking'), dot: !!activeBookingId },

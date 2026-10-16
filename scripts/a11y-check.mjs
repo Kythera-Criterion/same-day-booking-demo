@@ -1,7 +1,7 @@
 // 主要な画面のアクセシビリティを、axe（@axe-core/playwright）で自動で確かめる（WCAG 2.1 A・AA）
 //   使い方：アプリを起動してから npm run test:a11y（DEMO_MODE=true のデモの環境で動かす）
 //   ブラウザ：環境変数 CHROME_PATH（なければ Windows の Chrome の既定の場所）
-//   画面：お客様（ホーム・候補・予約の確認シート・予約確定・ログイン・新規登録・マイページ）、
+//   画面：お客様（ホーム・候補・予約の確認シート・予約確定・ログイン・新規登録・予約・マイページ）、
 //         サロン（ログイン・営業の画面・予約の知らせ・枠を出すシート・設定）、運営（ログイン・実証の数字・掲載希望・サロン）、掲載申込
 //   予約を1件作るため、最初と最後に「デモをリセット」を呼ぶ
 
@@ -72,6 +72,9 @@ try {
     await p.getByRole('dialog').waitFor();
     await check(p, `予約の確認シート（${tag}）`, '[role="dialog"]');
     await p.keyboard.press('Escape');
+    await p.goto(`${BASE}/bookings`);
+    await p.waitForTimeout(1500);
+    await check(p, `予約（${tag}）`);
     await p.goto(`${BASE}/mypage`);
     await p.waitForTimeout(1500);
     await check(p, `マイページ（${tag}）`);
