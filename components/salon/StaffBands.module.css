@@ -1,226 +1,192 @@
-/* 担当ごとの帯（CSS Grid：担当名の列＋15分ごとの60列）。値は tokens.css の意味のトークンだけを使う */
+/* 担当ごとの帯（タブレットの横向き）。業務用：時刻を大きく、線は控えめ、今の時刻は時間の色の線。
+   担当の名前は、横にスクロールしても左に残す */
 
-/* 中の重なり順（担当名の固定など）を帯の中に閉じ込め、画面上部の警告の帯より前に出ないようにする */
 .scroll {
-  isolation: isolate;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding-bottom: var(--space-2);
+  padding-block-end: var(--space-2);
 }
 
-.table {
-  --columns: var(--band-name-col) repeat(var(--cols), minmax(var(--band-col-min), 1fr));
-  display: grid;
-  grid-template-columns: 1fr;
-  min-width: max-content;
+.grid {
+  position: relative;
 }
 
 .head,
 .row {
   display: grid;
-  grid-template-columns: var(--columns);
+}
+
+.head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  block-size: var(--space-10);
+  background: var(--color-surface);
+  border-block-end: 1px solid var(--color-line-strong);
+}
+
+.corner,
+.name {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 3;
+  background: var(--color-surface);
+}
+
+.scale {
   position: relative;
 }
 
-/* 時刻の目盛り（1時間ごとの見出し） */
-.head {
-  height: var(--space-8);
-  align-items: end;
-  border-bottom: var(--size-hairline) solid var(--color-line-strong);
-}
-.corner {
-  grid-column: 1;
-  grid-row: 1;
-  position: sticky;
-  left: 0;
-  z-index: var(--z-sticky);
-  align-self: stretch;
-  display: flex;
-  align-items: flex-end;
-  padding: 0 var(--space-3) var(--space-1);
-  background: var(--color-surface);
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
-}
-/* 行を1行目に固定する（今の時刻のタグと同じマスでも、2行目へ押し出されない） */
-.hour {
-  grid-row: 1;
-  padding: 0 0 var(--space-1) var(--space-1);
-  border-left: var(--size-hairline) solid var(--color-line-strong);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  color: var(--color-ink-2);
-}
-.nowTag {
-  grid-row: 1;
-  grid-column: var(--now-col);
-  align-self: start;
-  justify-self: start;
-  margin-left: calc(var(--now-frac) * 100%);
+.scale span {
+  position: absolute;
+  inset-block-end: var(--space-2);
   transform: translateX(-50%);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-warn);
-  color: var(--color-on-accent);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  z-index: var(--z-raised);
-}
-
-/* 担当ごとの1行（重なる枠は段を分ける） */
-.row {
-  grid-template-rows: repeat(var(--lanes, 1), var(--band-row-height));
-  border-bottom: var(--size-hairline) solid var(--color-line);
-}
-.name {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  position: sticky;
-  left: 0;
-  z-index: var(--z-sticky);
-  display: flex;
-  align-items: center;
-  padding: 0 var(--space-3);
-  background: var(--color-surface);
-  border-right: var(--size-hairline) solid var(--color-line);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-bold);
-  color: var(--color-ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* 15分ごとのマス：空いているところに触れると薄く強調、押すと枠を出す */
-.cell {
-  grid-row: 1 / -1;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-left: var(--size-hairline) dotted var(--color-line);
-  background: transparent;
-  cursor: copy;
-  transition: background-color var(--motion-short) var(--ease-standard);
-}
-.cell[data-hour] {
-  border-left: var(--size-hairline) solid var(--color-line-strong);
-}
-.cell:hover:not(:disabled) {
-  background: var(--color-accent-soft);
-}
-/* 受付の締切を過ぎた範囲は斜線で薄く覆う */
-.cell[data-past] {
-  cursor: default;
-  background: repeating-linear-gradient(135deg, var(--color-hatch) 0 var(--space-1), transparent var(--space-1) var(--space-2));
+.hour {
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-heavy);
 }
 
-/* 現在時刻の線（--now-col と --now-frac で位置を決める） */
-.now {
-  grid-row: 1 / -1;
-  grid-column: var(--now-col);
-  justify-self: start;
-  margin-left: calc(var(--now-frac) * 100%);
-  width: var(--size-stroke);
-  background: var(--color-warn);
-  pointer-events: none;
-  z-index: var(--z-raised);
+.half {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
 }
 
-/* 枠：始まりの列から置き、列の中のずれ（5分単位）は左右の余白で合わせる */
-.block {
-  --block-ink: var(--color-ink);
+.row {
+  border-block-end: 1px solid var(--color-line);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-4) var(--space-2);
+  border-inline-end: 1px solid var(--color-line);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.track {
   position: relative;
-  z-index: calc(var(--z-raised) + 1);
-  margin: var(--space-1) calc(var(--inset-end, 0) * 100% + var(--space-half)) var(--space-1) calc(var(--inset-start, 0) * 100% + var(--space-half));
+  cursor: copy;
+}
+
+.track:hover {
+  background: color-mix(in srgb, var(--color-action-soft) 55%, transparent);
+}
+
+/* 受付の締切を過ぎた時間（今から10分後まで）：斜線 */
+.past {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 var(--space-2), var(--color-line) var(--space-2) calc(var(--space-2) + 2px));
+  pointer-events: none;
+}
+
+.tick {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 1px;
+  background: var(--color-line);
+  pointer-events: none;
+}
+
+.tickHalf {
+  background: var(--color-line-strong);
+  opacity: 0.5;
+}
+
+.tickHour {
+  background: var(--color-line-strong);
+}
+
+.now {
+  position: absolute;
+  inset-block: 0;
+  z-index: 1;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--color-time);
+  pointer-events: none;
+}
+
+.now::before {
+  content: "";
+  position: absolute;
+  inset-block-start: calc(-1 * var(--space-1));
+  inset-inline-start: calc(-1 * var(--space-1) + 1px);
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: 50%;
+  background: var(--color-time);
+}
+
+.block {
+  position: absolute;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  /* 15分の枠も、押せる幅（44px）を下回らないようにする */
-  min-width: var(--size-tap);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  border: var(--size-stroke) solid transparent;
-  color: var(--block-ink);
-  font-size: var(--text-xs);
-  line-height: var(--leading-dense);
-  text-align: left;
+  gap: 0;
+  min-inline-size: 0;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-control);
   overflow: hidden;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: box-shadow var(--motion-short) var(--ease-standard);
-}
-.block:hover {
-  box-shadow: var(--shadow-2);
-}
-.time {
-  font-weight: var(--weight-bold);
-}
-.label {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: var(--weight-medium);
-}
-.no {
-  display: inline-block;
-  margin-left: var(--space-1);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-on-accent-faint);
-  font-weight: var(--weight-bold);
-}
-.block[data-narrow] {
-  align-items: center;
-  padding: 0 var(--space-half);
+  font-size: var(--text-caption);
+  line-height: var(--leading-tight);
+  text-align: start;
 }
 
-/* 状態ごとの見分け方（塗り・枠線・模様。色だけに頼らない） */
-/* 公開中：薄い塗り＋点線の枠 */
-.block[data-state="open"] {
-  background: var(--color-status-open-bg);
-  border-style: dashed;
-  border-color: var(--color-status-open-line);
-  --block-ink: var(--color-status-open);
+.block:hover {
+  filter: brightness(0.96);
 }
-/* 予約あり：濃い塗り＋実線の枠 */
-.block[data-state="confirmed"],
-.block[data-state="booked"] {
-  background: var(--color-status-booked-bg);
-  border-color: var(--color-status-booked-line);
-  --block-ink: var(--color-status-booked);
+
+.blockTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-inline-size: 0;
 }
-/* 来店済み：灰色の塗り＋二重線の枠 */
-.block[data-state="completed"] {
-  background: var(--color-status-completed-bg);
-  border-style: double;
-  border-width: var(--size-stroke-bold);
-  border-color: var(--color-status-completed-line);
-  --block-ink: var(--color-status-completed);
+
+.time {
+  font-family: var(--font-num);
+  font-size: var(--text-small);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-/* 無断キャンセル：警告の塗り＋実線の枠 */
-.block[data-state="no_show"] {
-  background: var(--color-warn-bg);
-  border-color: var(--color-warn);
-  --block-ink: var(--color-warn);
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  overflow: hidden;
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-/* 取り下げ・受付終了：塗りなし＋点の枠 */
-.block[data-state="closed"],
-.block[data-state="expired"] {
-  background: var(--color-surface);
-  border-style: dotted;
-  border-color: var(--color-status-cancelled-line);
-  --block-ink: var(--color-status-cancelled);
+
+.no {
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-label);
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
 }
-/* 今日はここまで・掲載停止：斜線の模様 */
-.block[data-state="paused"],
-.block[data-state="suspended"] {
-  background: repeating-linear-gradient(135deg, var(--color-status-cancelled-bg) 0 var(--space-1), var(--color-surface) var(--space-1) var(--space-2));
-  border-style: dashed;
-  border-color: var(--color-status-cancelled-line);
-  --block-ink: var(--color-status-cancelled);
+
+.narrow {
+  align-items: center;
+  padding-inline: var(--space-1);
 }
-.block[data-state="suspended"] {
-  border-color: var(--color-warn);
-  --block-ink: var(--color-warn);
+
+.narrow svg {
+  display: none;
 }

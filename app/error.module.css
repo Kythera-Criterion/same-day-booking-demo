@@ -1,0 +1,14 @@
+/* 予期しないエラーのときの画面：白い面に、理由の見当と2つの操作。問い合わせ用の番号は数字のフォントで
+   上部の帯がない画面なので、上の余白はページの内側（padding）で取る（外側の余白にすると、ページの背景の外に色の帯が出る） */
+
+.page {
+  padding-block-start: var(--space-8);
+}
+
+.digest {
+  margin-block-start: var(--space-3);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}

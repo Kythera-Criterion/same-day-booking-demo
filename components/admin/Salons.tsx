@@ -6,9 +6,18 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
 import { Empty, ErrorState, Loading } from '@/components/States';
+import Button from '@/components/ui/Button';
+import { Input, LabeledField } from '@/components/ui/Form';
+import Label from '@/components/ui/Label';
+import { Pair, Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ArrowCounterClockwise, CheckCircle, HourglassMedium, PauseCircle, Sparkle, Storefront, TrashSimple } from '@/components/ui/icons';
 import { one } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { jstTodayEnd, jstTodayStart } from '@/lib/time';
+import tb from './AdminTable.module.css';
+import sl from './Salons.module.css';
 
 type Row = {
   id: string;
@@ -21,7 +30,12 @@ type Row = {
   menus: { count: number }[];
   salon_members: { count: number }[];
   slots: { bookings: { count: number }[] }[];
+  salon_applications: { status: string }[] | null;
+  // 初期設定の進み具合（3 で完了）と、初めて設定を終えて加わった日時
+  salon_private: { onboarding_step: number; joined_at: string | null } | { onboarding_step: number; joined_at: string | null }[] | null;
 };
+
+const joinedFmt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const DEMO_SALONS = [
   '11111111-1111-4111-8111-111111111111',
@@ -36,7 +50,8 @@ const DELETE_ERROR: Record<string, string> = {
 };
 type Today = { salon_id: string; status: string; bookings: { status: string }[] | null };
 
-export default function Salons({ client }: { client: SupabaseClient }) {
+// fresh：運営の画面で「新しいサロンが加わりました」と知らせたお店（一覧で目立たせる）
+export default function Salons({ client, fresh = [] }: { client: SupabaseClient; fresh?: string[] }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [today, setToday] = useState<Today[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +66,7 @@ export default function Salons({ client }: { client: SupabaseClient }) {
     const [s, t] = await Promise.all([
       client
         .from('salons')
-        .select('id,name,address,phone,is_approved,accepts_genders,areas(name),menus(count),salon_members(count),slots(bookings(count))')
+        .select('id,name,address,phone,is_approved,accepts_genders,areas(name),menus(count),salon_members(count),slots(bookings(count)),salon_applications(status),salon_private(onboarding_step,joined_at)')
         .order('name'),
       client
         .from('slots')
@@ -79,7 +94,13 @@ export default function Salons({ client }: { client: SupabaseClient }) {
     const { error: e } = await client.rpc('admin_set_salon_approved', { p_salon_id: target.id, p_approved: !target.is_approved });
     setBusy(false);
     if (e) {
-      setMessage(toMessage(e));
+      setMessage(
+        e.message.includes('application_pending')
+          ? `${target.name} は審査中です。「掲載希望」のタブで承認すると、掲載が始まります。`
+          : e.message.includes('application_rejected')
+            ? `${target.name} は掲載を見送ったお店です。掲載するには、改めて申し込みを受けてください。`
+            : toMessage(e),
+      );
     } else {
       setMessage(target.is_approved ? `${target.name} の掲載を止めました。` : `${target.name} の掲載を再開しました。`);
     }
@@ -117,17 +138,24 @@ export default function Salons({ client }: { client: SupabaseClient }) {
   if (!rows) return <Loading rows={3} />;
   if (rows.length === 0)
     return (
-      <div className="card">
-        <Empty>サロンはまだありません。掲載希望を承認すると、ここに表示されます。</Empty>
-      </div>
+      <Panel>
+        <Empty icon={Storefront}>サロンはまだありません。掲載希望を承認すると、ここに表示されます。</Empty>
+      </Panel>
     );
 
   return (
-    <div className="stack">
-      {message && <p className="notice notice-ok">{message}</p>}
-      <div className="card card-flush">
-        <div className="slot-table-wrap" style={{ paddingTop: 8 }}>
-          <table className="slot-table">
+    <Stack gap={4}>
+      {message && (
+        <Notice tone="success" role="status">
+          {message}
+        </Notice>
+      )}
+      <Panel flush>
+        <div className={sl.head}>
+          <SectionHead icon={Storefront} title="サロンの一覧" as="p" aside={<span className="num">{rows.length}店</span>} />
+        </div>
+        <div className={tb.wrap}>
+          <table className={tb.table}>
             <thead>
               <tr>
                 <th scope="col">サロン</th>
@@ -141,51 +169,87 @@ export default function Salons({ client }: { client: SupabaseClient }) {
             </thead>
             <tbody>
               {rows.map((r) => {
-                const mine = today.filter((t) => t.salon_id === r.id);
-                const booked = mine.filter((t) => (t.bookings ?? []).some((b) => !b.status.startsWith('cancelled'))).length;
-                const open = mine.filter((t) => t.status === 'open').length;
+                const mine = today.filter((x) => x.salon_id === r.id);
+                const booked = mine.filter((x) => (x.bookings ?? []).some((b) => !b.status.startsWith('cancelled'))).length;
+                const open = mine.filter((x) => x.status === 'open').length;
                 const noPlace = !r.address.trim();
-                const history = (r.slots ?? []).reduce((sum, s) => sum + (s.bookings?.[0]?.count ?? 0), 0);
+                const history = (r.slots ?? []).reduce((sum, x) => sum + (x.bookings?.[0]?.count ?? 0), 0);
                 const isDemo = DEMO_SALONS.includes(r.id);
+                // 審査を通っていないお店（自己登録の審査中・見送り）は、「掲載を再開」ではなく「掲載希望」の承認で掲載する
+                const apps = r.salon_applications ?? [];
+                const review = r.is_approved || apps.some((a) => a.status === 'approved') ? null : apps.some((a) => a.status === 'pending') ? '審査中' : apps.some((a) => a.status === 'rejected') ? '見送り' : null;
+                const setup = one(r.salon_private);
                 const why = isDemo ? 'デモ用のサロンは削除できません' : history > 0 ? `予約の履歴が${history}件あるため削除できません（掲載を止めてください）` : null;
+                const isFresh = fresh.includes(r.id);
                 return (
-                  <tr key={r.id} style={{ cursor: 'default' }}>
-                    <td>
-                      <strong>{r.name}</strong>
-                      <small>{noPlace ? '⚠ 住所・場所が未設定' : r.address}</small>
+                  <tr key={r.id} className={isFresh ? sl.fresh : undefined} data-fresh={isFresh ? '' : undefined}>
+                    <td className={sl.salonCell}>
+                      <span className={sl.nameRow}>
+                        <strong className={tb.name}>{r.name}</strong>
+                        {isFresh && (
+                          <Label kind="success" icon={Sparkle}>
+                            新しく加わりました
+                          </Label>
+                        )}
+                      </span>
+                      <small className={`${tb.line} ${noPlace ? sl.warn : ''}`}>{noPlace ? '⚠ 住所・場所が未設定' : r.address}</small>
+                      <small className={tb.line}>
+                        {setup?.joined_at ? (
+                          <>
+                            <span className="num">{joinedFmt.format(new Date(setup.joined_at))}</span> に加わりました（初期設定を完了）
+                          </>
+                        ) : (
+                          <>
+                            初期設定中（<span className="num">{Math.min(setup?.onboarding_step ?? 0, 3)}/3</span>）・まだ使い始めていません
+                          </>
+                        )}
+                      </small>
                     </td>
-                    <td>{one(r.areas)?.name ?? '未設定'}</td>
-                    <td>{r.accepts_genders.length === 2 ? 'どなたでも' : r.accepts_genders.includes('female') ? '女性のみ' : '男性のみ'}</td>
-                    <td className="num">
+                    <td className={tb.nowrap}>{one(r.areas)?.name ?? '未設定'}</td>
+                    <td className={tb.nowrap}>{r.accepts_genders.length === 2 ? 'どなたでも' : r.accepts_genders.includes('female') ? '女性のみ' : '男性のみ'}</td>
+                    <td className={`num ${tb.nowrap}`}>
                       メニュー {r.menus[0]?.count ?? 0}
-                      <small>スタッフ {r.salon_members[0]?.count ?? 0}</small>
+                      <small className={tb.line}>スタッフ {r.salon_members[0]?.count ?? 0}</small>
                     </td>
-                    <td className="num">
+                    <td className={`num ${tb.nowrap}`}>
                       予約 {booked}
-                      <small>公開中 {open}</small>
+                      <small className={tb.line}>公開中 {open}</small>
                     </td>
                     <td>
-                      <span className={`pill ${r.is_approved ? 'pill-open' : 'pill-closed'}`}>{r.is_approved ? '掲載中' : '停止中'}</span>
-                      <div>
-                        <button className="btn btn-text btn-sm" onClick={() => setTarget(r)}>
-                          {r.is_approved ? '掲載を止める' : '掲載を再開'}
-                        </button>
+                      <Label
+                        kind={r.is_approved ? 'success' : review === '審査中' ? 'action' : 'state'}
+                        icon={r.is_approved ? CheckCircle : review === '審査中' ? HourglassMedium : PauseCircle}
+                      >
+                        {r.is_approved ? '掲載中' : (review ?? '停止中')}
+                      </Label>
+                      <div className={sl.cellAction}>
+                        {review ? (
+                          <small className={tb.line}>{review === '審査中' ? '「掲載希望」で承認' : '掲載していません'}</small>
+                        ) : (
+                          <Button variant="text" onClick={() => setTarget(r)}>
+                            {r.is_approved ? '掲載を止める' : '掲載を再開'}
+                          </Button>
+                        )}
                       </div>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-text btn-sm danger-text"
-                        disabled={!!why}
-                        title={why ?? undefined}
-                        onClick={() => {
-                          setRemoving(r);
-                          setConfirmName('');
-                          setRemoveError(null);
-                        }}
-                      >
-                        削除
-                      </button>
-                      <small>{isDemo ? 'デモ用' : history > 0 ? `予約の履歴 ${history}件` : '予約の履歴なし'}</small>
+                      <div className={sl.cellAction}>
+                        <Button
+                          variant="text"
+                          icon={TrashSimple}
+                          className={sl.danger}
+                          disabled={!!why}
+                          title={why ?? undefined}
+                          onClick={() => {
+                            setRemoving(r);
+                            setConfirmName('');
+                            setRemoveError(null);
+                          }}
+                        >
+                          削除
+                        </Button>
+                      </div>
+                      <small className={`${tb.line} ${tb.nowrap}`}>{isDemo ? 'デモ用' : history > 0 ? `予約の履歴 ${history}件` : '予約の履歴なし'}</small>
                     </td>
                   </tr>
                 );
@@ -193,19 +257,21 @@ export default function Salons({ client }: { client: SupabaseClient }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </Panel>
 
       {target && (
         <Sheet label={target.is_approved ? '掲載を止めますか' : '掲載を再開しますか'} role="alertdialog" narrow onClose={() => setTarget(null)}>
-          <p className="card-title">
-            {target.name} の{target.is_approved ? '掲載を止めますか？' : '掲載を再開しますか？'}
-          </p>
+          <SectionHead
+            icon={target.is_approved ? PauseCircle : ArrowCounterClockwise}
+            title={`${target.name} の${target.is_approved ? '掲載を止めますか？' : '掲載を再開しますか？'}`}
+            as="p"
+          />
           {(() => {
-            const mine = today.filter((t) => t.salon_id === target.id);
-            const open = mine.filter((t) => t.status === 'open').length;
-            const upcoming = mine.filter((t) => (t.bookings ?? []).some((b) => b.status === 'confirmed')).length;
+            const mine = today.filter((x) => x.salon_id === target.id);
+            const open = mine.filter((x) => x.status === 'open').length;
+            const upcoming = mine.filter((x) => (x.bookings ?? []).some((b) => b.status === 'confirmed')).length;
             return target.is_approved ? (
-              <ul className="delete-list">
+              <ul className={sl.points}>
                 <li>公開中の枠（今日 {open}件）をすぐに取り下げ、利用者の画面から消します。新しい予約もできなくなります。</li>
                 <li>
                   これからの予約（今日 {upcoming}件）はそのまま残ります。予約したお客様には、来店のためにお店の情報が表示され続けます。
@@ -214,48 +280,49 @@ export default function Salons({ client }: { client: SupabaseClient }) {
                 <li>サロンの画面には「掲載が止められています」と表示されます。再開はいつでもできます。</li>
               </ul>
             ) : (
-              <p className="card-sub">再開すると、止めたときに取り下げた枠のうち、受付の締切前のものを再び公開し、利用者の検索に出します。</p>
+              <SubText>再開すると、止めたときに取り下げた枠のうち、受付の締切前のものを再び公開し、利用者の検索に出します。</SubText>
             );
           })()}
-          <div className="action-pair">
-            <button className="btn btn-quiet" onClick={() => setTarget(null)}>
+          <Pair>
+            <Button variant="quiet" size="md" onClick={() => setTarget(null)}>
               やめる
-            </button>
-            <button className={`btn ${target.is_approved ? 'btn-danger' : 'btn-primary'}`} disabled={busy} onClick={toggle}>
+            </Button>
+            <Button variant={target.is_approved ? 'dangerSolid' : 'primary'} size="md" disabled={busy} onClick={toggle}>
               {target.is_approved ? '掲載を止める' : '掲載を再開する'}
-            </button>
-          </div>
+            </Button>
+          </Pair>
         </Sheet>
       )}
 
       {removing && (
         <Sheet label="サロンを削除しますか" role="alertdialog" narrow onClose={() => setRemoving(null)}>
-          <p className="card-title">{removing.name} を削除しますか？</p>
-          <ul className="delete-list">
+          <SectionHead icon={TrashSimple} title={`${removing.name} を削除しますか？`} as="p" />
+          <ul className={sl.points}>
             <li>サロン・メニュー・担当・今日までの枠・いつもの枠・LINE の設定を削除します。元に戻せません。</li>
             <li>このサロンだけのスタッフのアカウントも削除します（ほかのサロン・運営・利用者としても使われているアカウントは残します）。</li>
             <li>掲載希望の記録と操作の記録は残ります。</li>
             <li>予約の履歴があるサロンは削除できません。その場合は掲載を止めてください。</li>
           </ul>
-          <label className="field">
-            <span className="field-label">確認のため、店名「{removing.name}」を入力してください</span>
-            <input className="input" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
-          </label>
+          <LabeledField label={`確認のため、店名「${removing.name}」を入力してください`}>
+            <Input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
+          </LabeledField>
           {removeError && (
-            <p className="notice notice-error" role="alert">
-              {removeError}
-            </p>
+            <div className={sl.removeError}>
+              <Notice tone="danger" role="alert">
+                {removeError}
+              </Notice>
+            </div>
           )}
-          <div className="action-pair">
-            <button className="btn btn-quiet" onClick={() => setRemoving(null)}>
+          <Pair>
+            <Button variant="quiet" size="md" onClick={() => setRemoving(null)}>
               やめる
-            </button>
-            <button className="btn btn-danger" disabled={busy || confirmName.trim() !== removing.name} onClick={remove}>
+            </Button>
+            <Button variant="dangerSolid" size="md" disabled={busy || confirmName.trim() !== removing.name} onClick={remove}>
               {busy ? '削除中…' : '削除する'}
-            </button>
-          </div>
+            </Button>
+          </Pair>
         </Sheet>
       )}
-    </div>
+    </Stack>
   );
 }

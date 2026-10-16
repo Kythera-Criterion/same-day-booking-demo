@@ -1,0 +1,89 @@
+/* ログインの方法：ログイン用メールアドレス → 外部の ID の連携（線で区切った行）→ パスワードの設定・変更 */
+
+.notice {
+  margin-block-start: var(--space-3);
+}
+
+/* 連携している外部の ID：各社の公式のアイコン・名前と状態・操作を1行に */
+.linked {
+  margin-block-start: var(--space-3);
+  list-style: none;
+}
+
+.linked > li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-block-start: 1px solid var(--color-line);
+}
+
+.linkedIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-8);
+}
+
+.linkedBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  line-height: var(--leading-snug);
+}
+
+.linkedBody strong {
+  font-size: var(--text-small);
+}
+
+.linkedBody small {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.linkedHint {
+  display: block;
+  margin-block-start: var(--space-1);
+  color: var(--color-ink-2);
+}
+
+.linked > li > button {
+  flex: none;
+}
+
+/* パスワードの設定・変更：細い線で区切る */
+.pwForm {
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-line);
+}
+
+.formTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.formTitle > svg {
+  color: var(--color-ink-sub);
+}
+
+.hint {
+  margin-block: calc(-1 * var(--space-1)) var(--space-3);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+/* 2つの入力欄：狭い画面では縦に、広い画面では横に並べる（入力欄が狭くなりすぎない幅で折り返す） */
+.pwRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--size-tile) * 2), 1fr));
+  gap: 0 var(--space-3);
+}

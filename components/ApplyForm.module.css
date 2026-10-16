@@ -1,0 +1,50 @@
+/* 掲載のお申し込み（ログイン不要）：おすすめの新規登録への案内 → 相談のフォーム */
+
+/* おすすめの道：白い面全体が新規登録へのリンク。見出しにアイコン、最後に役割の色の「新規登録へ →」 */
+.recommend {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin-block-end: var(--space-4);
+  padding: var(--pad-surface);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  text-decoration: none;
+}
+
+.recommend > svg {
+  color: var(--color-action-text);
+}
+
+.recommend strong {
+  display: block;
+  margin-block-end: var(--space-1);
+  color: var(--color-ink);
+  font-size: var(--text-body);
+  line-height: var(--leading-tight);
+}
+
+.go {
+  color: var(--color-action-text);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.recommend:hover .go {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.lead {
+  margin-block-end: var(--space-3);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  line-height: var(--leading-body);
+}
+
+.error {
+  margin-block-end: var(--space-3);
+}

@@ -1,0 +1,37 @@
+/* 通知・記録：切り替え（通知ログ／操作記録）と、白い面の中の一覧・表 */
+
+.switch {
+  align-self: flex-start;
+  min-inline-size: calc(var(--space-16) * 4);
+}
+
+.lead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.lead > svg {
+  flex: none;
+  margin-block-start: 1px;
+  color: var(--color-action-text);
+}
+
+.pad {
+  padding: var(--pad-surface);
+}
+
+/* 操作した人・対象の ID（先頭8文字） */
+.id {
+  color: var(--color-ink-2);
+  white-space: nowrap;
+}
+
+/* 面の上端と、表の見出しの間をあける */
+.auditWrap {
+  padding-block-start: var(--space-2);
+}

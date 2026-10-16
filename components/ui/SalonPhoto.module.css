@@ -1,0 +1,72 @@
+/* お店の写真：一覧は正方形、上部は 16:9。写真の上に文字を重ねるときは、下に向かって暗くなるグラデーションを敷く */
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+}
+
+.frame img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.thumb {
+  inline-size: var(--size-thumb);
+  block-size: var(--size-thumb);
+  flex: none;
+  border-radius: var(--radius-photo);
+}
+
+.square {
+  aspect-ratio: 1;
+  border-radius: var(--radius-photo);
+}
+
+.hero {
+  aspect-ratio: 16 / 9;
+  inline-size: 100%;
+}
+
+.rounded {
+  border-radius: var(--radius-photo);
+}
+
+.shade::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--photo-shade);
+  pointer-events: none;
+}
+
+.caption {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 1;
+  padding: var(--space-4) var(--space-5);
+  color: var(--color-ink-on-photo);
+}
+
+/* 写真のないお店：お店の印（アイコンと頭文字） */
+.fallback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-1);
+  background: linear-gradient(135deg, var(--color-action-soft), var(--color-surface-sunken));
+  color: var(--color-action-text);
+}
+
+.initial {
+  font-family: var(--font-num);
+  font-size: var(--text-small);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.08em;
+}
+
+.hero.fallback .initial {
+  font-size: var(--text-heading);
+}

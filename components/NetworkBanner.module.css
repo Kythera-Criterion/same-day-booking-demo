@@ -1,0 +1,32 @@
+/* 通信の状態の帯：画面の上に貼りつけ、上部の帯より手前に出す。
+   切れたときは危険の色で塗り（予約や枠の公開が届かないことに気づけるように）、戻ったときは成功の色を薄く */
+
+.banner {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-align: center;
+}
+
+.banner > svg {
+  flex: none;
+}
+
+.off {
+  background: var(--color-danger);
+  color: var(--color-ink-on-strong);
+}
+
+.on {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}

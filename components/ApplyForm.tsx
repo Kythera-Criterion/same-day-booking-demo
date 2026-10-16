@@ -6,8 +6,15 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
+import Button from '@/components/ui/Button';
+import { Input, LabeledField, Textarea } from '@/components/ui/Form';
+import { Page, ScreenTitle } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { CheckCircle, PaperPlaneTilt, Sparkle } from '@/components/ui/icons';
 import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
+import s from './ApplyForm.module.css';
 
 export default function ApplyForm() {
   const { client } = useRoleSession('user');
@@ -41,54 +48,55 @@ export default function ApplyForm() {
   if (!client) return <NotConfigured />;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role="サロンの方へ" home="/salon" />
       <RoleIntro kind="salon" />
-      <h1 className="screen-title">掲載のお申し込み</h1>
+      <ScreenTitle>掲載のお申し込み</ScreenTitle>
       {!done && (
-        <Link href="/salon/signup" className="notice notice-ok finish-banner">
-          <strong>すぐに始めたい方は、アカウントを作って登録できます（おすすめ）</strong>
-          Google・Yahoo! JAPAN ID・メールアドレスで登録し、審査の間にメニューなどの準備を進められます。 <span className="finish-go">新規登録へ →</span>
+        <Link href="/salon/signup" className={s.recommend}>
+          <Sparkle size={24} weight="duotone" aria-hidden focusable="false" />
+          <span>
+            <strong>すぐに始めたい方は、アカウントを作って登録できます（おすすめ）</strong>
+            店名・お名前・メールアドレス・パスワード（または Google・Yahoo! JAPAN ID）で申し込めます。運営が承認すると確認のリンクが届き、開くとすぐに使い始められます。 <span className={s.go}>新規登録へ →</span>
+          </span>
         </Link>
       )}
-      {!done && <p className="card-sub">まずは相談したい方は、下のフォームからお送りください。運営で確認のうえ、ご連絡します。</p>}
+      {!done && <p className={s.lead}>まずは相談したい方は、下のフォームからお送りください。運営で確認のうえ、ご連絡します。</p>}
       {done ? (
-        <section className="card fade-in">
-          <p className="card-title">お申し込みを受け付けました</p>
-          <p className="card-sub">運営で確認のうえ、ご連絡します。</p>
-        </section>
+        <Panel as="section">
+          <SectionHead icon={CheckCircle} title="お申し込みを受け付けました" as="p" />
+          <SubText>運営で確認のうえ、ご連絡します。</SubText>
+        </Panel>
       ) : (
-        <form className="card" onSubmit={submit}>
-          <label className="field">
-            <span className="field-label">店舗名</span>
-            <input className="input" required maxLength={80} value={form.salon} onChange={(e) => set('salon', e.target.value)} />
-          </label>
-          <label className="field">
-            <span className="field-label">担当者名</span>
-            <input className="input" required maxLength={60} value={form.name} onChange={(e) => set('name', e.target.value)} />
-          </label>
-          <label className="field">
-            <span className="field-label">メールアドレス</span>
-            <input className="input" type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} />
-          </label>
-          <label className="field">
-            <span className="field-label">電話番号（任意）</span>
-            <input className="input" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
-          </label>
-          <label className="field">
-            <span className="field-label">掲載を希望するエリア</span>
-            <input className="input" required maxLength={80} value={form.area} onChange={(e) => set('area', e.target.value)} />
-          </label>
-          <label className="field">
-            <span className="field-label">ご質問（任意）</span>
-            <textarea className="textarea" maxLength={1000} value={form.question} onChange={(e) => set('question', e.target.value)} />
-          </label>
-          {error && <p className="notice notice-error">{error}</p>}
-          <button className="btn btn-primary btn-lg btn-block" disabled={busy} type="submit">
+        <Panel as="form" onSubmit={submit}>
+          <LabeledField label="店舗名">
+            <Input required maxLength={80} value={form.salon} onChange={(e) => set('salon', e.target.value)} />
+          </LabeledField>
+          <LabeledField label="担当者名">
+            <Input required maxLength={60} value={form.name} onChange={(e) => set('name', e.target.value)} />
+          </LabeledField>
+          <LabeledField label="メールアドレス">
+            <Input type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} />
+          </LabeledField>
+          <LabeledField label="電話番号（任意）">
+            <Input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
+          </LabeledField>
+          <LabeledField label="掲載を希望するエリア">
+            <Input required maxLength={80} value={form.area} onChange={(e) => set('area', e.target.value)} />
+          </LabeledField>
+          <LabeledField label="ご質問（任意）">
+            <Textarea maxLength={1000} value={form.question} onChange={(e) => set('question', e.target.value)} />
+          </LabeledField>
+          {error && (
+            <Notice tone="danger" className={s.error}>
+              {error}
+            </Notice>
+          )}
+          <Button variant="primary" size="lg" block disabled={busy} type="submit" icon={PaperPlaneTilt}>
             {busy ? '送信中…' : '申し込む'}
-          </button>
-        </form>
+          </Button>
+        </Panel>
       )}
-    </main>
+    </Page>
   );
 }

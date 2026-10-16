@@ -1,0 +1,87 @@
+/* 運営の画面の表（サロン・運営メンバー・操作記録・今日の状況で共通）
+   行の区切りは細い線だけ。列の見出しは小さく、字間を少し空け、補足の色で。数字は数字のフォントで（.num） */
+
+.wrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--color-line-strong);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--color-line);
+  color: var(--color-ink);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+/* 面の端と文字の端をそろえる */
+.table th:first-child,
+.table td:first-child {
+  padding-inline-start: var(--pad-surface);
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-inline-end: var(--pad-surface);
+}
+
+.table small {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+/* セルの中の2行目（住所・補足など） */
+.line {
+  display: block;
+  margin-block-start: 2px;
+}
+
+.name {
+  font-weight: var(--weight-bold);
+}
+
+/* 時刻・番号など、目で追う数字 */
+.figure {
+  font-size: var(--text-body);
+  font-weight: var(--weight-heavy);
+  white-space: nowrap;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.end {
+  text-align: end;
+}
+
+/* セルの中の操作（文字のボタン）を縦にそろえる */
+.actions {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+  margin-block: calc(-1 * var(--space-2));
+  margin-inline-start: calc(-1 * var(--space-2));
+}

@@ -6,9 +6,10 @@ import { dispatchPending } from '@/lib/notify/dispatch';
 
 // 掲載希望の承認：運営だけが呼べる。
 //   1. 呼び出した人が運営かを、その人の権限で確かめる（is_admin）
-//   ・サロンが自分で登録した申込（アカウント・サロンが作成済み）：掲載を始め、「掲載開始のお知らせ」を送る
-//   ・公開フォームからの申込：
-//     2. スタッフのアカウントと「ご利用開始」のリンクを、サーバー側で作る
+//   ・以前の形の自己登録（アカウント・サロンが作成済み）：掲載を始め、「掲載開始のお知らせ」を送る
+//   ・サロンの画面の「新規登録」からの申込（アカウントは作成済み・確認前）と、公開フォームからの申込：
+//     2. 「ご利用開始」のリンクを、サーバー側で作る（新規登録のアカウントには、登録の確認とログインを兼ねたリンク。
+//        フォームの申込には、アカウントを作ってパスワードを決めるリンク）
 //     3. サロンの作成とスタッフの紐づけは、運営の権限で DB の関数（admin_approve_application）が行う
 //     4. 申込のメールアドレスへ「ご利用開始のご案内」を自動で送る（キーがなければシミュレーション送信）
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
         dedupeKey: mailKey('salon_approved_mail', app.id),
         payload: { salon_name: app.salon_name, contact_name: app.contact_name, email: app.email, login_link: `${origin}/salon` },
       });
+      await admin.from('salon_applications').update({ invite_sent_at: new Date().toISOString(), invite_count: (app.invite_count ?? 0) + 1 }).eq('id', app.id);
     } catch {
       mailStatus = 'failed';
     }
@@ -67,20 +69,23 @@ export async function POST(req: Request) {
     p_staff_user_id: start.userId,
   });
   if (approveError) {
-    // 承認できなかったときは、いま作ったばかりのアカウントを残さない
-    if (start.type === 'invite') await admin.auth.admin.deleteUser(start.userId);
+    // 承認できなかったときは、いま作ったばかりのアカウントを残さない（申し込んだ人のアカウントなど、前からあるものは消さない）
+    if (start.created) await admin.auth.admin.deleteUser(start.userId);
     return NextResponse.json({ error: approveError.message }, { status: 400 });
   }
 
-  // ご利用開始のご案内メールを積んで、すぐに送る
+  // ご利用開始のご案内メールを積んで、すぐに送る。
+  // リンクには承認したお店を付ける（2店舗目の申し込みでも、開いたときにそのお店を表示する）
+  const link = `${start.link}&salon=${encodeURIComponent(salonId as string)}`;
+  const { data: passwordSet } = await admin.rpc('user_has_password', { p_user_id: start.userId });
   let mailStatus = 'pending';
   try {
-    const count = await enqueueWelcome(admin, app as Application, salonId as string, start.link);
+    const count = await enqueueWelcome(admin, app as Application, salonId as string, link, passwordSet === true);
     await dispatchPending();
     mailStatus = await welcomeStatus(admin, app.id, count);
   } catch {
     mailStatus = 'failed';
   }
 
-  return NextResponse.json({ salonId, staffEmail: app.email, inviteLink: start.link, mailStatus });
+  return NextResponse.json({ salonId, staffEmail: app.email, inviteLink: link, mailStatus });
 }

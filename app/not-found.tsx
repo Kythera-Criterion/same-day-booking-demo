@@ -1,19 +1,23 @@
-import Link from 'next/link';
 import AppHeader from '@/components/AppHeader';
+import { ButtonLink } from '@/components/ui/Button';
+import { Page } from '@/components/ui/Layout';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { Lightning, MagnifyingGlass } from '@/components/ui/icons';
+import s from './not-found.module.css';
 
 export const metadata = { title: 'ページが見つかりません' };
 
 export default function NotFound() {
   return (
-    <main className="app">
+    <Page>
       <AppHeader />
-      <section className="card" style={{ marginTop: 24 }}>
-        <p className="card-title">ページが見つかりません</p>
-        <p className="card-sub">URL が変わったか、受付を終えた予約・枠のページかもしれません。</p>
-        <Link href="/" className="btn btn-primary btn-block">
+      <Panel as="section" className={s.panel}>
+        <SectionHead icon={MagnifyingGlass} title="ページが見つかりません" as="p" />
+        <SubText>URL が変わったか、受付を終えた予約・枠のページかもしれません。</SubText>
+        <ButtonLink href="/" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
           今から行けるお店を探す
-        </Link>
-      </section>
-    </main>
+        </ButtonLink>
+      </Panel>
+    </Page>
   );
 }

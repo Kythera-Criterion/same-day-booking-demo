@@ -1,0 +1,48 @@
+/* 読み込み中・データなし・エラー */
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton > span {
+  display: block;
+  block-size: var(--space-16);
+  border-radius: var(--radius-surface);
+  background: linear-gradient(90deg, var(--color-surface-sunken) 0%, var(--color-surface) 50%, var(--color-surface-sunken) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.empty > svg {
+  color: var(--color-ink-sub);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.config {
+  margin-block-start: var(--space-6);
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}

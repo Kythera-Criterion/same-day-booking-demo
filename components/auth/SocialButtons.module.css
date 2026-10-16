@@ -1,0 +1,78 @@
+/* 外部の ID（Google・Yahoo! JAPAN ID）のボタンと、「または」の区切り・ログインの知らせ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ブランドの決まりによる例外（このファイルで直接書く色は、ここの2色だけ）：
+   Google のガイドライン（https://developers.google.com/identity/branding-guidelines）で、
+   ボタンは「白地・#747775 の1pxの枠・#1F1F1F の文字」と決められている。各社の公式の見た目を保つため、
+   枠と文字の色はトークンではなく、ガイドラインの値をそのまま書く（白地は --color-surface と同じ値）。
+   Yahoo! JAPAN ID のボタンも同じ白地のボタンにそろえる（公式のアイコンの周りに十分な余白を取る）。
+   押したときの色の変化は、ガイドラインの「文字の色を 8% 重ねる」に合わせる */
+.provider {
+  --brand-line: #747775; /* 数値の例外：Google のブランドガイドラインの枠の色 */
+  --brand-ink: #1f1f1f; /* 数値の例外：Google のブランドガイドラインの文字の色 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: calc(var(--tap-min) + var(--space-1));
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--brand-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--brand-ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.provider:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--brand-ink) 8%, var(--color-surface));
+}
+
+.provider:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.text {
+  white-space: nowrap;
+}
+
+/* 各社の公式のアイコン（色・形を変えない） */
+.icon {
+  display: block;
+  flex: none;
+}
+
+/* 「または」の区切り：細い線で区切るだけ */
+.or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+}
+
+.or::before,
+.or::after {
+  content: "";
+  flex: 1;
+  block-size: 1px;
+  background: var(--color-line);
+}
+
+/* 画面の上に出す知らせ（ログアウトしました・ログインできませんでした）：下の面との間をあける */
+.pageNotice {
+  margin-block-end: var(--space-3);
+}

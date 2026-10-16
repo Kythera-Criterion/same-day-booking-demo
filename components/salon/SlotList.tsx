@@ -6,6 +6,8 @@ import { CONVERSATION_PREFS, label } from '@/lib/profile-options';
 import { fmtTime, fmtYen } from '@/lib/time';
 import { activeBooking, type SalonSlot } from './useSalonData';
 import { STATE_LABEL, slotState } from './Timeline';
+import { FreshMark, StateIcon, stateClass } from './SlotStateMark';
+import t from './SlotList.module.css';
 
 export default function SlotList({
   slots,
@@ -25,8 +27,8 @@ export default function SlotList({
   const nextIdx = rows.findIndex((s) => new Date(s.end_at).getTime() > nowMs);
 
   return (
-    <div className="slot-table-wrap">
-      <table className="slot-table">
+    <div className={t.wrap}>
+      <table className={t.table}>
         <thead>
           <tr>
             <th scope="col">時刻</th>
@@ -45,12 +47,12 @@ export default function SlotList({
             return (
               <tr
                 key={s.id}
-                className={`${past ? 'is-past' : ''} ${i === nextIdx ? 'is-next' : ''} ${b && freshIds.includes(b.id) ? 'is-fresh' : ''}`}
+                className={`${t.row} ${past ? t.past : ''} ${i === nextIdx ? t.next : ''}`}
                 onClick={() => onSelect(s)}
                 tabIndex={0}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect(s)}
               >
-                <td className="num slot-table-time">
+                <td className={t.time}>
                   {fmtTime(s.start_at)}
                   <span>〜{fmtTime(s.end_at)}</span>
                 </td>
@@ -60,7 +62,13 @@ export default function SlotList({
                   <small className="num">{fmtYen(s.price)}</small>
                 </td>
                 <td>
-                  <span className={`pill pill-${st}`}>{STATE_LABEL[st] ?? st}</span>
+                  <span className={t.cellRow}>
+                    <span className={`${t.state} ${stateClass(st)}`}>
+                      <StateIcon state={st} />
+                      {STATE_LABEL[st] ?? st}
+                    </span>
+                    {b && freshIds.includes(b.id) && <FreshMark />}
+                  </span>
                 </td>
                 <td>
                   {b ? (
@@ -72,7 +80,7 @@ export default function SlotList({
                     '—'
                   )}
                 </td>
-                {showNo && <td className="num">{b?.booking_no ?? '—'}</td>}
+                {showNo && <td className={t.no}>{b?.booking_no ?? '—'}</td>}
               </tr>
             );
           })}

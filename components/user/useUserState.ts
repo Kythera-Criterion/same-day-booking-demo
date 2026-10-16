@@ -71,6 +71,7 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = session?.user.id ?? null;
   const reload = useCallback(async () => {
     if (!client) return;
     setError(null);
@@ -82,7 +83,7 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
     }
     setAreas((areaRows ?? []) as Area[]);
 
-    if (!session) {
+    if (!userId) {
       setProfile(null);
       setBookings([]);
       setSuspendedUntil(null);
@@ -93,12 +94,12 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
       client
         .from('profiles')
         .select('id,display_name,phone,gender,email,age_group,occupation,area_id,conversation_pref,hair_type,color_history,perm_history,adult_confirmed_at')
-        .eq('id', session.user.id)
+        .eq('id', userId)
         .maybeSingle(),
       client
         .from('bookings')
         .select('id,status,created_at,slots(start_at,end_at,price,menus(name,duration_min),salons(name))')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(30),
       client.rpc('my_suspension'),
@@ -108,7 +109,7 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
     setBookings(((b.data ?? []) as unknown as RawBooking[]).map(normalizeBooking));
     setSuspendedUntil((s.data as string | null) ?? null);
     setLoaded(true);
-  }, [client, session]);
+  }, [client, userId]);
 
   useEffect(() => {
     reload();
@@ -116,19 +117,18 @@ export function useUserState(client: SupabaseClient | null, session: Session | n
 
   // 自分の予約が変わったら（別の端末での予約・サロンによる来店済みやキャンセル）すぐに読み直す
   useEffect(() => {
-    if (!client || !session) return;
+    if (!client || !userId) return;
     const channel = client
-      .channel(`my-bookings-${session.user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings', filter: `user_id=eq.${session.user.id}` },
-        () => reload(),
-      )
-      .subscribe();
+      .channel(`my-bookings-${userId}-${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `user_id=eq.${userId}` }, () => reload())
+      // 受け取りの準備ができた時点でも読み直す（準備の間に変わった分を取りこぼさない）
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') reload();
+      });
     return () => {
       client.removeChannel(channel);
     };
-  }, [client, session, reload]);
+  }, [client, userId, reload]);
 
   const now = Date.now();
   const active =

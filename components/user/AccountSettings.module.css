@@ -1,0 +1,38 @@
+/* マイページの「アカウント」：見出しの下に、ログインの方法と、アカウントの削除の面を並べる */
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.panels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 削除の確認のシート */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.list > li::marker {
+  color: var(--color-ink-sub);
+}

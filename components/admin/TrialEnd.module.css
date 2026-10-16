@@ -1,0 +1,69 @@
+/* 終了処理：説明と「試し実行」、結果は件数（数字）・対象・扱い（ラベル）の行を細い線で区切る */
+
+.root {
+  max-inline-size: var(--width-dialog);
+}
+
+.result {
+  animation: appear var(--motion-base) var(--ease-out);
+}
+
+.when {
+  padding: var(--space-4) var(--pad-surface) var(--space-2);
+  border-block-end: 1px solid var(--color-line-strong);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.list {
+  list-style: none;
+}
+
+.list li {
+  display: grid;
+  grid-template-columns: calc(var(--space-16) + var(--space-4)) 1fr;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--pad-surface);
+}
+
+.list li + li {
+  border-block-start: 1px solid var(--color-line);
+}
+
+.list li > :last-child {
+  grid-column: 2;
+  justify-self: start;
+}
+
+@media (min-width: 720px) {
+  .list li {
+    grid-template-columns: calc(var(--space-16) + var(--space-4)) 1fr auto;
+  }
+
+  .list li > :last-child {
+    grid-column: auto;
+  }
+}
+
+.count {
+  font-size: var(--text-body);
+  font-weight: var(--weight-heavy);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.what {
+  min-inline-size: 0;
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}

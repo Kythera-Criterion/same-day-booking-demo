@@ -1,13 +1,20 @@
 'use client';
 
-// パスワードを忘れたとき：登録したメールアドレスに、再設定のリンクを送る。
-// 登録の有無が他人に分からないよう、送れたかどうかに関わらず同じ案内を出す
+// パスワードを忘れたとき：登録したメールアドレスに、再設定のリンクを送る（メールはこのサービスから送る）。
+// 登録の有無が他人に分からないよう、登録があってもなくても同じ案内を出す。通信の失敗などは、その場で知らせる
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import AppHeader, { RoleIntro, type RoleKind } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Field, Input } from '@/components/ui/Form';
+import { Page, ScreenTitle } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ArrowLeft, EnvelopeSimple, LinkIcon } from '@/components/ui/icons';
 import { useRoleSession } from '@/lib/supabase';
+import s from './ForgotPassword.module.css';
 
 const BACK: Record<string, { href: string; label: string }> = {
   user: { href: '/login', label: '利用者のログインへ戻る' },
@@ -19,6 +26,7 @@ const HEADER_LABEL: Record<RoleKind, string> = { user: '利用者', salon: 'サ�
 
 export default function ForgotPassword({ role }: { role: string }) {
   const { client } = useRoleSession('user');
+  const [demoLink, setDemoLink] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,56 +43,70 @@ export default function ForgotPassword({ role }: { role: string }) {
     }
     setBusy(true);
     setError(null);
-    const { error: e2 } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset?role=${encodeURIComponent(role)}`,
-    });
+    const res = await fetch('/api/auth/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), role: kind }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => ({}))) as { error?: string; demoLink?: string | null } | undefined;
     setBusy(false);
-    if (e2 && e2.message.includes('rate limit')) {
-      setError('送信が混み合っています。少し時間をおいてお試しください。');
+    if (!res || !res.ok) {
+      setError(
+        body?.error === 'rate_limited'
+          ? '短い時間に何度も送られたため、少し時間をおいてお試しください。'
+          : body?.error === 'invalid_email'
+            ? 'メールアドレスの形で入力してください（例：name@example.com）。'
+            : '送れませんでした。通信の状態をご確認のうえ、もう一度お試しください。',
+      );
       return;
     }
+    setDemoLink(body?.demoLink ?? null);
     setSent(true);
   }
 
   if (!client) return <NotConfigured />;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role={HEADER_LABEL[kind]} home={kind === 'user' ? '/' : `/${kind}`} />
       <RoleIntro kind={kind} />
-      <h1 className="screen-title">パスワードの再設定</h1>
+      <ScreenTitle>パスワードの再設定</ScreenTitle>
       {sent ? (
-        <section className="card fade-in">
-          <p className="card-title">再設定のメールを送りました</p>
-          <p className="card-sub">
+        <Panel as="section">
+          <SectionHead icon={EnvelopeSimple} title="再設定のメールを送りました" as="p" />
+          <SubText>
             {email} が登録されていれば、再設定のリンクが届きます。リンクを開いて、新しいパスワードを決めてください。届かないときは、迷惑メールのフォルダもご確認ください。
-          </p>
-          <Link href={back.href} className="btn btn-secondary btn-block">
-            {back.label}
-          </Link>
-        </section>
-      ) : (
-        <form className="card" onSubmit={submit} noValidate>
-          <p className="card-sub">登録したメールアドレスに、パスワードを決め直すためのリンクをお送りします。</p>
-          <div className={`field ${error ? 'has-error' : ''}`}>
-            <label className="field-label" htmlFor="email">
-              メールアドレス<span className="req">必須</span>
-            </label>
-            <input id="email" className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!error} />
-            {error && (
-              <span className="field-error" role="alert">
-                {error}
-              </span>
+          </SubText>
+          <div className={s.sent}>
+            {demoLink && (
+              <div className={s.demo}>
+                <Notice tone="info">
+                  <strong>デモ：</strong>メールの送信キーが未設定のため、メールは送られていません。下のボタンが、メールの中のリンクと同じです。
+                </Notice>
+                <ButtonLink variant="primary" size="md" block external icon={LinkIcon} href={demoLink}>
+                  メールのリンクを開く（デモ）
+                </ButtonLink>
+              </div>
             )}
+            <ButtonLink href={back.href} variant="secondary" size="md" block icon={ArrowLeft}>
+              {back.label}
+            </ButtonLink>
           </div>
-          <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
+        </Panel>
+      ) : (
+        <Panel as="form" onSubmit={submit} noValidate>
+          <p className={s.lead}>登録したメールアドレスに、パスワードを決め直すためのリンクをお送りします。</p>
+          <Field id="email" label="メールアドレス" required error={error ?? undefined}>
+            <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!error} />
+          </Field>
+          <Button variant="primary" size="lg" block type="submit" disabled={busy} icon={EnvelopeSimple}>
             {busy ? '送信中…' : '再設定のメールを送る'}
-          </button>
-          <p className="login-forgot">
+          </Button>
+          <p className={s.back}>
             <Link href={back.href}>{back.label}</Link>
           </p>
-        </form>
+        </Panel>
       )}
-    </main>
+    </Page>
   );
 }

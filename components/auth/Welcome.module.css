@@ -1,0 +1,85 @@
+/* 招待・ご利用開始のリンクから開く画面：確かめている間 → パスワードを決める → 準備ができました */
+
+.checking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-block-start: var(--space-6);
+}
+
+.status {
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.panel {
+  margin-block-start: var(--space-4);
+}
+
+/* 見出しの上の小さな一言（ようこそ・準備ができました・登録が完了しました） */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block-end: var(--space-2);
+  color: var(--color-action-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.title {
+  margin-block-end: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.text {
+  margin-block-end: var(--space-4);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-body);
+}
+
+.text strong {
+  color: var(--color-ink);
+}
+
+/* 初期設定の3つ：番号を数字のフォントで、沈んだ面の上に並べる */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  list-style: none;
+  counter-reset: step;
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.steps > li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  counter-increment: step;
+}
+
+.steps > li::before {
+  content: counter(step);
+  flex: none;
+  inline-size: var(--icon-md);
+  color: var(--color-action-text);
+  font-family: var(--font-num);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.other {
+  margin-block-start: var(--space-2);
+}

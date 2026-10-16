@@ -6,7 +6,14 @@ import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
 import AccountSecurity from '@/components/auth/AccountSecurity';
+import Button from '@/components/ui/Button';
+import { Check } from '@/components/ui/Form';
+import { Pair } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ShieldCheck, Trash, WarningCircle } from '@/components/ui/icons';
 import type { Providers } from '@/lib/oauth-shared';
+import s from './AccountSettings.module.css';
 
 const DELETE_ERROR: Record<string, string> = {
   has_active_booking: 'ご予約中は削除できません。来店のあと、またはお店へキャンセルのご連絡をしたあとに、お手続きください。',
@@ -52,51 +59,52 @@ export default function AccountSettings({
   }
 
   return (
-    <>
-      <h2 className="section-title" id="account">
-        アカウント
-      </h2>
-      <AccountSecurity client={client} role="user" providers={providers} returnPath="/mypage" linked={linked} authError={authError} />
+    <section className={s.section}>
+      <SectionHead icon={ShieldCheck} title="アカウント" id="account" />
+      <div className={s.panels}>
+        <AccountSecurity client={client} role="user" providers={providers} returnPath="/mypage" linked={linked} authError={authError} />
 
-      <section className="card danger-zone">
-        <p className="card-title">アカウントの削除</p>
-        <p className="card-sub">
-          {hasActiveBooking ? 'ご予約中は削除できません。来店のあとに、お手続きください。' : '削除すると、元に戻せません。'}
-        </p>
-        <button className="btn btn-danger btn-block" disabled={hasActiveBooking} onClick={() => setConfirming(true)}>
-          アカウントを削除する
-        </button>
-      </section>
+        <Panel as="section">
+          <div className={s.body}>
+            <SectionHead icon={Trash} title="アカウントの削除" as="p" />
+            <SubText>{hasActiveBooking ? 'ご予約中は削除できません。来店のあとに、お手続きください。' : '削除すると、元に戻せません。'}</SubText>
+            <Button variant="danger" size="md" block icon={Trash} disabled={hasActiveBooking} onClick={() => setConfirming(true)}>
+              アカウントを削除する
+            </Button>
+          </div>
+        </Panel>
+      </div>
 
       {confirming && (
         <Sheet label="アカウントを削除しますか" role="alertdialog" narrow onClose={() => setConfirming(false)}>
-          <p className="card-title">アカウントを削除しますか？</p>
-          <ul className="delete-list">
-            <li>プロフィール・カルテ・会話の好み・ヘア写真を削除します。</li>
-            <li>Google・Yahoo! JAPAN ID との連携も解除されます。</li>
-            <li>ご予約のときにお店へお伝えした内容は、お店の記録として残ります。</li>
-            <li>無断キャンセルの記録は、規約に基づき電話番号に紐づけて90日間残ります。</li>
-            <li>同じメールアドレスで、もう一度登録できます。</li>
-          </ul>
-          <label className="check">
-            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-            <span>上の内容を確認しました</span>
-          </label>
-          {delError && (
-            <p className="notice notice-error" role="alert">
-              {delError}
-            </p>
-          )}
-          <div className="action-pair">
-            <button className="btn btn-quiet" onClick={() => setConfirming(false)}>
-              やめる
-            </button>
-            <button className="btn btn-danger" disabled={!agree || delBusy} onClick={deleteAccount}>
-              {delBusy ? '削除中…' : '削除する'}
-            </button>
+          <div className={s.sheet}>
+            <SectionHead icon={WarningCircle} title="アカウントを削除しますか？" as="p" />
+            <ul className={s.list}>
+              <li>プロフィール・カルテ・会話の好み・ヘア写真を削除します。</li>
+              <li>Google・Yahoo! JAPAN ID との連携も解除されます。</li>
+              <li>ご予約のときにお店へお伝えした内容は、お店の記録として残ります。</li>
+              <li>無断キャンセルの記録は、規約に基づき電話番号に紐づけて90日間残ります。</li>
+              <li>同じメールアドレスで、もう一度登録できます。</li>
+            </ul>
+            <Check checked={agree} onChange={setAgree}>
+              上の内容を確認しました
+            </Check>
+            {delError && (
+              <Notice tone="danger" role="alert">
+                {delError}
+              </Notice>
+            )}
+            <Pair>
+              <Button variant="quiet" size="md" onClick={() => setConfirming(false)}>
+                やめる
+              </Button>
+              <Button variant="dangerSolid" size="md" disabled={!agree || delBusy} onClick={deleteAccount}>
+                {delBusy ? '削除中…' : '削除する'}
+              </Button>
+            </Pair>
           </div>
         </Sheet>
       )}
-    </>
+    </section>
   );
 }

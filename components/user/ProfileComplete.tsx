@@ -9,12 +9,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { Loading, NotConfigured } from '@/components/States';
+import Button from '@/components/ui/Button';
+import { Page, ScreenTitle } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel } from '@/components/ui/Surface';
+import { EnvelopeSimple } from '@/components/ui/icons';
 import { useRoleSession } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { safePath } from '@/lib/oauth-shared';
 import { TERMS_VERSION } from '@/lib/profile-options';
 import { ProfileFields, checkProfile, type ProfileErrors, type ProfileForm } from './FormParts';
 import { useUserState } from './useUserState';
+import s from './ProfileComplete.module.css';
 
 export default function ProfileComplete({ next: nextParam, isNew }: { next: string | null; isNew: boolean }) {
   const router = useRouter();
@@ -83,27 +89,34 @@ export default function ProfileComplete({ next: nextParam, isNew }: { next: stri
   if (!client) return <NotConfigured />;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role="利用者" />
-      <h1 className="screen-title screen-title-tight">{isNew ? 'あと少しで登録完了です' : 'ご予約に必要な情報'}</h1>
+      <ScreenTitle tight>{isNew ? 'あと少しで登録完了です' : 'ご予約に必要な情報'}</ScreenTitle>
       {(!loaded || !form) && <Loading rows={3} />}
       {loaded && form && (
-        <form className="card form-compact" onSubmit={submit} noValidate>
+        <Panel as="form" onSubmit={submit} noValidate>
           {session?.user.email && (
-            <p className="form-account">
-              ログイン用：<strong className="break">{session.user.email}</strong>
+            <p className={s.account}>
+              <EnvelopeSimple size={20} aria-hidden focusable="false" />
+              <span>
+                ログイン用：<strong className="break">{session.user.email}</strong>
+              </span>
             </p>
           )}
           <ProfileFields form={form} errors={errors} onChange={set} areas={areas} />
-          {submitError && <p className="notice notice-error" role="alert">{submitError}</p>}
-          <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
+          {submitError && (
+            <Notice tone="danger" role="alert" className={s.error}>
+              {submitError}
+            </Notice>
+          )}
+          <Button variant="primary" size="lg" block type="submit" disabled={busy}>
             {busy ? '登録しています…' : '登録して始める'}
-          </button>
-          <p className="login-forgot">
+          </Button>
+          <p className={s.later}>
             <Link href="/">あとで入力する</Link>（予約の前に必要です）
           </p>
-        </form>
+        </Panel>
       )}
-    </main>
+    </Page>
   );
 }

@@ -1,0 +1,47 @@
+/* ブランドの印：役割の色（お客様＝青緑・サロン＝藍・運営＝紫）の角の丸い四角に、白い線と琥珀の「空いた時間」 */
+
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  border-radius: var(--radius-control);
+  background: var(--color-action);
+  color: var(--color-action-ink);
+}
+
+.glyph {
+  inline-size: var(--icon-md);
+  block-size: var(--icon-md);
+}
+
+.accent {
+  stroke: var(--color-mark-accent);
+}
+
+.accentFill {
+  fill: var(--color-mark-accent);
+  stroke: var(--color-mark-accent);
+}
+
+.inkFill {
+  fill: currentColor;
+}
+
+/* 強制カラーのときは、四角の色が消えるため、線を文字の色にそろえて形だけで見せる */
+@media (forced-colors: active) {
+  .tile {
+    border: 1px solid CanvasText;
+  }
+
+  .accent,
+  .accentFill {
+    stroke: CanvasText;
+  }
+
+  .accentFill,
+  .inkFill {
+    fill: CanvasText;
+  }
+}

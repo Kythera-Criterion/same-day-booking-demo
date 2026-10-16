@@ -22,12 +22,14 @@ export async function POST(req: Request) {
 
   const admin = adminClient();
   const userId = await findUserByEmail(admin, email);
-  if (!userId) return NextResponse.json({ ok: true, mail: 'skipped', demoLink: null });
+  if (!userId) return NextResponse.json({ ok: true, demoLink: null });
   const { data: u } = await admin.auth.admin.getUserById(userId);
-  if (!u.user || u.user.email_confirmed_at) return NextResponse.json({ ok: true, mail: 'skipped', demoLink: null });
+  if (!u.user || u.user.email_confirmed_at) return NextResponse.json({ ok: true, demoLink: null });
+  // サロンの新規登録は運営の承認制：確認のリンクは、運営が承認したときに送る（ここからは送らない）
+  if (u.user.user_metadata?.signup_role === 'salon') return NextResponse.json({ ok: true, demoLink: null });
 
   const { data: link, error } = await admin.auth.admin.generateLink({ type: 'magiclink', email });
-  if (error || !link?.properties?.hashed_token) return NextResponse.json({ error: error?.message ?? 'link_failed' }, { status: 500 });
+  if (error || !link?.properties?.hashed_token) return NextResponse.json({ error: 'link_failed' }, { status: 500 });
   const origin = appOrigin(req);
   const next = safePath(body?.next, role === 'salon' ? '/salon/signup' : '/');
   const confirm = completeUrl(origin, { tokenHash: link.properties.hashed_token, type: 'magiclink', role, next, via: 'email', isNew: true });
@@ -44,5 +46,6 @@ export async function POST(req: Request) {
       resend: true,
     },
   });
-  return NextResponse.json({ ok: true, mail, demoLink: isDemoMode() && mail === 'simulated' ? confirm : null });
+  // 登録の有無・確認の状態が外から分からないよう、返事はいつも同じ形にする（デモだけ、リンクを返す）
+  return NextResponse.json({ ok: true, demoLink: isDemoMode() && mail === 'simulated' ? confirm : null });
 }

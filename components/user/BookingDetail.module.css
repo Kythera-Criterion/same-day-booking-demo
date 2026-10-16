@@ -1,0 +1,219 @@
+/* 予約確定（来店までの画面）：上にお店の写真、開始までの輪、受付で見せる予約番号のチケット、地図と電話 */
+
+/* 上の写真：ページの余白を越えて、画面の端まで広げる */
+.hero {
+  margin-inline: calc(-1 * var(--pad-page));
+  margin-block-end: var(--space-4);
+}
+
+.heroCaption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-shadow: var(--shadow-text-on-photo);
+}
+
+.heroTime {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.heroName {
+  font-size: var(--text-heading);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.flow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.flow li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.flow li + li::before {
+  content: "";
+  inline-size: var(--space-6);
+  block-size: 1px;
+  margin-inline-end: var(--space-1);
+  background: var(--color-line-strong);
+}
+
+.flow [data-state="done"] {
+  color: var(--color-success-text);
+}
+
+.flow [data-state="next"] {
+  color: var(--color-ink);
+}
+
+/* 開始まで */
+.live {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}
+
+.liveLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-success-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+}
+
+.liveSub {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.liveMain {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+/* 1時間以上のときは「1時間15」と長くなるので、数字を1段小さくして輪の中に収める */
+.liveMain[data-long="true"] strong {
+  font-size: var(--text-heading);
+}
+
+.liveMain strong {
+  margin-inline: var(--space-1);
+  font-family: var(--font-num);
+  font-size: var(--text-figure);
+  font-weight: var(--weight-heavy);
+  line-height: 1;
+}
+
+.depart {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+/* 予約番号のチケット：左右の切り欠きと点線で「券」の形にする。受付で見せる番号を大きく（コピーのボタンは付けない） */
+.ticket {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  inline-size: 100%;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-control);
+  background:
+    radial-gradient(circle at 0 50%, var(--color-surface) var(--space-2), transparent calc(var(--space-2) + 0.5px)),
+    radial-gradient(circle at 100% 50%, var(--color-surface) var(--space-2), transparent calc(var(--space-2) + 0.5px)),
+    var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+}
+
+.ticket::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--space-3);
+  inset-inline-start: calc(var(--space-6) + var(--space-10) + var(--space-2));
+  border-inline-start: 2px dashed color-mix(in srgb, var(--color-ink-on-strong) 35%, transparent);
+}
+
+.ticketIcon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-10);
+}
+
+.ticketLabel {
+  padding-inline-start: var(--space-4);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  opacity: 0.88;
+}
+
+.ticketNo {
+  padding-inline-start: var(--space-4);
+  font-family: var(--font-num);
+  font-size: var(--text-display);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.ticketNote {
+  grid-column: 1 / -1;
+  padding-block-start: var(--space-2);
+  font-size: var(--text-caption);
+  text-align: center;
+  opacity: 0.88;
+}
+
+/* 終わった予約（来店済み・キャンセル） */
+.ended {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}
+
+.endedTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+}
+
+.endedTitle[data-tone="done"] {
+  color: var(--color-success-text);
+}
+
+.endedTitle[data-tone="cancel"] {
+  color: var(--color-ink);
+}
+
+.endedText {
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+.shop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shopAddress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+/* サロンの操作で状態が変わった直後：輪郭で知らせる（光らせない） */
+.changed {
+  box-shadow: inset 0 0 0 2px var(--color-selected);
+}

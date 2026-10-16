@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: '今日の空き時間だけを、今から行きたい人へ。',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f5f3ee',
+    background_color: '#f5f8f7',
     theme_color: '#1f6f5c',
     lang: 'ja',
     icons: [

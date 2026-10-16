@@ -35,6 +35,11 @@ export async function POST(req: Request) {
   let inviteLink: string | null = null;
   let isNewAccount = false;
   if (existing) {
+    // すでに運営メンバーなら、リンクを作る前に断る（作り直すと、先に送った招待のリンクが使えなくなるため。再送は「招待を再送」から）
+    if (!body?.resend) {
+      const { data: isAdminAlready } = await admin.from('admins').select('user_id').eq('user_id', existing).maybeSingle();
+      if (isAdminAlready) return NextResponse.json({ error: 'already_admin' }, { status: 409 });
+    }
     const { data: u } = await admin.auth.admin.getUserById(existing);
     userId = existing;
     // パスワードを決める前の招待中のアカウントなら、新しいリンクを作り直す
@@ -49,7 +54,8 @@ export async function POST(req: Request) {
     try {
       start = await createStartLink(admin, email, name, origin, 'invite', 'admin');
     } catch (e) {
-      return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+      console.error('[invite-admin]', e);
+      return NextResponse.json({ error: 'link_failed' }, { status: 500 });
     }
     userId = start.userId;
     inviteLink = start.link;

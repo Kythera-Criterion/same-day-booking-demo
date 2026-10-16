@@ -1,0 +1,85 @@
+/* 登録の画面の共通の部品：段階の表示・選択肢のボタン・2列の並び・同意のチェック
+   スマートフォンの1画面に収まるよう、入力欄の間は少しだけ詰める */
+
+/* 予約に必要な情報のまとまり：入力欄の間を 12px に */
+.fields .field {
+  margin-block-end: var(--space-3);
+}
+
+.note {
+  margin-block-end: var(--space-3);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+/* 2つの項目を横に並べる（性別と年代、職業と利用エリア） */
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* ボタンで選ぶ選択肢：折り返さず、列の幅いっぱいに等分する（高さは入力欄にそろえる） */
+.choices {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.choices > button {
+  flex: 1 1 0;
+  min-inline-size: 0;
+  min-block-size: calc(var(--tap-min) + var(--space-1));
+  padding-inline: var(--space-2);
+}
+
+/* 18歳以上の確認と規約への同意 */
+.agree {
+  margin-block-end: var(--space-3);
+}
+
+/* 何段階目か：番号のラベル＋見出し、その下に細い進み具合の線 */
+.steps {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.stepsText {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.stepsNum {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--size-label);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-label);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-heavy);
+}
+
+.stepsBar {
+  display: block;
+  block-size: var(--space-1);
+  overflow: hidden;
+  background: var(--color-surface-sunken);
+}
+
+.stepsBar > i {
+  display: block;
+  block-size: 100%;
+  background: var(--color-action);
+  transition: width var(--motion-base) var(--ease-out);
+}

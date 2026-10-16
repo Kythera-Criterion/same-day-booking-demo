@@ -1,0 +1,99 @@
+/* 今日のタイムライン（スマートフォン・縦）：左に時刻、右に枠。今の時刻は時間の色の線 */
+
+.scroll {
+  max-block-size: 70dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-inline: var(--space-3);
+}
+
+.canvas {
+  position: relative;
+  margin-inline-start: var(--space-12);
+}
+
+.hour {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.hour span {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--space-12));
+  inset-block-start: calc(-1 * var(--space-2));
+  inline-size: var(--space-10);
+  color: var(--color-ink-2);
+  font-family: var(--font-num);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.now {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 2;
+  border-block-start: 2px solid var(--color-time);
+  pointer-events: none;
+}
+
+.now span {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--space-12));
+  inset-block-start: calc(-1 * var(--space-3));
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-label);
+  background: var(--color-time);
+  color: var(--color-time-ink);
+  font-family: var(--font-num);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-heavy);
+}
+
+.lanes {
+  position: absolute;
+  inset: 0;
+}
+
+.block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  text-align: start;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.time {
+  font-family: var(--font-num);
+  font-size: var(--text-small);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.sub {
+  font-size: var(--text-caption);
+  opacity: 0.88;
+}
+
+.compact {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}

@@ -27,14 +27,18 @@ export async function POST(req: Request) {
   const removed: string[] = [];
   const kept: string[] = [];
   for (const userId of result.staff ?? []) {
-    const [{ data: other }, { data: op }, { data: asCustomer }, { data: u }] = await Promise.all([
+    const [{ data: other }, { data: op }, { data: asCustomer }, { data: agreed }, { data: prof }, { data: u }] = await Promise.all([
       admin.from('salon_members').select('salon_id').eq('user_id', userId).limit(1),
       admin.from('admins').select('user_id').eq('user_id', userId).limit(1),
       admin.from('bookings').select('id').eq('user_id', userId).limit(1),
+      // お客様として登録しているアカウント（規約への同意・18歳以上の確認がある）も残す
+      admin.from('consents').select('id').eq('user_id', userId).limit(1),
+      admin.from('profiles').select('adult_confirmed_at').eq('id', userId).maybeSingle(),
       admin.auth.admin.getUserById(userId),
     ]);
     const email = u?.user?.email ?? '';
-    if ((other?.length ?? 0) > 0 || (op?.length ?? 0) > 0 || (asCustomer?.length ?? 0) > 0 || email.endsWith('@demo.test')) {
+    const isCustomer = (asCustomer?.length ?? 0) > 0 || (agreed?.length ?? 0) > 0 || !!prof?.adult_confirmed_at;
+    if ((other?.length ?? 0) > 0 || (op?.length ?? 0) > 0 || isCustomer || email.endsWith('@demo.test')) {
       kept.push(email);
       continue;
     }

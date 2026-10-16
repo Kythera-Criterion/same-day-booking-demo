@@ -8,8 +8,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
 import AccountSecurity from '@/components/auth/AccountSecurity';
 import { ErrorState, Loading } from '@/components/States';
+import Button from '@/components/ui/Button';
+import { Input, LabeledField } from '@/components/ui/Form';
+import Label from '@/components/ui/Label';
+import { Pair, ScreenTitle, Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { EnvelopeSimple, HourglassMedium, PaperPlaneTilt, User, UserMinus, UserPlus, UsersThree } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
 import type { Providers } from '@/lib/oauth-shared';
+import t from './AdminTable.module.css';
+import s from './Members.module.css';
 
 type Member = { user_id: string; email: string; display_name: string; created_at: string; last_sign_in_at: string | null; is_me: boolean };
 
@@ -24,6 +33,7 @@ const INVITE_ERROR: Record<string, string> = {
   invalid_email: 'メールアドレスの形をご確認ください。',
   rate_limited: '短い時間に招待を送りすぎています。しばらくお待ちください。',
   forbidden: 'この操作の権限がありません。',
+  link_failed: '招待のリンクを作れませんでした。少し時間をおいてお試しください。',
 };
 const REMOVE_ERROR: Record<string, string> = {
   cannot_remove_self: '自分自身は外せません。ほかの運営メンバーに依頼してください。',
@@ -115,102 +125,123 @@ export default function Members({
   if (!rows) return <Loading rows={3} />;
 
   return (
-    <div className="stack">
+    <Stack gap={4}>
       {result && (
-        <div className={`notice ${result.kind === 'ok' ? 'notice-ok' : 'notice-error'}`} role="status">
-          {result.text}
-          {result.link && (
-            <details className="invite-link">
-              <summary>招待のリンクを表示（メール以外で個別に伝える場合）</summary>
-              <input className="input" readOnly value={result.link} onFocus={(e) => e.target.select()} />
-            </details>
-          )}
+        <div data-result={result.kind}>
+          <Notice tone={result.kind === 'ok' ? 'success' : 'danger'} role="status">
+            {result.text}
+            {result.link && (
+              <details className={s.invite} data-invite-link="">
+                <summary className={s.inviteToggle}>招待のリンクを表示（メール以外で個別に伝える場合）</summary>
+                <Input readOnly value={result.link} onFocus={(e) => e.target.select()} />
+              </details>
+            )}
+          </Notice>
         </div>
       )}
 
-      <section className="card">
-        <p className="card-title">運営メンバーを招待する</p>
-        <p className="card-sub">運営の登録は、この招待だけで行います。招待した方には、パスワードを決めるリンクつきのメールが届きます（すでにアカウントがある方には、運営の権限を加えて知らせます）。</p>
-        <form onSubmit={submit} noValidate>
-          <div className="field-row">
-            <label className="field">
-              <span className="field-label">メールアドレス</span>
-              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
-            </label>
-            <label className="field">
-              <span className="field-label">お名前（任意）</span>
-              <input className="input" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
+      <div className={s.grid}>
+        <Panel>
+          <SectionHead icon={UserPlus} title="運営メンバーを招待する" as="p" />
+          <SubText>運営の登録は、この招待だけで行います。招待した方には、パスワードを決めるリンクつきのメールが届きます（すでにアカウントがある方には、運営の権限を加えて知らせます）。</SubText>
+          <form onSubmit={submit} noValidate>
+            <LabeledField label="メールアドレス">
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" />
+            </LabeledField>
+            <LabeledField label="お名前（任意）">
+              <Input maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+            </LabeledField>
+            <Button variant="primary" size="md" block type="submit" icon={PaperPlaneTilt} disabled={busy !== null || !email.trim()}>
+              {busy === 'invite' ? '送信中…' : '招待のメールを送る'}
+            </Button>
+          </form>
+        </Panel>
+
+        <Panel flush>
+          <div className={s.listHead}>
+            <SectionHead icon={UsersThree} title="メンバーの一覧" as="p" aside={<span className="num">{rows.length}人</span>} />
           </div>
-          <button className="btn btn-primary btn-block" type="submit" disabled={busy !== null || !email.trim()}>
-            {busy === 'invite' ? '送信中…' : '招待のメールを送る'}
-          </button>
-        </form>
-      </section>
-
-      <section className="card card-flush">
-        <div className="slot-table-wrap" style={{ paddingTop: 8 }}>
-          <table className="slot-table">
-            <thead>
-              <tr>
-                <th scope="col">メンバー</th>
-                <th scope="col">追加</th>
-                <th scope="col">最後のログイン</th>
-                <th scope="col">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((m) => (
-                <tr key={m.user_id} style={{ cursor: 'default' }}>
-                  <td>
-                    <strong>
-                      {m.display_name || '（お名前未設定）'}
-                      {m.is_me && <span className="pill pill-open" style={{ marginLeft: 6 }}>自分</span>}
-                    </strong>
-                    <small className="break">{m.email}</small>
-                  </td>
-                  <td className="num">{dt.format(new Date(m.created_at))}</td>
-                  <td className="num">{m.last_sign_in_at ? dt.format(new Date(m.last_sign_in_at)) : <span className="pill pill-pending">招待中</span>}</td>
-                  <td>
-                    {!m.last_sign_in_at && (
-                      <button className="btn btn-text btn-sm" disabled={busy !== null} onClick={() => invite({ email: m.email, name: m.display_name }, true)}>
-                        {busy === m.email ? '送信中…' : '招待を再送'}
-                      </button>
-                    )}
-                    {!m.is_me && (
-                      <button className="btn btn-text btn-sm danger-text" disabled={busy !== null} onClick={() => setRemoving(m)}>
-                        外す
-                      </button>
-                    )}
-                  </td>
+          <div className={t.wrap}>
+            <table className={t.table}>
+              <thead>
+                <tr>
+                  <th scope="col">メンバー</th>
+                  <th scope="col">追加</th>
+                  <th scope="col">最後のログイン</th>
+                  <th scope="col">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {rows.map((m) => (
+                  <tr key={m.user_id}>
+                    <td className={s.memberCell}>
+                      <span className={s.who}>
+                        <span className={t.name}>{m.display_name || '（お名前未設定）'}</span>
+                        {m.is_me && (
+                          <Label kind="action" icon={User} weight="fill">
+                            自分
+                          </Label>
+                        )}
+                      </span>
+                      <small className={`${t.line} break`}>{m.email}</small>
+                    </td>
+                    <td className={`num ${t.nowrap}`}>{dt.format(new Date(m.created_at))}</td>
+                    <td className={`num ${t.nowrap}`}>
+                      {m.last_sign_in_at ? (
+                        dt.format(new Date(m.last_sign_in_at))
+                      ) : (
+                        <Label kind="state" icon={HourglassMedium}>
+                          招待中
+                        </Label>
+                      )}
+                    </td>
+                    <td>
+                      <span className={t.actions}>
+                        {!m.last_sign_in_at && (
+                          <Button variant="text" icon={EnvelopeSimple} disabled={busy !== null} onClick={() => invite({ email: m.email, name: m.display_name }, true)}>
+                            {busy === m.email ? '送信中…' : '招待を再送'}
+                          </Button>
+                        )}
+                        {!m.is_me && (
+                          <Button variant="text" icon={UserMinus} className={s.danger} disabled={busy !== null} onClick={() => setRemoving(m)}>
+                            外す
+                          </Button>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      </div>
 
-      <h2 className="section-title">自分のアカウント</h2>
-      <AccountSecurity client={client} role="admin" providers={providers} returnPath="/admin?tab=members" linked={linked} authError={authError} />
+      <ScreenTitle as="h2" tight>
+        自分のアカウント
+      </ScreenTitle>
+      <div className={s.account}>
+        <AccountSecurity client={client} role="admin" providers={providers} returnPath="/admin?tab=members" linked={linked} authError={authError} />
+      </div>
 
       {removing && (
         <Sheet label="運営メンバーから外しますか" role="alertdialog" narrow onClose={() => setRemoving(null)}>
-          <p className="card-title">{removing.display_name || removing.email} を運営メンバーから外しますか？</p>
-          <ul className="delete-list">
+          <SectionHead icon={UserMinus} title={`${removing.display_name || removing.email} を運営メンバーから外しますか？`} as="p" />
+          <ul className={s.points}>
             <li>運営の画面を使えなくなります。いま開いている画面も、次の操作から権限がなくなります。</li>
             <li>アカウントそのもの（利用者・サロンのスタッフとしての利用）は残ります。</li>
             <li>もう一度加えるときは、招待し直してください。</li>
           </ul>
-          <div className="action-pair">
-            <button className="btn btn-quiet" onClick={() => setRemoving(null)}>
+          <Pair>
+            <Button variant="quiet" size="md" onClick={() => setRemoving(null)}>
               やめる
-            </button>
-            <button className="btn btn-danger" disabled={busy !== null} onClick={remove}>
+            </Button>
+            <Button variant="dangerSolid" size="md" disabled={busy !== null} onClick={remove}>
               外す
-            </button>
-          </div>
+            </Button>
+          </Pair>
         </Sheet>
       )}
-    </div>
+    </Stack>
   );
 }

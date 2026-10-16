@@ -1,0 +1,81 @@
+/* ログインの面（お客様・サロン・運営で共通）：
+   デモ用のアカウント（ワンタップ）→ 外部の ID → メールアドレスとパスワード → パスワードを忘れた方 → 下に補足（新規登録など） */
+
+.lead {
+  margin-block: calc(-1 * var(--space-1)) var(--space-3);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+/* デモ用のアカウント：沈んだ面のタイルを並べる（名前は太く、補足は小さく）。
+   折り返した行のタイルは幅いっぱいに広げ、すき間を残さない */
+.demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.account {
+  flex: 1 1 var(--size-tile);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-1);
+  min-block-size: calc(var(--tap-min) + var(--space-1));
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  text-align: start;
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.account:hover:not(:disabled) {
+  background: var(--color-line);
+}
+
+.account:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.account small {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+/* ログインできなかったときの知らせ：理由の下に「確認メールをもう一度送る」 */
+.errorBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.forgot {
+  margin-block-start: var(--space-1);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+.forgot a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+}

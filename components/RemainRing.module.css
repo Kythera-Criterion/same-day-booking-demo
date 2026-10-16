@@ -1,0 +1,34 @@
+/* 開始までの残り時間の輪：線は細く、残りの部分だけを役割の色で */
+
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin-inline: auto;
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+}
+
+.track {
+  fill: none;
+  stroke: var(--color-surface-sunken);
+}
+
+.value {
+  fill: none;
+  stroke: var(--color-action);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--motion-long) var(--ease-out);
+}
+
+.inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}

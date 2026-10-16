@@ -4,10 +4,17 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 import { Empty, ErrorState, Loading } from '@/components/States';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import { Stack } from '@/components/ui/Layout';
+import { Panel } from '@/components/ui/Surface';
+import { CalendarCheck, Clock, Prohibit, SealCheck, ShieldWarning, Storefront, User, XCircle } from '@/components/ui/icons';
 import { one } from '@/lib/supabase';
 import { toMessage } from '@/lib/errors';
 import { fmtDate, fmtTime, fmtYen, jstTodayEnd, jstTodayStart } from '@/lib/time';
+import t from './AdminTable.module.css';
+import s from './Overview.module.css';
 
 type Row = {
   id: string;
@@ -27,6 +34,16 @@ const STATE: Record<string, string> = {
   no_show: '無断キャンセル',
   expired: '受付終了',
   closed: '取り下げ',
+};
+
+// 状態のラベル：色だけでなく、アイコンと塗り（予約あり・来店済みは塗り、公開中は枠線、終わったものは面）で見分ける
+const STATE_LOOK: Record<string, { kind: LabelKind; icon: PhosphorIcon; weight?: 'fill' }> = {
+  open: { kind: 'condition', icon: Clock },
+  confirmed: { kind: 'action', icon: User, weight: 'fill' },
+  completed: { kind: 'strong', icon: SealCheck, weight: 'fill' },
+  no_show: { kind: 'danger', icon: Prohibit },
+  expired: { kind: 'state', icon: XCircle },
+  closed: { kind: 'state', icon: XCircle },
 };
 
 export default function Overview({ client }: { client: SupabaseClient }) {
@@ -76,59 +93,99 @@ export default function Overview({ client }: { client: SupabaseClient }) {
   }
 
   return (
-    <div className="stack">
-      <h2 className="section-title">今日の枠と予約（{fmtDate(new Date())}）</h2>
+    <Stack gap={4}>
+      <h2 className={s.heading}>
+        <CalendarCheck size={24} aria-hidden focusable="false" />
+        今日の枠と予約（{fmtDate(new Date())}）
+      </h2>
       {bySalon.size === 0 && (
-        <div className="card">
-          <Empty>今日はまだ、どのサロンも枠を出していません。</Empty>
-        </div>
+        <Panel>
+          <Empty icon={CalendarCheck}>今日はまだ、どのサロンも枠を出していません。</Empty>
+        </Panel>
       )}
-      {[...bySalon.entries()].map(([name, list]) => (
-        <section key={name} className="card">
-          <div className="row-between">
-            <p className="card-title" style={{ margin: 0 }}>
-              {name}
-            </p>
-            <span className="tiny muted">
-              枠 {list.length} ・ 予約 {list.filter((r) => (r.bookings ?? []).some((b) => !b.status.startsWith('cancelled'))).length}
-            </span>
-          </div>
-          <ul className="overview-list">
-            {list.map((r) => {
-              const b = (r.bookings ?? []).find((x) => !x.status.startsWith('cancelled'));
-              const state = b ? b.status : r.status === 'booked' ? 'closed' : r.status;
-              return (
-                <li key={r.id}>
-                  <span className="num">{fmtTime(r.start_at)}</span>
-                  <span>
-                    {one(r.menus)?.name} ・ {fmtYen(r.price)}
-                    {b && <small> ・ {b.contact_name} 様</small>}
-                  </span>
-                  <span className={`pill pill-${state}`}>{STATE[state] ?? state}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+      <div className={s.salons}>
+        {[...bySalon.entries()].map(([name, list]) => (
+          <Panel key={name} flush>
+            <div className={s.salonHead}>
+              <p className={s.salonName}>
+                <Storefront size={20} aria-hidden focusable="false" />
+                {name}
+              </p>
+              <span className={`num ${s.counts}`}>
+                枠 {list.length} ・ 予約 {list.filter((r) => (r.bookings ?? []).some((b) => !b.status.startsWith('cancelled'))).length}
+              </span>
+            </div>
+            <div className={t.wrap}>
+              <table className={t.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">時刻</th>
+                    <th scope="col">メニュー・料金</th>
+                    <th scope="col">状態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((r) => {
+                    const b = (r.bookings ?? []).find((x) => !x.status.startsWith('cancelled'));
+                    const state = b ? b.status : r.status === 'booked' ? 'closed' : r.status;
+                    const look = STATE_LOOK[state] ?? STATE_LOOK.closed;
+                    return (
+                      <tr key={r.id}>
+                        <td className={`num ${t.figure}`}>{fmtTime(r.start_at)}</td>
+                        <td>
+                          {one(r.menus)?.name} ・ <span className="num">{fmtYen(r.price)}</span>
+                          {b && <small> ・ {b.contact_name} 様</small>}
+                        </td>
+                        <td className={s.stateCell}>
+                          <Label kind={look.kind} icon={look.icon} weight={look.weight}>
+                            {STATE[state] ?? state}
+                          </Label>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        ))}
+      </div>
 
-      <h2 className="section-title">予約停止中の電話番号</h2>
-      <section className="card">
-        <p className="card-sub">直近90日で無断キャンセルが2回になった電話番号です。アカウントを削除しても、記録は90日間残ります。</p>
+      <h2 className={s.heading}>
+        <ShieldWarning size={24} aria-hidden focusable="false" />
+        予約停止中の電話番号
+      </h2>
+      <Panel flush>
+        <p className={s.sub}>直近90日で無断キャンセルが2回になった電話番号です。アカウントを削除しても、記録は90日間残ります。</p>
         {suspended.length === 0 ? (
-          <Empty>予約停止中の電話番号はありません。</Empty>
+          <Empty icon={ShieldWarning}>予約停止中の電話番号はありません。</Empty>
         ) : (
-          <ul className="overview-list">
-            {suspended.map((s) => (
-              <li key={s.masked_phone}>
-                <span className="num">{s.masked_phone}</span>
-                <span>記録 {s.records}回</span>
-                <span className="tiny">{fmtDate(s.resume_at)}から予約可</span>
-              </li>
-            ))}
-          </ul>
+          <div className={t.wrap}>
+            <table className={t.table}>
+              <thead>
+                <tr>
+                  <th scope="col">電話番号</th>
+                  <th scope="col">無断キャンセル</th>
+                  <th scope="col">予約できる日</th>
+                </tr>
+              </thead>
+              <tbody>
+                {suspended.map((x) => (
+                  <tr key={x.masked_phone}>
+                    <td className={`num ${t.figure}`}>{x.masked_phone}</td>
+                    <td>
+                      記録 <span className="num">{x.records}</span>回
+                    </td>
+                    <td>
+                      <span className="num">{fmtDate(x.resume_at)}</span>から予約可
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
-    </div>
+      </Panel>
+    </Stack>
   );
 }

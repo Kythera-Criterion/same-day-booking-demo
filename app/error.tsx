@@ -2,7 +2,11 @@
 
 // 予期しないエラーのときの画面（真っ白な画面にしない）
 import { useEffect } from 'react';
-import Link from 'next/link';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Page, Pair } from '@/components/ui/Layout';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { WarningCircle } from '@/components/ui/icons';
+import s from './error.module.css';
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -10,22 +14,26 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   }, [error]);
 
   return (
-    <main className="app">
-      <section className="card" style={{ marginTop: 32 }}>
-        <p className="card-title">うまく表示できませんでした</p>
-        <p className="card-sub">
+    <Page className={s.page}>
+      <Panel as="section">
+        <SectionHead icon={WarningCircle} title="うまく表示できませんでした" as="p" />
+        <SubText>
           通信が不安定か、一時的な不具合の可能性があります。もう一度お試しください。ご予約の内容は、そのまま残っています。
-        </p>
-        <div className="action-pair">
-          <Link href="/" className="btn btn-quiet">
+        </SubText>
+        <Pair>
+          <ButtonLink href="/" variant="quiet" size="md">
             ホームへ
-          </Link>
-          <button className="btn btn-primary" onClick={reset}>
+          </ButtonLink>
+          <Button variant="primary" size="md" onClick={reset}>
             もう一度表示する
-          </button>
-        </div>
-        {error.digest && <p className="fine-print">お問い合わせのときは、この番号をお伝えください：{error.digest}</p>}
-      </section>
-    </main>
+          </Button>
+        </Pair>
+        {error.digest && (
+          <p className={s.digest}>
+            お問い合わせのときは、この番号をお伝えください：<span className="num">{error.digest}</span>
+          </p>
+        )}
+      </Panel>
+    </Page>
   );
 }

@@ -1,0 +1,134 @@
+/* ボタン：主要（塗り）・補助（面と線）・控えめ（沈んだ面）・文字だけ・危険・時間
+   押せる大きさは 44px 以上。角丸は「操作」の値 */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-inline);
+  min-block-size: var(--tap-min);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-short) var(--ease-out),
+    border-color var(--motion-short) var(--ease-out),
+    color var(--motion-short) var(--ease-out),
+    transform var(--motion-short) var(--ease-out);
+}
+
+.button:active:not(:disabled):not([aria-disabled="true"]) {
+  transform: translateY(1px);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.md {
+  min-block-size: var(--size-control);
+  font-size: var(--text-body);
+}
+
+.lg {
+  min-block-size: var(--size-control-lg);
+  padding-inline: var(--space-6);
+  font-size: var(--text-body);
+  letter-spacing: 0.06em;
+}
+
+.sm {
+  padding-inline: var(--space-3);
+}
+
+.block {
+  inline-size: 100%;
+}
+
+.primary {
+  background: var(--color-action);
+  color: var(--color-action-ink);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.secondary {
+  background: var(--color-surface);
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-ink-sub);
+}
+
+.quiet {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.quiet:hover:not(:disabled) {
+  background: var(--color-line);
+}
+
+.text {
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-2);
+  background: none;
+  color: var(--color-action-text);
+  font-weight: var(--weight-medium);
+}
+
+.text:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.danger {
+  background: var(--color-surface);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
+.dangerSolid {
+  background: var(--color-danger);
+  color: var(--color-ink-on-strong);
+}
+
+.dangerSolid:hover:not(:disabled) {
+  background: var(--color-danger-text);
+}
+
+/* 濃い面の上（写真の上・予約の知らせなど） */
+.onStrong {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/* 線の操作：一覧に並ぶ操作（候補カードの「予約する」など）。強く塗る色を1つの画面で1つに保つため */
+.outline {
+  background: var(--color-surface);
+  border-color: var(--color-action);
+  color: var(--color-action-text);
+}
+
+.outline:hover:not(:disabled) {
+  background: var(--color-action-soft);
+}

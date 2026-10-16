@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { demoOnly, demoSession } from '@/lib/server/demo';
 import { adminClient } from '@/lib/server/supabase-admin';
 import { dispatchPending } from '@/lib/notify/dispatch';
-import { slotStartProblem, startAfter } from '@/lib/time';
+import { jstTodayStart, slotStartProblem, startAfter } from '@/lib/time';
 
 // シナリオ再生の1ステップずつ（画面側が数秒おきに順に呼ぶ）
 //   publish  サロンAが枠を出す
@@ -28,10 +28,13 @@ export async function POST(req: Request) {
       // メニューの受付締切に合わせて、予約を受けられる最初の時刻から選ぶ（サロンが締切を変えても動く）
       const { data: menu } = await adminClient().from('menus').select('booking_deadline_min').eq('id', MENU_ID).single();
       const deadline = (menu?.booking_deadline_min as number | undefined) ?? 10;
+      // 9時より前（夜・早朝）は、9時を起点に選ぶ（枠は今日の 9:00〜23:59 開始という決まりはそのまま）
+      const opening = new Date(jstTodayStart(now).getTime() + 9 * 60 * 60 * 1000);
+      const from = now < opening ? opening : now;
       const start = [0, 10, 20, 30, 45, 60, 90]
-        .map((m) => startAfter(deadline + 20 + m, now))
+        .map((m) => startAfter(deadline + 20 + m, from))
         .find((d) => !slotStartProblem(d, deadline, now));
-      if (!start) return NextResponse.json({ error: '今日はもう枠を出せる時間がありません' }, { status: 409 });
+      if (!start) return NextResponse.json({ error: '今日はもう枠を出せる時間がありません（枠は23:59までに始まるものだけ出せます）' }, { status: 409 });
       const { data, error } = await client.rpc('create_slot', { p_menu_id: MENU_ID, p_start_at: start.toISOString() });
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
       return NextResponse.json({ slot: data });

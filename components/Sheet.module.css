@@ -1,0 +1,96 @@
+/* 画面の下から出るシート（広い画面では中央の窓）。浮いているので影を付ける */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--color-overlay);
+  animation: fade var(--motion-base) var(--ease-out);
+}
+
+.sheet {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: var(--width-dialog);
+  max-block-size: 92dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: var(--space-2) calc(var(--space-6) + env(safe-area-inset-bottom));
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-surface) var(--radius-surface) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
+  animation: rise var(--motion-long) var(--ease-out);
+}
+
+.sheet:focus-visible {
+  outline: none;
+}
+
+.narrow {
+  max-inline-size: var(--width-phone);
+}
+
+.grip {
+  inline-size: var(--space-10);
+  block-size: var(--space-1);
+  margin: 0 auto var(--space-3);
+  border-radius: var(--radius-label);
+  background: var(--color-line-strong);
+}
+
+/* 写真が上にあるシート：写真をシートの端まで広げる */
+.hasMedia {
+  padding-block-start: 0;
+}
+
+.media {
+  margin-inline: calc(-1 * var(--space-5));
+  margin-block-end: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-end: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+}
+
+@media (min-width: 720px) {
+  .backdrop {
+    align-items: center;
+    padding: var(--space-6);
+  }
+
+  .sheet {
+    border-radius: var(--radius-surface);
+  }
+
+  .hasMedia .media {
+    border-start-start-radius: var(--radius-surface);
+    border-start-end-radius: var(--radius-surface);
+    overflow: hidden;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-6));
+  }
+}

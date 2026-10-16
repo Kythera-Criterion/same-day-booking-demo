@@ -1,0 +1,144 @@
+/* 掲載希望：申込ごとの白い面（店名・種類と状態のラベル・説明・申込の内容・操作）。広い画面では2列 */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.filter {
+  min-inline-size: calc(var(--space-16) * 4);
+}
+
+.formLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.formLink a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  font-weight: var(--weight-bold);
+}
+
+.cards {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 960px) {
+  .cards {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.name > svg {
+  flex: none;
+  color: var(--color-action-text);
+}
+
+.labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.kind {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+/* 申込の内容：沈んだ面の上に項目と内容 */
+.details {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+/* 見送る／承認：1行に収まらない幅では、承認を上に、見送るを下に（どちらも文字を折り返さない） */
+.actions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  gap: var(--space-2);
+}
+
+.actions > * {
+  white-space: nowrap;
+}
+
+.actions > :first-child {
+  flex: 1 1 auto;
+}
+
+.actions > :last-child {
+  flex: 2 1 auto;
+}
+
+.resend {
+  margin-block-start: var(--space-1);
+}
+
+/* 確認のシート */
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block: 0 var(--space-2);
+  padding-inline-start: var(--space-5);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.notify {
+  margin-block-end: var(--space-3);
+}
+
+/* ご利用開始のリンク（電話などで伝える場合だけ開く） */
+.invite {
+  margin-block-start: var(--space-2);
+}
+
+.inviteToggle {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}

@@ -30,14 +30,15 @@ insert into public.slots (id, salon_id, stylist_id, menu_id, start_at, end_at, p
 
 -- 時刻の条件を作るための枠（9時より前になりうるため、制約を一度外して入れ、新しい行だけに効かせて戻す）
 alter table public.slots drop constraint slots_business_hours;
-insert into public.slots (id, salon_id, menu_id, start_at, end_at, price, status) values
-  -- 締切（開始10分前）を過ぎた公開中の枠
-  ('5a000000-0000-4000-8000-0000000000ff', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', now() + interval '5 min',  now() + interval '65 min', 4500, 'open'),
+-- 締切を過ぎた枠は、開始は今日の9時以降のまま締切だけを過去にする（夜・早朝に流しても、9時の決まりに触れないように）
+insert into public.slots (id, salon_id, menu_id, start_at, end_at, price, status, deadline_at) values
+  -- 締切を過ぎた公開中の枠
+  ('5a000000-0000-4000-8000-0000000000ff', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', t.at(5),  t.at(65), 4500, 'open', now() - interval '1 min'),
   -- 終わった予約（無断キャンセルの記録用）
-  ('5a000000-0000-4000-8000-0000000000e1', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', now() - interval '3 hour', now() - interval '2 hour', 4500, 'booked'),
-  ('5a000000-0000-4000-8000-0000000000e2', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', now() - interval '90 min', now() - interval '30 min', 4500, 'booked'),
+  ('5a000000-0000-4000-8000-0000000000e1', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', now() - interval '3 hour', now() - interval '2 hour', 4500, 'booked', null),
+  ('5a000000-0000-4000-8000-0000000000e2', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', now() - interval '90 min', now() - interval '30 min', 4500, 'booked', null),
   -- 締切を過ぎた予約済みの枠（キャンセル後に公開へ戻らないことの確認用）
-  ('5b000000-0000-4000-8000-0000000000fe', '22222222-2222-4222-8222-222222222222', 'd2222221-2222-4222-8222-222222222222', now() + interval '5 min',  now() + interval '55 min', 5200, 'booked');
+  ('5b000000-0000-4000-8000-0000000000fe', '22222222-2222-4222-8222-222222222222', 'd2222221-2222-4222-8222-222222222222', t.at(5),  t.at(55), 5200, 'booked', now() - interval '1 min');
 alter table public.slots add constraint slots_business_hours
   check ((start_at at time zone 'Asia/Tokyo')::time >= time '09:00') not valid;
 
@@ -734,6 +735,13 @@ commit;
 begin; set local role service_role;
 select t.ok('T34 サーバー側からデモをリセットし、過去7日分の架空データを作れる',
   (select (r ->> 'history_slots')::int > 0 from (select public.demo_reset(true) as r) x));
+select t.ok('T34 デモのリセットで今日の空き枠ができる（9時より前でも、9時以降の枠を作る。20時以降は残り時間しだい）',
+  (select (r ->> 'open_slots')::int > 0 from (select public.demo_reset(false) as r) x)
+  or (now() at time zone 'Asia/Tokyo')::time >= time '20:00');
+select t.ok('T34 デモのリセットで作った枠は、どれも9時以降・今日中・受付の締切前',
+  not exists (select 1 from public.slots s
+              where s.salon_id = any (public.demo_salon_ids()) and not s.demo_history and s.status = 'open'
+                and ((s.start_at at time zone 'Asia/Tokyo')::time < time '09:00' or s.start_at >= public.jst_today_end() or s.deadline_at <= now())));
 select t.runs('T34 同時予約チャレンジ用の枠を作れる', 'select public.demo_prepare_challenge()');
 commit;
 select t.ok('T34 架空データでは通知を積まない',
@@ -767,8 +775,8 @@ insert into t.ctx values ('self_salon', public.salon_self_register('サロン �
   'e0000001-0000-4000-8000-000000000001', '架空県架空市1-2-3', '当日の枠について相談したい')::text);
 select t.ok('T44 自己登録したサロンは、審査中（my_salon_status = reviewing）',
   public.my_salon_status((select value::uuid from t.ctx where key = 'self_salon')) = 'reviewing');
-select t.raises('T44 同じアカウントで二重に登録できない',
-  $$select public.salon_self_register('別の店', '担当', '090-1111-2222', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'already_registered');
+select t.raises('T44 審査中のお申し込みがある間は、同じアカウントで二重に申し込めない',
+  $$select public.salon_self_register('別の店', '担当', '090-1111-2222', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'application_pending');
 commit;
 select t.ok('T44 自己登録したサロンは、掲載されていない状態で作られ、本人がスタッフになる',
   (select not s.is_approved from public.salons s where s.id = (select value::uuid from t.ctx where key = 'self_salon'))
@@ -872,6 +880,29 @@ select t.runs('T47 登録・審査・招待のメールを送信待ちに積め�
   $$insert into public.notification_outbox (dedupe_key, kind, channel, recipient, payload)
     select 'reg-test:' || k, k, 'email', 'x@example.test', '{"salon_name":""}'
     from unnest(array['signup_confirm_mail','account_exists_mail','salon_approved_mail','salon_rejected_mail','admin_invite_mail']) k$$);
+-- ---------------------------------------------------------
+-- T48 1つのアカウントで2店舗目を申し込む（掲載中のお店のスタッフ・運営でも、運営に掲載希望が届く）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+insert into t.ctx values ('second_salon', public.salon_self_register('HAIR ROOM AOI 2号店', 'サロンAスタッフ', '086-000-3333',
+  'e0000001-0000-4000-8000-000000000001', '架空県架空市7-8-9')::text);
+commit;
+select t.ok('T48 掲載中のお店のスタッフも、別のお店を申し込める（2店舗目は審査中で作られ、スタッフになる）',
+  (select not is_approved from public.salons where id = (select value::uuid from t.ctx where key = 'second_salon'))
+  and (select count(*) from public.salon_members where user_id = '00000000-0000-4000-8000-0000000000a1') = 2);
+select t.ok('T48 2店舗目の申し込みも、掲載希望（審査待ち）として運営に届く',
+  exists (select 1 from public.salon_applications where salon_id = (select value::uuid from t.ctx where key = 'second_salon')
+          and status = 'pending' and applicant_user_id = '00000000-0000-4000-8000-0000000000a1'));
+select t.ok('T48 1店舗目の掲載はそのまま',
+  (select is_approved from public.salons where id = '11111111-1111-4111-8111-111111111111'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T48 2店舗目は審査中、1店舗目は掲載中と、お店ごとに状態が分かる',
+  public.my_salon_status((select value::uuid from t.ctx where key = 'second_salon')) = 'reviewing'
+  and public.my_salon_status('11111111-1111-4111-8111-111111111111') = 'listed');
+select t.raises('T48 2店舗目が審査中の間は、3店舗目を申し込めない',
+  $$select public.salon_self_register('3号店', '担当', '086-000-4444', 'e0000001-0000-4000-8000-000000000001', '住所')$$, 'application_pending');
+commit;
+
 -- 外部 ID で作ったアカウント（仮のパスワード）は「パスワードなし」。本人が決めると「あり」になる
 insert into auth.users (id, email, encrypted_password) values ('00000000-0000-4000-8000-0000000000f1', 'social-only@example.test', '$2a$10$temporary');
 begin; set local role service_role;
@@ -887,4 +918,169 @@ commit;
 begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
 select t.raises('T47 画面側から「パスワードなし」の印を付けられない', $$select public.mark_passwordless('00000000-0000-4000-8000-000000000001')$$, 'permission denied');
 commit;
+-- ---------------------------------------------------------
+-- T49 いまある機能の仕上げ（0012）
+-- ---------------------------------------------------------
+insert into public.slots (id, salon_id, menu_id, start_at, end_at, price) values
+  ('5a000000-0000-4000-8000-000000000491', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', t.at(400), t.at(460), 4500),
+  ('5a000000-0000-4000-8000-000000000492', '11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', t.at(430), t.at(490), 4500);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+insert into t.ctx values ('b491', (public.book_slot('5a000000-0000-4000-8000-000000000491')).id::text);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select public.salon_pause_today('11111111-1111-4111-8111-111111111111');
+select public.salon_update_booking((select value::uuid from t.ctx where key = 'b491'), 'cancel_customer');
+commit;
+select t.ok('T49 「今日はここまで」のあとにキャンセルを記録しても、枠は公開に戻らない（取り下げたまま）',
+  (select status = 'closed' and closed_reason = 'paused' from public.slots where id = '5a000000-0000-4000-8000-000000000491'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select public.salon_resume_today('11111111-1111-4111-8111-111111111111');
+commit;
+select t.ok('T49 「元に戻す」で、キャンセルで空いた枠も一緒に公開に戻る',
+  (select count(*) from public.slots where id in ('5a000000-0000-4000-8000-000000000491', '5a000000-0000-4000-8000-000000000492') and status = 'open') = 2);
+-- 掲載を止めたお店の予約がキャンセルになっても、枠は公開に戻らない
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+insert into t.ctx values ('b491b', (public.book_slot('5a000000-0000-4000-8000-000000000491')).id::text);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select public.admin_set_salon_approved('11111111-1111-4111-8111-111111111111', false);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select public.salon_update_booking((select value::uuid from t.ctx where key = 'b491b'), 'cancel_salon');
+select t.raises('T49 掲載を止めているお店は、「元に戻す」を使えない（戻しても利用者に見えないため）',
+  $$select public.salon_resume_today('11111111-1111-4111-8111-111111111111')$$, 'salon_not_listed');
+commit;
+select t.ok('T49 掲載を止めているお店の予約をキャンセルしても、枠は公開に戻らない',
+  (select status = 'closed' and closed_reason = 'suspended' from public.slots where id = '5a000000-0000-4000-8000-000000000491'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select public.admin_set_salon_approved('11111111-1111-4111-8111-111111111111', true);
+commit;
+select t.ok('T49 掲載を再開すると、その枠も公開に戻る',
+  (select status = 'open' from public.slots where id = '5a000000-0000-4000-8000-000000000491'));
+-- 運営の「掲載を再開」は、審査中・見送りのお店には使えない
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000e3';
+insert into t.ctx values ('pending_salon', public.salon_self_register('審査待ちサロン', '担当', '086-000-9999',
+  'e0000001-0000-4000-8000-000000000001', '架空県架空市9-9-9')::text);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.raises('T49 審査中のお店は、運営の「掲載を再開」で掲載できない（承認を通す）',
+  $$select public.admin_set_salon_approved((select value::uuid from t.ctx where key = 'pending_salon'), true)$$, 'application_pending');
+select t.raises('T49 見送ったお店は、運営の「掲載を再開」で掲載できない',
+  $$select public.admin_set_salon_approved((select value::uuid from t.ctx where key = 'self_salon2'), true)$$, 'application_rejected');
+select t.runs('T49 承認済みのお店は、止めたり再開したりできる',
+  $$select public.admin_set_salon_approved((select value::uuid from t.ctx where key = 'self_salon'), false), public.admin_set_salon_approved((select value::uuid from t.ctx where key = 'self_salon'), true)$$);
+commit;
+-- お店の場所：エリアは必須
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.raises('T49 エリアを空にしてお店の情報を保存できない（エリアのないお店は、利用者に出ないため）',
+  $$select public.salon_update_profile('11111111-1111-4111-8111-111111111111', 'HAIR ROOM AOI', '架空県', null, 34.66, 133.92)$$, 'invalid_input');
+commit;
+-- 通知の送り直しは、間をあける
+insert into public.notification_outbox (dedupe_key, kind, channel, recipient, payload)
+values ('t49-retry', 'salon_rejected_mail', 'email', 'x@example.test', '{"salon_name":"x"}');
+begin; set local role service_role;
+select t.ok('T49 送信待ちの通知を取り出せる', exists (select 1 from public.claim_notifications(50) where dedupe_key = 't49-retry'));
+select public.finish_notification((select id from public.notification_outbox where dedupe_key = 't49-retry'), 'pending', 'Resend 503');
+select t.ok('T49 送れなかった通知は、すぐには取り出さない（間をあける）',
+  not exists (select 1 from public.claim_notifications(50) where dedupe_key = 't49-retry'));
+commit;
+update public.notification_outbox set locked_at = now() - interval '2 minutes' where dedupe_key = 't49-retry';
+begin; set local role service_role;
+select t.ok('T49 間をあけたあとは、もう一度取り出して送り直す', exists (select 1 from public.claim_notifications(50) where dedupe_key = 't49-retry'));
+commit;
+update public.notification_outbox set status = 'sending', attempts = 5, locked_at = now() where dedupe_key = 't49-retry';
+begin; set local role service_role;
+select public.claim_notifications(50);
+commit;
+select t.ok('T49 送信中の5回目は、途中で「失敗」にしない',
+  (select status from public.notification_outbox where dedupe_key = 't49-retry') = 'sending');
+-- 後片付け（ほかの確認に影響しないよう、送信中のまま残さない）
+update public.notification_outbox set status = 'failed' where dedupe_key = 't49-retry';
+-- デモのリセット：止めたデモ用のお店を掲載に戻す
+update public.salons set is_approved = false where id = '22222222-2222-4222-8222-222222222222';
+begin; set local role service_role;
+select public.demo_reset(false);
+commit;
+select t.ok('T49 デモのリセットで、止めていたデモ用のお店が掲載に戻る',
+  (select is_approved from public.salons where id = '22222222-2222-4222-8222-222222222222'));
+
+-- ---------------------------------------------------------
+-- T50 サロンの新規登録（運営の承認制）：申し込み → 運営が承認 → お店とスタッフの紐づけ
+-- ---------------------------------------------------------
+begin; set local role anon;
+select t.raises('T50 ログインしていない人は、関数から申し込めない（サーバー側の登録の処理だけが作る）',
+  $$select public.salon_apply('店', '担当')$$, 'permission denied');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+insert into t.ctx values ('t50_app', public.salon_apply('ヘアサロン 申込', '鈴木 一郎', '当日の枠を出したい')::text);
+select t.ok('T50 申し込むと、自分の申し込みが「運営の確認待ち（pending）」になる',
+  (select status = 'pending' and salon_name = 'ヘアサロン 申込' and salon_id is null from public.my_salon_application()));
+select t.raises('T50 確認待ちの間は、二重に申し込めない',
+  $$select public.salon_apply('別の店', '鈴木 一郎')$$, 'application_pending');
+select t.raises('T50 確認待ちの間は、内容に関係なく申し込めない', $$select public.salon_apply('', '')$$, 'application_pending');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000003';
+select t.raises('T50 店名とお名前が空なら申し込めない', $$select public.salon_apply(' ', '担当')$$, 'invalid_input');
+select t.ok('T50 ほかの人の申し込みは見えない', not exists (select 1 from public.my_salon_application() where id = (select value::uuid from t.ctx where key = 't50_app')));
+commit;
+select t.ok('T50 申し込みは、運営の「掲載希望」に届く（申し込んだアカウントつき）',
+  exists (select 1 from public.salon_applications where id = (select value::uuid from t.ctx where key = 't50_app')
+          and status = 'pending' and applicant_user_id = '00000000-0000-4000-8000-000000000002' and email = 'user2@demo.test'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+insert into t.ctx values ('t50_salon', public.admin_approve_application((select value::uuid from t.ctx where key = 't50_app'), '00000000-0000-4000-8000-000000000002')::text);
+commit;
+select t.ok('T50 運営が承認すると、お店ができ、申し込んだアカウントがスタッフになる',
+  exists (select 1 from public.salon_members where salon_id = (select value::uuid from t.ctx where key = 't50_salon')
+          and user_id = '00000000-0000-4000-8000-000000000002'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T50 承認のあとは、自分の申し込みが「承認済み」になり、お店が分かる',
+  (select status = 'approved' and salon_id = (select value::uuid from t.ctx where key = 't50_salon') from public.my_salon_application()));
+commit;
+
+-- ---------------------------------------------------------
+-- T51 初期設定を終えたお店を、運営に「新しいサロンが加わりました」と知らせる（0014）
+-- ---------------------------------------------------------
+select t.ok('T51 すでに設定を終えていたお店（デモ用のお店）は、加わったものとして扱い、知らせない',
+  (select joined_at is not null from public.salon_private where salon_id = '11111111-1111-4111-8111-111111111111')
+  and not exists (select 1 from public.admin_notices where salon_id = '11111111-1111-4111-8111-111111111111'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.runs('T51 承認したお店のスタッフは、初期設定を途中まで進められる',
+  $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 2)$$);
+select t.raises('T51 メニューがないうちは、設定を終えられない',
+  $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3)$$, 'menu_required');
+commit;
+insert into public.menus (salon_id, name, duration_min, price) values ((select value::uuid from t.ctx where key = 't50_salon'), 'カット', 60, 4000);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.raises('T51 お店の場所（住所）を登録するまでは、設定を終えられない',
+  $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3)$$, 'address_required');
+select t.ok('T51 設定を終える前は、運営に知らせない',
+  (select count(*) from public.admin_notices where salon_id = (select value::uuid from t.ctx where key = 't50_salon')) = 0);
+commit;
+update public.salons set address = '架空県架空市テスト町1-1' where id = (select value::uuid from t.ctx where key = 't50_salon');
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.runs('T51 メニューとお店の場所がそろえば、設定を終えられる',
+  $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3)$$);
+select t.ok('T51 お店のスタッフには、運営へのお知らせは見えない', (select count(*) from public.admin_notices) = 0);
+-- 「初期設定の3ステップをもう一度表示する」から終え直す
+select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 0);
+select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3);
+commit;
+select t.ok('T51 設定を終えると、加わった日時が残り、運営へ「新しいサロンが加わりました」が1件だけ届く（終え直しても増えない）',
+  (select joined_at is not null from public.salon_private where salon_id = (select value::uuid from t.ctx where key = 't50_salon'))
+  and (select count(*) = 1 and bool_and(kind = 'salon_joined' and salon_name = 'ヘアサロン 申込')
+       from public.admin_notices where salon_id = (select value::uuid from t.ctx where key = 't50_salon')));
+select t.ok('T51 加わったことが操作記録に残る',
+  (select count(*) from public.audit_logs where action = 'salon_joined' and target_id = (select value::uuid from t.ctx where key = 't50_salon')) = 1);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T51 運営は、お知らせを読める',
+  exists (select 1 from public.admin_notices where salon_id = (select value::uuid from t.ctx where key = 't50_salon')));
+commit;
+begin; set local role anon;
+select t.raises('T51 ログインしていない人は、お知らせを読めない', $$select count(*) from public.admin_notices$$, 'permission denied');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.raises('T51 ほかのお店のスタッフは、別のお店の設定を終えられない',
+  $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3)$$, 'forbidden');
+commit;
+
 -- 結果の一覧は run.sh が出す

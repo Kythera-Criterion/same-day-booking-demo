@@ -4,13 +4,27 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import { Empty, ErrorState, Loading } from '@/components/States';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import { Bell, ChatCircle, CheckCircle, EnvelopeSimple, HourglassMedium, Info, WarningCircle } from '@/components/ui/icons';
 import { STATUS_LABEL, renderNotification, type OutboxRow } from '@/lib/notify/format';
+import s from './NotificationLog.module.css';
 
 const REASON_LABEL: Record<string, string> = {
   no_line_key: 'LINE のキーが未設定のため',
   no_line_group: '連絡用グループが未設定のため',
   no_resend_key: 'Resend のキーが未設定のため',
   no_recipient: '宛先がないため',
+};
+
+// 送信の状態：色だけでなく、アイコンでも見分ける
+const STATUS_LOOK: Record<OutboxRow['status'], { kind: LabelKind; icon: PhosphorIcon }> = {
+  pending: { kind: 'state', icon: HourglassMedium },
+  sending: { kind: 'state', icon: HourglassMedium },
+  sent: { kind: 'success', icon: CheckCircle },
+  simulated: { kind: 'action', icon: Info },
+  failed: { kind: 'danger', icon: WarningCircle },
 };
 
 const timeFmt = new Intl.DateTimeFormat('ja-JP', {
@@ -67,40 +81,45 @@ export default function NotificationLog({
     };
   }, [client, salonId, load]);
 
-  if (error) return <p className="state state-error">{error}</p>;
-  if (rows === null) return <div className="skeleton-list" aria-busy="true"><span /><span /></div>;
-  if (rows.length === 0) return <p className="state">まだ通知はありません。</p>;
+  if (error) return <ErrorState>{error}</ErrorState>;
+  if (rows === null) return <Loading rows={2} />;
+  if (rows.length === 0) return <Empty icon={Bell}>まだ通知はありません。</Empty>;
 
   return (
-    <ul className="notify-list">
+    <ul className={s.list}>
       {rows.map((row) => {
         const rendered = renderNotification(row.kind, row.payload);
         const reason = typeof row.response?.reason === 'string' ? REASON_LABEL[row.response.reason] : null;
+        const look = STATUS_LOOK[row.status] ?? STATUS_LOOK.pending;
         return (
-          <li key={row.id} className={`notify ${row.id === freshId ? 'is-fresh' : ''}`}>
-            <div className="notify-head">
-              <span className={`notify-channel notify-${row.channel}`}>{row.channel === 'line' ? 'LINE' : 'メール'}</span>
-              <span className={`pill pill-${row.status}`}>{STATUS_LABEL[row.status]}</span>
-              <time className="notify-time">{timeFmt.format(new Date(row.sent_at ?? row.created_at))}</time>
+          <li key={row.id} className={`${s.item} ${row.id === freshId ? s.fresh : ''}`}>
+            <div className={s.head}>
+              <Label kind="condition" icon={row.channel === 'line' ? ChatCircle : EnvelopeSimple}>
+                {row.channel === 'line' ? 'LINE' : 'メール'}
+              </Label>
+              <Label kind={look.kind} icon={look.icon}>
+                {STATUS_LABEL[row.status]}
+              </Label>
+              <time className={`num ${s.time}`}>{timeFmt.format(new Date(row.sent_at ?? row.created_at))}</time>
             </div>
             {rendered.channel === 'line' ? (
-              <div className="line-preview">
-                <div className="line-room">
+              <div className={s.line}>
+                <div className={s.room}>
                   連絡用グループ{showRecipient || row.recipient ? '' : '（未設定）'}
                 </div>
-                <p className="line-bubble">{rendered.text}</p>
+                <p className={s.bubble}>{rendered.text}</p>
               </div>
             ) : (
-              <div className="mail-preview">
-                <div className="mail-meta">
+              <div className={s.mail}>
+                <div className={s.meta}>
                   <span>件名：{rendered.subject}</span>
-                  {showRecipient && <span>宛先：{row.recipient ?? '（なし）'}</span>}
+                  {showRecipient && <span className="break">宛先：{row.recipient ?? '（なし）'}</span>}
                 </div>
-                <p className="mail-body">{rendered.text}</p>
+                <p className={s.body}>{rendered.text}</p>
               </div>
             )}
-            {row.status === 'simulated' && reason && <p className="notify-note">{reason}、送信したことにして記録しました。</p>}
-            {row.last_error && <p className="notify-note notify-error">{row.last_error}</p>}
+            {row.status === 'simulated' && reason && <p className={s.note}>{reason}、送信したことにして記録しました。</p>}
+            {row.last_error && <p className={`${s.note} ${s.error}`}>{row.last_error}</p>}
           </li>
         );
       })}

@@ -13,12 +13,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import { NotConfigured } from '@/components/States';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Form';
+import { Page, Pair, ScreenTitle } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel } from '@/components/ui/Surface';
+import { ArrowRight, EnvelopeSimple, LinkIcon } from '@/components/ui/icons';
 import PasswordInput from '@/components/auth/PasswordInput';
 import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/components/auth/SocialButtons';
 import { useRoleSession } from '@/lib/supabase';
 import type { Providers } from '@/lib/oauth-shared';
 import { TERMS_VERSION } from '@/lib/profile-options';
 import { EMPTY_PROFILE, Field, MiniSteps, ProfileFields, checkProfile, type ProfileErrors, type ProfileForm } from './FormParts';
+import s from './Signup.module.css';
 import type { Area } from './useUserState';
 
 type Account = { email: string; password: string };
@@ -26,8 +33,11 @@ type AccountErrors = Partial<Record<keyof Account, string>>;
 
 const SIGNUP_ERROR: Record<string, string> = {
   invalid_email: 'メールアドレスの形をご確認ください。',
-  weak_password: 'パスワードは8文字以上72文字以下で入力してください。',
+  email_address_invalid: 'このメールアドレスは使えません。別のメールアドレスをお試しください。',
+  weak_password: 'もっと推測されにくいパスワードにしてください（8文字以上。英字・数字・記号を混ぜる）。',
   rate_limited: '短い時間に何度も送信されたため、少し時間をおいてお試しください。',
+  over_email_send_rate_limit: '短い時間に何度も送信されたため、少し時間をおいてお試しください。',
+  signup_disabled: 'ただいま新規登録を受け付けていません。',
 };
 
 export default function Signup({ providers, authError, next = '/' }: { providers: Providers; authError?: string | null; next?: string }) {
@@ -143,7 +153,7 @@ export default function Signup({ providers, authError, next = '/' }: { providers
     const body = (await res?.json().catch(() => ({}))) as { error?: string; demoLink?: string | null; demoNote?: string | null } | undefined;
     setBusy(false);
     if (!res || !res.ok) {
-      setSubmitError(SIGNUP_ERROR[body?.error ?? ''] ?? `登録できませんでした（${body?.error ?? '通信エラー'}）。少し時間をおいてお試しください。`);
+      setSubmitError(SIGNUP_ERROR[body?.error ?? ''] ?? (res ? '登録できませんでした。少し時間をおいてお試しください。' : '通信できませんでした。電波の状態をご確認のうえ、もう一度お試しください。'));
       return;
     }
     setDemoLink(body?.demoLink ?? null);
@@ -157,63 +167,70 @@ export default function Signup({ providers, authError, next = '/' }: { providers
 
   if (sentTo) {
     return (
-      <main className="app">
+      <Page>
         <AppHeader role="利用者" />
-        <section className="card fade-in">
-          <p className="welcome-kicker">あと少しで完了です</p>
-          <p className="card-title">確認メールを送りました</p>
-          <p className="card-sub">
-            <strong className="break">{sentTo}</strong> に届いたメールのリンクを開くと、登録が完了してログインします。届かないときは、迷惑メールのフォルダと、携帯電話のメールの受信設定をご確認ください。
-          </p>
-          {demoLink && (
-            <div className="notice notice-info demo-link">
-              <strong>デモ：</strong>メールは送られません。下のボタンがメールのリンクと同じです。
-              <a className="btn btn-primary btn-block" href={demoLink} style={{ marginTop: 8 }}>
-                メールのリンクを開く（デモ）
-              </a>
-            </div>
-          )}
-          {demoNote === 'exists' && (
-            <p className="notice notice-info">
-              <strong>デモ：</strong>登録済みのアドレスのため、「登録済みのお知らせ」を送りました（本番では画面に出しません）。
+        <Panel as="section" roomy className={s.sent}>
+          <div className={s.body}>
+            <p className={s.kicker}>
+              <EnvelopeSimple size={20} aria-hidden focusable="false" />
+              あと少しで完了です
             </p>
-          )}
-          {resendMsg && <p className="notice notice-info">{resendMsg}</p>}
-          <div className="action-pair">
-            <button className="btn btn-quiet" disabled={cooldown > 0} onClick={resend}>
-              {cooldown > 0 ? `再送（${cooldown}秒後）` : '確認メールを再送'}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setSentTo(null);
-                setDemoLink(null);
-                setDemoNote(null);
-                setStep(1);
-              }}
-            >
-              入力し直す
-            </button>
+            <p className={s.title}>確認メールを送りました</p>
+            <p className={s.text}>
+              <strong className="break">{sentTo}</strong> に届いたメールのリンクを開くと、登録が完了してログインします。届かないときは、迷惑メールのフォルダと、携帯電話のメールの受信設定をご確認ください。
+            </p>
+            {demoLink && (
+              <div className={s.demo}>
+                <Notice tone="info">
+                  <strong>デモ：</strong>メールは送られません。下のボタンがメールのリンクと同じです。
+                </Notice>
+                <ButtonLink variant="primary" size="md" block external icon={LinkIcon} href={demoLink}>
+                  メールのリンクを開く（デモ）
+                </ButtonLink>
+              </div>
+            )}
+            {demoNote === 'exists' && (
+              <Notice tone="info">
+                <strong>デモ：</strong>登録済みのアドレスのため、「登録済みのお知らせ」を送りました（本番では画面に出しません）。
+              </Notice>
+            )}
+            {resendMsg && <Notice tone="info">{resendMsg}</Notice>}
+            <Pair>
+              <Button variant="quiet" disabled={cooldown > 0} onClick={resend}>
+                {cooldown > 0 ? `再送（${cooldown}秒後）` : '確認メールを再送'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSentTo(null);
+                  setDemoLink(null);
+                  setDemoNote(null);
+                  setStep(1);
+                }}
+              >
+                入力し直す
+              </Button>
+            </Pair>
+            <p className={s.links}>
+              <Link href="/login">ログイン画面へ</Link>
+            </p>
           </div>
-          <p className="login-forgot">
-            <Link href="/login">ログイン画面へ</Link>
-          </p>
-        </section>
-      </main>
+        </Panel>
+      </Page>
     );
   }
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role="利用者">
         <Link href="/login">ログイン</Link>
       </AppHeader>
       <RoleIntro kind="user" compact />
-      <h1 className="screen-title screen-title-tight">新規登録（無料）</h1>
+      <ScreenTitle tight>新規登録（無料）</ScreenTitle>
       <AuthErrorNotice code={authError} />
 
       {step === 1 && (
-        <section className="card">
+        <Panel as="section">
           {hasAnyProvider(providers) && (
             <>
               <SocialButtons providers={providers} role="user" mode="signup" next={next} back="/signup" verb="登録" />
@@ -222,7 +239,7 @@ export default function Signup({ providers, authError, next = '/' }: { providers
           )}
           <form onSubmit={toStep2} noValidate>
             <Field id="email" label="メールアドレス" error={accountErrors.email} hint="確認のメールが届きます。">
-              <input id="email" className="input" type="email" inputMode="email" autoComplete="email" value={account.email}
+              <Input id="email" type="email" inputMode="email" autoComplete="email" value={account.email}
                 aria-invalid={!!accountErrors.email} aria-describedby={accountErrors.email ? 'email-error' : 'email-hint'}
                 onChange={(e) => setA('email', e.target.value)} />
             </Field>
@@ -230,31 +247,35 @@ export default function Signup({ providers, authError, next = '/' }: { providers
               <PasswordInput id="password" isNew value={account.password} invalid={!!accountErrors.password}
                 describedBy={accountErrors.password ? 'password-error' : undefined} onChange={(v) => setA('password', v)} />
             </Field>
-            <button className="btn btn-primary btn-lg btn-block" type="submit">
+            <Button variant="primary" size="lg" block type="submit" iconEnd={ArrowRight}>
               次へ（お客様の情報）
-            </button>
+            </Button>
           </form>
-          <p className="login-forgot">
+          <p className={s.links}>
             アカウントをお持ちの方は <Link href="/login">ログイン</Link>
           </p>
-        </section>
+        </Panel>
       )}
 
       {step === 2 && (
-        <form className="card form-compact" onSubmit={submit} noValidate>
-          <div className="row-between step-head">
+        <Panel as="form" onSubmit={submit} noValidate>
+          <div className={s.stepHead}>
             <MiniSteps step={2} total={2} label="お客様の情報" />
-            <button type="button" className="btn btn-text btn-sm" onClick={() => setStep(1)}>
+            <Button variant="text" size="sm" onClick={() => setStep(1)}>
               ← 戻る
-            </button>
+            </Button>
           </div>
           <ProfileFields form={profile} errors={profileErrors} onChange={setP} areas={areas} />
-          {submitError && <p className="notice notice-error" role="alert">{submitError}</p>}
-          <button className="btn btn-primary btn-lg btn-block" type="submit" disabled={busy}>
+          {submitError && (
+            <Notice tone="danger" role="alert" className={s.error}>
+              {submitError}
+            </Notice>
+          )}
+          <Button variant="primary" size="lg" block type="submit" disabled={busy} icon={EnvelopeSimple}>
             {busy ? '送信中…' : '確認メールを送る'}
-          </button>
-        </form>
+          </Button>
+        </Panel>
       )}
-    </main>
+    </Page>
   );
 }

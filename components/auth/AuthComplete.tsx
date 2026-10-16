@@ -8,10 +8,14 @@
 //      運営  ：運営の画面へ
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { Loading, NotConfigured } from '@/components/States';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Page, Pair } from '@/components/ui/Layout';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { LinkIcon } from '@/components/ui/icons';
+import s from './AuthComplete.module.css';
 import { getClient, isConfigured, type Role } from '@/lib/supabase';
 import { safePath } from '@/lib/oauth-shared';
 
@@ -42,24 +46,35 @@ export default function AuthComplete({
   const next = safePath(nextParam, ROLE_HOME[role]);
   const [phase, setPhase] = useState<'checking' | 'invalid' | 'moving'>('checking');
   const started = useRef(false);
+  // リンクを確かめられなかったが、この端末で別のアカウントがログインしているとき（そのアカウントで続けるかを選ぶ）
+  const [other, setOther] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    if (!isConfigured || started.current) return;
+    if (!isConfigured || (started.current && retry === 0)) return;
     started.current = true;
     (async () => {
       const client = getClient(role);
       let session = null;
-      if (tokenHash && (type === 'magiclink' || type === 'signup')) {
-        const { data } = await client.auth.verifyOtp({ token_hash: tokenHash, type });
+      const useToken = retry === 0 && !!tokenHash && (type === 'magiclink' || type === 'signup');
+      if (useToken) {
+        const { data } = await client.auth.verifyOtp({ token_hash: tokenHash!, type: type as 'magiclink' | 'signup' });
         session = data.session;
-      }
-      // 同じリンクをもう一度開いた場合など：すでにログインしていれば、そのまま進める
-      if (!session) session = (await client.auth.getSession()).data.session;
-      // トークンを URL に残さない
-      window.history.replaceState(null, '', '/auth/complete');
-      if (!session) {
-        setPhase('invalid');
-        return;
+        // トークンを URL に残さない
+        window.history.replaceState(null, '', '/auth/complete');
+        if (!session) {
+          // 期限切れ・使用済みのリンク：この端末でログインしているアカウントがあっても、黙ってそのアカウントで進めない
+          setOther((await client.auth.getSession()).data.session?.user.email ?? null);
+          setPhase('invalid');
+          return;
+        }
+      } else {
+        // 読み直した場合・「ログイン中のアカウントで続ける」を選んだ場合
+        session = (await client.auth.getSession()).data.session;
+        if (!session) {
+          setPhase('invalid');
+          return;
+        }
       }
       setPhase('moving');
       if (role === 'user') {
@@ -69,41 +84,54 @@ export default function AuthComplete({
       }
       if (role === 'salon') {
         const { data: member } = await client.from('salon_members').select('salon_id').eq('user_id', session.user.id).limit(1).maybeSingle();
-        router.replace(member ? (next.startsWith('/salon/signup') ? '/salon' : next) : '/salon/signup');
+        // 新規登録の画面から来たときは、スタッフになっているお店があっても、別のお店の申し込みへ進める
+        router.replace(member ? next : '/salon/signup');
         return;
       }
       router.replace(next);
     })();
-  }, [tokenHash, type, role, next, isNew, router]);
+  }, [tokenHash, type, role, next, isNew, router, retry]);
 
   if (!isConfigured) return <NotConfigured />;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role={ROLE_LABEL[role]} home={ROLE_HOME[role]} />
       {phase !== 'invalid' ? (
-        <>
-          <p className="card-sub" style={{ textAlign: 'center', marginTop: 24 }}>
-            {phase === 'checking' ? '確認しています…' : 'ログインしました。移動しています…'}
-          </p>
+        <div className={s.checking}>
+          <p className={s.status}>{phase === 'checking' ? '確認しています…' : 'ログインしました。移動しています…'}</p>
           <Loading rows={2} />
-        </>
+        </div>
       ) : (
-        <section className="card fade-in" style={{ marginTop: 16 }}>
-          <p className="card-title">このリンクは使えません</p>
-          <p className="card-sub">
+        <Panel as="section" className={s.invalid}>
+          <SectionHead icon={LinkIcon} title="このリンクは使えません" as="p" />
+          <SubText>
             有効期限が切れたか、すでに使われたリンクです。登録の確認がまだの場合は、登録の画面から確認メールをもう一度お送りください。確認が済んでいる場合は、ログインしてください。
-          </p>
-          <div className="action-pair">
-            <Link className="btn btn-quiet" href={role === 'salon' ? '/salon/signup' : role === 'admin' ? '/admin' : '/signup'}>
+          </SubText>
+          <Pair>
+            <ButtonLink variant="quiet" size="md" href={role === 'salon' ? '/salon/signup' : role === 'admin' ? '/admin' : '/signup'}>
               {role === 'admin' ? '運営の画面へ' : '登録の画面へ'}
-            </Link>
-            <Link className="btn btn-primary" href={role === 'user' ? '/login' : ROLE_HOME[role]}>
+            </ButtonLink>
+            <ButtonLink variant="primary" size="md" href={role === 'user' ? '/login' : ROLE_HOME[role]}>
               ログインへ
-            </Link>
-          </div>
-        </section>
+            </ButtonLink>
+          </Pair>
+          {other && (
+            <Button
+              variant="text"
+              block
+              className={s.other}
+              onClick={() => {
+                setOther(null);
+                setPhase('checking');
+                setRetry((n) => n + 1);
+              }}
+            >
+              ログイン中のアカウント（{other}）で続ける
+            </Button>
+          )}
+        </Panel>
       )}
-    </main>
+    </Page>
   );
 }

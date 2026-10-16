@@ -6,7 +6,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import NotificationLog from '@/components/NotificationLog';
 import { Empty, ErrorState, Loading } from '@/components/States';
+import { Segmented } from '@/components/ui/Form';
+import { Stack } from '@/components/ui/Layout';
+import { Panel } from '@/components/ui/Surface';
+import { Bell, ClipboardText } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
+import t from './AdminTable.module.css';
+import s from './Logs.module.css';
 
 type Audit = { id: number; actor: string | null; action: string; target_id: string | null; at: string };
 
@@ -29,6 +35,11 @@ const ACTION_LABEL: Record<string, string> = {
   suspend_salon: 'サロンの掲載を停止',
   resume_salon: 'サロンの掲載を再開',
   delete_account: 'アカウントを削除',
+  salon_signup: 'サロンの新規登録（申し込み）',
+  salon_apply: 'サロンの掲載の申し込み',
+  salon_joined: '新しいサロンが加わった（初期設定を完了）',
+  resend_invite: 'ご利用開始のご案内を再送',
+  resend_approved_mail: '掲載開始のお知らせを再送',
 };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -49,52 +60,65 @@ export default function Logs({ client }: { client: SupabaseClient }) {
   }, [tab, loadAudit]);
 
   return (
-    <div className="stack">
-      <div className="segmented" role="group" aria-label="記録の種類">
-        <button aria-pressed={tab === 'notify'} onClick={() => setTab('notify')}>
-          通知ログ
-        </button>
-        <button aria-pressed={tab === 'audit'} onClick={() => setTab('audit')}>
-          操作記録
-        </button>
-      </div>
+    <Stack gap={4}>
+      <Segmented
+        label="記録の種類"
+        className={s.switch}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'notify', label: '通知ログ' },
+          { value: 'audit', label: '操作記録' },
+        ]}
+      />
       {tab === 'notify' && (
-        <section className="card">
-          <p className="card-sub">すべてのサロン宛ての LINE と、利用者へのメール。キーがない場合はシミュレーション送信として中身を記録します。</p>
+        <Panel>
+          <p className={s.lead}>
+            <Bell size={20} aria-hidden focusable="false" />
+            すべてのサロン宛ての LINE と、利用者へのメール。キーがない場合はシミュレーション送信として中身を記録します。
+          </p>
           <NotificationLog client={client} limit={30} showRecipient />
-        </section>
+        </Panel>
       )}
       {tab === 'audit' && (
-        <section className="card">
-          {error && <ErrorState onRetry={loadAudit}>{error}</ErrorState>}
-          {!audit && !error && <Loading rows={3} />}
-          {audit && audit.length === 0 && <Empty>操作記録はまだありません。</Empty>}
+        <Panel flush>
+          {error && (
+            <div className={s.pad}>
+              <ErrorState onRetry={loadAudit}>{error}</ErrorState>
+            </div>
+          )}
+          {!audit && !error && (
+            <div className={s.pad}>
+              <Loading rows={3} />
+            </div>
+          )}
+          {audit && audit.length === 0 && <Empty icon={ClipboardText}>操作記録はまだありません。</Empty>}
           {audit && audit.length > 0 && (
-            <div className="table-scroll">
-              <table className="data-table">
+            <div className={`${t.wrap} ${s.auditWrap}`}>
+              <table className={t.table}>
                 <thead>
                   <tr>
-                    <th>日時</th>
-                    <th>操作</th>
-                    <th>操作した人</th>
-                    <th>対象</th>
+                    <th scope="col">日時</th>
+                    <th scope="col">操作</th>
+                    <th scope="col">操作した人</th>
+                    <th scope="col">対象</th>
                   </tr>
                 </thead>
                 <tbody>
                   {audit.map((a) => (
                     <tr key={a.id}>
-                      <td className="num">{dt.format(new Date(a.at))}</td>
+                      <td className={`num ${t.nowrap}`}>{dt.format(new Date(a.at))}</td>
                       <td>{ACTION_LABEL[a.action] ?? a.action}</td>
-                      <td className="mono">{a.actor ? a.actor.slice(0, 8) : '—'}</td>
-                      <td className="mono">{a.target_id ? a.target_id.slice(0, 8) : '—'}</td>
+                      <td className={`num ${s.id}`}>{a.actor ? a.actor.slice(0, 8) : '—'}</td>
+                      <td className={`num ${s.id}`}>{a.target_id ? a.target_id.slice(0, 8) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </section>
+        </Panel>
       )}
-    </div>
+    </Stack>
   );
 }

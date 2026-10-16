@@ -1,0 +1,198 @@
+/* 運営の画面（業務用の広い画面）：承認待ちの帯 → タブ（下線で今のタブを示す）→ 中身。
+   役割の色（紫）は tokens.css が上部の帯の data-role から切り替える。ここでは意味の値だけを使う */
+
+.loginFoot {
+  margin-block-start: var(--space-4);
+}
+
+/* 承認を待っている掲載希望の帯（押すと承認の画面へ） */
+.pendingBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  inline-size: 100%;
+  min-block-size: calc(var(--space-12) + var(--space-2));
+  margin-block: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  text-align: start;
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.pendingBar:hover {
+  background: var(--color-action-line);
+}
+
+.pendingBar > svg {
+  flex: none;
+}
+
+.pendingText {
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.pendingCount {
+  color: var(--color-action-text);
+  font-size: var(--text-title);
+  font-weight: var(--weight-heavy);
+}
+
+.pendingGo {
+  margin-inline-start: auto;
+  color: var(--color-action-text);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+/* タブ：上部の帯のすぐ下に残す。今のタブは、文字を濃く・太く、アイコンを塗り、下に役割の色の線 */
+.tabs {
+  position: sticky;
+  inset-block-start: var(--space-16);
+  z-index: var(--z-header);
+  display: flex;
+  gap: var(--space-1);
+  margin-block-end: var(--space-5);
+  margin-inline: calc(-1 * var(--pad-page));
+  padding-inline: var(--pad-page);
+  overflow-x: auto;
+  border-block-end: 1px solid var(--color-line-strong);
+  background: var(--color-glass);
+  backdrop-filter: blur(var(--blur-glass));
+  scrollbar-width: thin;
+}
+
+.tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--space-12);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--motion-short) var(--ease-out), color var(--motion-short) var(--ease-out);
+}
+
+.tab:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+}
+
+.tab:focus-visible {
+  outline-offset: calc(-1 * var(--space-1));
+}
+
+.tab[aria-current="page"] {
+  box-shadow: inset 0 -2px 0 var(--color-action);
+  color: var(--color-ink);
+  font-weight: var(--weight-bold);
+}
+
+.tab[aria-current="page"] > svg {
+  color: var(--color-action-text);
+}
+
+/* タブの件数：数字と読み上げの名前で伝える（承認待ちはインクの塗り、新しく加わったサロンは成功の塗り） */
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: var(--space-5);
+  block-size: var(--space-5);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-label);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-heavy);
+  line-height: var(--leading-tight);
+}
+
+.badgePending {
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+}
+
+.badgeNew {
+  background: var(--color-success);
+  color: var(--color-ink-on-strong);
+}
+
+.body {
+  min-inline-size: 0;
+}
+
+/* ログインした最初の画面の知らせ（シート） */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block-end: var(--space-3);
+  color: var(--color-action-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.group {
+  margin-block-end: var(--space-5);
+}
+
+.items {
+  overflow: hidden;
+  list-style: none;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+.items li {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+}
+
+.items li + li {
+  border-block-start: 1px solid var(--color-surface);
+}
+
+.items strong {
+  color: var(--color-ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.items span {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.items .more {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.also {
+  margin-block-start: var(--space-1);
+  margin-inline-start: calc(-1 * var(--space-2));
+}
+
+/* 「あとで」は文字の幅、主な操作は残りの幅いっぱい（狭い画面でも1行に収める） */
+.choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+}
+
+.choice > :first-child {
+  padding-inline: var(--space-6);
+}

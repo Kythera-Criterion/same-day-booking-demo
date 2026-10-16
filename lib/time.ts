@@ -34,6 +34,12 @@ export function jstTodayEnd(now = new Date()): Date {
   return new Date(Date.UTC(y, m, d + 1) - JST_OFFSET_MS);
 }
 
+// 日本時間の日付（例：2026-10-16）。日付が変わったかどうかを見るのに使う
+export function jstDateKey(now = new Date()): string {
+  const { y, m, d } = jstParts(now);
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
 export function jstHour(date: Date): number {
   return new Date(date.getTime() + JST_OFFSET_MS).getUTCHours();
 }

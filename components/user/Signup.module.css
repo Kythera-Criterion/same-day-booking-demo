@@ -1,0 +1,76 @@
+/* お客様の新規登録：外部の ID とメールアドレスを1つの面に。2段階目は、段階の表示と「戻る」を1行に */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 2段階目の上の行：段階の表示（左いっぱい）と「戻る」 */
+.stepHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.stepHead > button {
+  flex: none;
+  margin-block-start: calc(-1 * var(--space-2));
+  white-space: nowrap;
+}
+
+.error {
+  margin-block-end: var(--space-3);
+}
+
+.links {
+  margin-block-start: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+/* 確認メールを送ったあと */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-action-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.title {
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.text {
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-body);
+}
+
+.text strong {
+  color: var(--color-ink);
+}
+
+.demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sent {
+  margin-block-start: var(--space-4);
+}
+
+/* 単独で置くリンクも、押せる高さ（44px）を取る */
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+}

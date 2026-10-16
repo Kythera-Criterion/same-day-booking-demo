@@ -1,0 +1,102 @@
+// このサービスで使うアイコン（Phosphor Icons、MIT）。
+// サーバーでも画面側でも使えるよう、文脈（context）を使わない版を、1つずつのファイルから読み込む（使うものだけが含まれる）
+//   今すぐ・時間帯：Lightning ／ 受付締切：Hourglass ／ 開始まで：Timer ／ カット：Scissors ／ 距離：MapPin ／ 徒歩：PersonSimpleWalk
+//   地図を開く：NavigationArrow ／ 電話する：Phone ／ 店：Storefront ／ 担当：User ／ 予約番号：Ticket ／ 予約確定：CheckCircle
+//   来店済み：SealCheck ／ キャンセル：XCircle ／ 予約の知らせ：BellRinging ／ 話しかけて探す：Microphone ／ 現在地：Crosshair
+//   下部のタブ：House（ホーム）・CalendarCheck（予約）・UserCircle（マイページ）
+
+export { Lightning } from '@phosphor-icons/react/dist/ssr/Lightning';
+export { Hourglass } from '@phosphor-icons/react/dist/ssr/Hourglass';
+export { HourglassMedium } from '@phosphor-icons/react/dist/ssr/HourglassMedium';
+export { Timer } from '@phosphor-icons/react/dist/ssr/Timer';
+export { Scissors } from '@phosphor-icons/react/dist/ssr/Scissors';
+export { MapPin } from '@phosphor-icons/react/dist/ssr/MapPin';
+export { PersonSimpleWalk } from '@phosphor-icons/react/dist/ssr/PersonSimpleWalk';
+export { NavigationArrow } from '@phosphor-icons/react/dist/ssr/NavigationArrow';
+export { Phone } from '@phosphor-icons/react/dist/ssr/Phone';
+export { Storefront } from '@phosphor-icons/react/dist/ssr/Storefront';
+export { User } from '@phosphor-icons/react/dist/ssr/User';
+export { Ticket } from '@phosphor-icons/react/dist/ssr/Ticket';
+export { CheckCircle } from '@phosphor-icons/react/dist/ssr/CheckCircle';
+export { SealCheck } from '@phosphor-icons/react/dist/ssr/SealCheck';
+export { XCircle } from '@phosphor-icons/react/dist/ssr/XCircle';
+export { BellRinging } from '@phosphor-icons/react/dist/ssr/BellRinging';
+export { Microphone } from '@phosphor-icons/react/dist/ssr/Microphone';
+export { Crosshair } from '@phosphor-icons/react/dist/ssr/Crosshair';
+export { House } from '@phosphor-icons/react/dist/ssr/House';
+export { CalendarCheck } from '@phosphor-icons/react/dist/ssr/CalendarCheck';
+export { UserCircle } from '@phosphor-icons/react/dist/ssr/UserCircle';
+// 補助（説明・状態・移動）
+export { Clock } from '@phosphor-icons/react/dist/ssr/Clock';
+export { CurrencyJpy } from '@phosphor-icons/react/dist/ssr/CurrencyJpy';
+export { Info } from '@phosphor-icons/react/dist/ssr/Info';
+export { WarningCircle } from '@phosphor-icons/react/dist/ssr/WarningCircle';
+export { ArrowRight } from '@phosphor-icons/react/dist/ssr/ArrowRight';
+export { ArrowLeft } from '@phosphor-icons/react/dist/ssr/ArrowLeft';
+export { CaretRight } from '@phosphor-icons/react/dist/ssr/CaretRight';
+export { Plus } from '@phosphor-icons/react/dist/ssr/Plus';
+export { Gear } from '@phosphor-icons/react/dist/ssr/Gear';
+export { SignOut } from '@phosphor-icons/react/dist/ssr/SignOut';
+export { ShieldCheck } from '@phosphor-icons/react/dist/ssr/ShieldCheck';
+export { Camera } from '@phosphor-icons/react/dist/ssr/Camera';
+export { ChatCircle } from '@phosphor-icons/react/dist/ssr/ChatCircle';
+export { NotePencil } from '@phosphor-icons/react/dist/ssr/NotePencil';
+export { HandTap } from '@phosphor-icons/react/dist/ssr/HandTap';
+export { ListBullets } from '@phosphor-icons/react/dist/ssr/ListBullets';
+export { Prohibit } from '@phosphor-icons/react/dist/ssr/Prohibit';
+export { CalendarX } from '@phosphor-icons/react/dist/ssr/CalendarX';
+export { ChartBar } from '@phosphor-icons/react/dist/ssr/ChartBar';
+export { EnvelopeSimple } from '@phosphor-icons/react/dist/ssr/EnvelopeSimple';
+export { Users } from '@phosphor-icons/react/dist/ssr/Users';
+export { Trash } from '@phosphor-icons/react/dist/ssr/Trash';
+export { PauseCircle } from '@phosphor-icons/react/dist/ssr/PauseCircle';
+export { ArrowCounterClockwise } from '@phosphor-icons/react/dist/ssr/ArrowCounterClockwise';
+export { MagnifyingGlass } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
+export { Sparkle } from '@phosphor-icons/react/dist/ssr/Sparkle';
+export { Wallet } from '@phosphor-icons/react/dist/ssr/Wallet';
+export { Leaf } from '@phosphor-icons/react/dist/ssr/Leaf';
+export { Eye } from '@phosphor-icons/react/dist/ssr/Eye';
+export { EyeSlash } from '@phosphor-icons/react/dist/ssr/EyeSlash';
+export { Link as LinkIcon } from '@phosphor-icons/react/dist/ssr/Link';
+export { WifiSlash } from '@phosphor-icons/react/dist/ssr/WifiSlash';
+export { Megaphone } from '@phosphor-icons/react/dist/ssr/Megaphone';
+export { DownloadSimple } from '@phosphor-icons/react/dist/ssr/DownloadSimple';
+export { Play } from '@phosphor-icons/react/dist/ssr/Play';
+export { ArrowsClockwise } from '@phosphor-icons/react/dist/ssr/ArrowsClockwise';
+export { X } from '@phosphor-icons/react/dist/ssr/X';
+// 画面ごとの補助（アカウント・運営・デモ）
+export { Key } from '@phosphor-icons/react/dist/ssr/Key';
+export { LockSimple } from '@phosphor-icons/react/dist/ssr/LockSimple';
+export { PencilSimple } from '@phosphor-icons/react/dist/ssr/PencilSimple';
+export { ArrowSquareOut } from '@phosphor-icons/react/dist/ssr/ArrowSquareOut';
+export { Question } from '@phosphor-icons/react/dist/ssr/Question';
+export { Funnel } from '@phosphor-icons/react/dist/ssr/Funnel';
+export { Table } from '@phosphor-icons/react/dist/ssr/Table';
+export { ChartLine } from '@phosphor-icons/react/dist/ssr/ChartLine';
+export { ClipboardText } from '@phosphor-icons/react/dist/ssr/ClipboardText';
+export { IdentificationCard } from '@phosphor-icons/react/dist/ssr/IdentificationCard';
+export { Buildings } from '@phosphor-icons/react/dist/ssr/Buildings';
+export { Bell } from '@phosphor-icons/react/dist/ssr/Bell';
+export { UserPlus } from '@phosphor-icons/react/dist/ssr/UserPlus';
+export { UserMinus } from '@phosphor-icons/react/dist/ssr/UserMinus';
+export { Envelope } from '@phosphor-icons/react/dist/ssr/Envelope';
+export { Check } from '@phosphor-icons/react/dist/ssr/Check';
+export { CaretDown } from '@phosphor-icons/react/dist/ssr/CaretDown';
+export { CaretLeft } from '@phosphor-icons/react/dist/ssr/CaretLeft';
+export { FileCsv } from '@phosphor-icons/react/dist/ssr/FileCsv';
+export { CalendarBlank } from '@phosphor-icons/react/dist/ssr/CalendarBlank';
+export { ChatsCircle } from '@phosphor-icons/react/dist/ssr/ChatsCircle';
+export { ArrowClockwise } from '@phosphor-icons/react/dist/ssr/ArrowClockwise';
+export { Broadcast } from '@phosphor-icons/react/dist/ssr/Broadcast';
+export { DeviceMobile } from '@phosphor-icons/react/dist/ssr/DeviceMobile';
+export { Monitor } from '@phosphor-icons/react/dist/ssr/Monitor';
+export { MonitorPlay } from '@phosphor-icons/react/dist/ssr/MonitorPlay';
+export { PaperPlaneTilt } from '@phosphor-icons/react/dist/ssr/PaperPlaneTilt';
+export { TrashSimple } from '@phosphor-icons/react/dist/ssr/TrashSimple';
+export { ShieldWarning } from '@phosphor-icons/react/dist/ssr/ShieldWarning';
+export { UsersThree } from '@phosphor-icons/react/dist/ssr/UsersThree';
+export { Flag } from '@phosphor-icons/react/dist/ssr/Flag';
+export { SealWarning } from '@phosphor-icons/react/dist/ssr/SealWarning';
+export { Note } from '@phosphor-icons/react/dist/ssr/Note';
+export { Image as ImageIcon } from '@phosphor-icons/react/dist/ssr/Image';
+export { Swap } from '@phosphor-icons/react/dist/ssr/Swap';

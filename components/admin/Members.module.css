@@ -1,0 +1,69 @@
+/* 運営メンバー：招待（左）と一覧の表（右）。自分のアカウントは読みやすい幅で */
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.grid > * {
+  min-inline-size: 0;
+}
+
+@media (min-width: 960px) {
+  .grid {
+    grid-template-columns: 2fr 3fr;
+    align-items: start;
+  }
+}
+
+.listHead {
+  padding: var(--space-4) var(--pad-surface) 0;
+}
+
+.who {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+/* 外す（危険な操作は文字の色でも示す） */
+button.danger {
+  color: var(--color-danger-text);
+}
+
+.account {
+  max-inline-size: var(--width-dialog);
+}
+
+/* 確認のシートの注意点 */
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block: 0 var(--space-4);
+  padding-inline-start: var(--space-5);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+/* 招待のリンク（メール以外で伝える場合だけ開く） */
+.invite {
+  margin-block-start: var(--space-2);
+}
+
+.inviteToggle {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+
+/* 名前とメールアドレスの列は、狭い画面でも読める幅を保つ（表は横にスクロールできる） */
+.memberCell {
+  min-inline-size: calc(var(--size-tile) + var(--space-6));
+}

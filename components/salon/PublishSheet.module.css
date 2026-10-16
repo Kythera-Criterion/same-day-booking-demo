@@ -1,165 +1,348 @@
-/* 枠を出すシート（空いた時間から）。値は tokens.css の意味のトークンだけを使う */
+/* 枠を出すシート（業務の表示）
+   ・段階の番号はインクの四角。選んだもの（空いた時間・メニュー・担当・開始）はインクで塗る
+   ・切り分けた案と開始の時刻は数字のフォントで大きく。出せない開始は斜線の模様と理由の文字で示す（色だけに頼らない）
+   ・公開のボタンは、シートを下へ送っても見えるよう、下端に貼り付ける */
 
-/* 空いた時間：30・60・90・120分の大きな丸いチップ */
-.lengths {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+.segLabel {
+  display: inline-flex;
   align-items: center;
+  gap: var(--space-1);
 }
-.round {
-  width: var(--size-split-chip);
-  aspect-ratio: 1;
-  border-radius: var(--radius-full);
-  border: var(--size-stroke) solid var(--color-line-input);
-  background: var(--color-surface);
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-5) var(--space-2);
   color: var(--color-ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.stepNo {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--size-label);
+  block-size: var(--size-label);
+  border-radius: var(--radius-label);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+  font-family: var(--font-num);
+  font-size: var(--text-small);
+  font-weight: var(--weight-heavy);
+}
+
+/* ---------- ① 空いた時間：大きな数字の札 ---------- */
+.lengths {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: var(--leading-tight);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-short) var(--ease-standard),
-    border-color var(--motion-short) var(--ease-standard),
-    transform var(--motion-short) var(--ease-standard);
-}
-.round:active {
-  transform: scale(0.96);
-}
-.round[aria-pressed="true"] {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent);
-}
-.roundNum {
-  font-size: var(--text-h1);
-  font-weight: var(--weight-bold);
-}
-.roundUnit {
-  font-size: var(--text-xs);
-}
-.custom {
-  min-height: var(--size-tap);
-}
-
-/* 横に伸びる時間の目盛り：空いた時間と、切り分けた枠 */
-.scale {
-  position: relative;
-  margin: var(--space-4) 0 var(--space-1);
-  height: var(--space-10);
-  border-radius: var(--radius-sm);
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-surface-sunken) 0 calc(var(--tick) - var(--size-hairline)),
-    var(--color-line) calc(var(--tick) - var(--size-hairline)) var(--tick)
-  );
-  border: var(--size-hairline) solid var(--color-line-strong);
-  overflow: hidden;
-}
-.seg {
-  position: absolute;
-  top: var(--space-1);
-  bottom: var(--space-1);
-  left: calc(var(--from) * 100%);
-  width: calc((var(--to) - var(--from)) * 100%);
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  box-shadow: inset 0 0 0 var(--size-stroke) var(--color-surface);
-  animation: grow var(--motion-standard) var(--ease-enter) both;
-  animation-delay: calc(var(--i) * var(--motion-short));
-  transform-origin: left center;
-}
-.seg[data-off] {
-  background: repeating-linear-gradient(135deg, var(--color-status-cancelled-bg) 0 var(--space-1), var(--color-surface) var(--space-1) var(--space-2));
-}
-.seg[data-unchecked] {
-  background: var(--color-accent-muted);
-}
-@keyframes grow {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: none;
-  }
-}
-.scaleLabels {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
-}
-
-/* 切り分けた枠の案：小さなチケットが1枚ずつ重なって並ぶ */
-.tickets {
-  list-style: none;
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ticketItem {
-  margin-top: calc(-1 * var(--space-1));
-  animation: stack var(--motion-long) var(--ease-enter) both;
-  animation-delay: calc(var(--i) * var(--motion-short));
-}
-.ticketItem:first-child {
-  margin-top: 0;
-}
-@keyframes stack {
-  from {
-    opacity: 0;
-    transform: translateY(calc(-1 * var(--space-4))) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.ticket {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--size-control);
-  padding: var(--space-2) var(--space-4);
+  gap: 0;
+  min-block-size: calc(var(--space-16) + var(--space-2));
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-control);
   background: var(--color-surface);
-  border: var(--size-hairline) solid var(--color-line-strong);
-  box-shadow: var(--shadow-1);
-  cursor: pointer;
-  /* 左右の半円の切り欠き */
-  mask:
-    radial-gradient(circle var(--space-2) at 0 50%, transparent 98%, var(--color-neutral-black)) left / 51% 100% no-repeat,
-    radial-gradient(circle var(--space-2) at 100% 50%, transparent 98%, var(--color-neutral-black)) right / 51% 100% no-repeat;
-}
-.ticket input {
-  width: var(--size-check);
-  height: var(--size-check);
-  accent-color: var(--color-accent);
-}
-.ticketTime {
-  font-weight: var(--weight-bold);
-  font-size: var(--text-body);
-}
-.ticketNote {
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
-  text-align: right;
-}
-.ticketItem[data-off] .ticket {
-  background: var(--color-surface-sunken);
-  color: var(--color-ink-muted);
-  cursor: default;
+  color: var(--color-ink);
+  line-height: var(--leading-tight);
+  transition:
+    background-color var(--motion-short) var(--ease-out),
+    border-color var(--motion-short) var(--ease-out),
+    color var(--motion-short) var(--ease-out);
 }
 
-/* 最後に、画面幅いっぱいの「公開する」 */
-.publish {
-  margin-top: var(--space-4);
+.tile:hover {
+  border-color: var(--color-ink-sub);
+}
+
+.tile[aria-pressed="true"] {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+}
+
+.tilePre {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.tileNum {
+  font-family: var(--font-num);
+  font-size: var(--text-heading);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-num);
+}
+
+.tileUnit {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.tileCustom {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+@media (min-width: 720px) {
+  .lengths {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .tileCustom {
+    grid-column: auto;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-block-size: calc(var(--space-16) + var(--space-2));
+  }
+}
+
+.custom {
+  margin-block-start: var(--space-3);
+}
+
+/* ---------- ② メニュー・③ 担当 ---------- */
+.menus {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-16) * 2.5), 1fr));
+  gap: var(--space-2);
+}
+
+.menus > button {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  align-items: flex-start;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  text-align: start;
+}
+
+.menuName {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+/* ---------- 切り分けた案 ---------- */
+.range {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.planRow {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-block-size: calc(var(--space-12) + var(--space-2));
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+/* 選んでいない案：沈んだ面（公開しない） */
+.planIdle {
+  border: 2px solid transparent;
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+}
+
+.planRow input {
+  inline-size: var(--icon-md);
+  block-size: var(--icon-md);
+  margin: 0;
+  accent-color: var(--color-selected);
+}
+
+.planRow input:disabled {
+  cursor: not-allowed;
+}
+
+.planTime {
+  font-family: var(--font-num);
+  font-size: var(--text-title);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-num);
+  white-space: nowrap;
+}
+
+.planNote {
+  min-inline-size: 0;
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+.planOff {
+  cursor: not-allowed;
+}
+
+.planOff .planTime {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- 開始（○分後） ---------- */
+.offsets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+@media (min-width: 720px) {
+  .offsets {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.offset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  min-block-size: calc(var(--space-16) + var(--space-2));
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  line-height: var(--leading-tight);
+  text-align: center;
+  transition:
+    background-color var(--motion-short) var(--ease-out),
+    border-color var(--motion-short) var(--ease-out),
+    color var(--motion-short) var(--ease-out);
+}
+
+.offset:enabled {
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.offset:enabled:hover {
+  border-color: var(--color-ink-sub);
+}
+
+.offset:enabled[aria-pressed="true"] {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+}
+
+.offset:disabled {
+  cursor: not-allowed;
+}
+
+.offsetMain {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.offsetSub {
+  font-family: var(--font-num);
+  font-size: var(--text-title);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-num);
+}
+
+/* 出せない開始：理由を読める大きさの文字で */
+.offset:disabled .offsetSub {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-body);
+  line-height: var(--leading-snug);
+}
+
+.offsetCheck {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+}
+
+/* ---------- 保存したもの ---------- */
+.saved {
+  margin-block-start: var(--space-5);
+  border-block: 1px solid var(--color-line);
+}
+
+.saved summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.savedList {
+  list-style: none;
+  padding-block-end: var(--space-2);
+}
+
+.savedList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-1);
+  font-size: var(--text-small);
+}
+
+.savedList li + li {
+  border-block-start: 1px solid var(--color-line);
+}
+
+.message {
+  margin-block-start: var(--space-4);
+}
+
+.fine {
+  margin-block-start: var(--space-4);
+}
+
+.keep {
+  display: flex;
+  margin-block-start: var(--space-5);
+}
+
+.keep + .saved {
+  margin-block-start: var(--space-3);
+}
+
+/* ---------- 下端に貼り付ける操作（シートの下の余白の分だけ、下へずらして貼る） ---------- */
+.bar {
+  position: sticky;
+  inset-block-end: calc(-1 * (var(--space-6) + env(safe-area-inset-bottom)));
+  display: grid;
+  margin-block: var(--space-3) calc(-1 * (var(--space-6) + env(safe-area-inset-bottom)));
+  margin-inline: calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5) calc(var(--space-3) + env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--color-line);
+  background: var(--color-surface);
 }

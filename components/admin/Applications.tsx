@@ -1,15 +1,25 @@
 'use client';
 
-// 掲載希望の受付：サロンの自己登録（/salon/signup）と、公開フォーム（/apply）からの申込の一覧。
-//   自己登録：承認すると掲載が始まり、「掲載開始のお知らせ」を送る
+// 掲載希望の受付：サロンの新規登録（/salon/signup）と、公開フォーム（/apply）からの申込の一覧。
+//   新規登録：承認すると、お店を作り、ご登録のメールアドレスへ確認のリンクを自動で送る（リンクを開くと登録が完了する）
+//   以前の形の自己登録（お店を作成済み）：承認すると掲載が始まり、「掲載開始のお知らせ」を送る
 //   フォーム：承認すると、サロンとスタッフのアカウントを作り、「ご利用開始のご案内」を送る
 //   見送る：確認のうえ、「見送りのご連絡」を送る（送らないことも選べる）
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 import { Empty, ErrorState, Loading } from '@/components/States';
+import Button from '@/components/ui/Button';
+import { Check, Input, Segmented } from '@/components/ui/Form';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import { Pair, Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { DataList, Panel, SectionHead } from '@/components/ui/Surface';
+import { CheckCircle, ClipboardText, HourglassMedium, LinkIcon, PaperPlaneTilt, Storefront, UserPlus, XCircle } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
+import s from './Applications.module.css';
 
 type Application = {
   id: string;
@@ -27,10 +37,11 @@ type Application = {
   created_at: string;
 };
 
-const STATUS: Record<Application['status'], { label: string; pill: string }> = {
-  pending: { label: '未対応', pill: 'pending' },
-  approved: { label: '承認済み', pill: 'completed' },
-  rejected: { label: '見送り', pill: 'closed' },
+// 申込の状態：色だけでなく、アイコン（砂時計・確認済み・×）でも見分ける
+const STATUS: Record<Application['status'], { label: string; kind: LabelKind; icon: PhosphorIcon }> = {
+  pending: { label: '未対応', kind: 'action', icon: HourglassMedium },
+  approved: { label: '承認済み', kind: 'success', icon: CheckCircle },
+  rejected: { label: '見送り', kind: 'state', icon: XCircle },
 };
 
 const MAIL: Record<string, string> = {
@@ -42,6 +53,12 @@ const MAIL: Record<string, string> = {
 };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// 申込の種類：新規登録（サロンの画面から）・以前の形の自己登録（審査の前にお店を作成済み）・公開フォーム
+function kindOf(a: { applicant_user_id: string | null; salon_id: string | null; status: string }): 'signup' | 'self' | 'form' {
+  if (!a.applicant_user_id) return 'form';
+  return a.salon_id && a.status === 'pending' ? 'self' : 'signup';
+}
 
 type Result = { kind: 'ok' | 'error'; text: string; mail?: string; link?: string | null };
 
@@ -95,10 +112,11 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
       setResult({ kind: 'error', text: toMessage({ message: body.error ?? '承認できませんでした' }) });
       return;
     }
-    const mailName = app.salon_id ? '掲載開始のお知らせ' : 'ご利用開始のご案内';
+    const k = kindOf(app);
+    const mailName = k === 'self' ? '掲載開始のお知らせ' : k === 'signup' ? 'ご利用開始のご案内（確認のリンクつき）' : 'ご利用開始のご案内';
     setResult({
       kind: 'ok',
-      text: `${app.salon_name} を承認しました${app.salon_id ? '（掲載を始めました）' : ''}。${app.email} へ「${mailName}」を${body.mailStatus === 'failed' ? '送れませんでした' : '自動で送りました'}。`,
+      text: `${app.salon_name} を承認しました${k === 'self' ? '（掲載を始めました）' : '（お店を作りました）'}。${app.email} へ「${mailName}」を${body.mailStatus === 'failed' ? '送れませんでした' : '自動で送りました'}。`,
       mail: MAIL[body.mailStatus ?? 'pending'],
       link: body.inviteLink,
     });
@@ -115,7 +133,12 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
       setResult({ kind: 'error', text: toMessage({ message: body.error ?? '送れませんでした' }) });
       return;
     }
-    setResult({ kind: 'ok', text: `${app.email} へ、新しいリンクのご案内メールを送りました。`, mail: MAIL[body.mailStatus ?? 'pending'], link: body.inviteLink });
+    setResult({
+      kind: 'ok',
+      text: body.inviteLink ? `${app.email} へ、新しいリンクのご案内メールを送りました。` : `${app.email} へ、「掲載開始のお知らせ」をもう一度送りました。`,
+      mail: MAIL[body.mailStatus ?? 'pending'],
+      link: body.inviteLink,
+    });
     load();
   }
 
@@ -143,130 +166,148 @@ export default function Applications({ client, onChanged }: { client: SupabaseCl
   const pendingCount = rows.filter((r) => r.status === 'pending').length;
 
   return (
-    <div className="stack">
+    <Stack gap={4}>
       {result && (
-        <div className={`notice ${result.kind === 'ok' ? 'notice-ok' : 'notice-error'}`} role="status">
-          {result.text}
-          {result.mail && (
-            <>
-              <br />
-              メール：{result.mail}
-            </>
-          )}
-          {result.link && (
-            <details className="invite-link">
-              <summary>ご利用開始のリンクを表示（電話などで個別に伝える場合）</summary>
-              <input className="input" readOnly value={result.link} onFocus={(e) => e.target.select()} />
-            </details>
-          )}
+        <div data-result={result.kind}>
+          <Notice tone={result.kind === 'ok' ? 'success' : 'danger'} role="status">
+            {result.text}
+            {result.mail && (
+              <>
+                <br />
+                メール：{result.mail}
+              </>
+            )}
+            {result.link && (
+              <details className={s.invite} data-invite-link="">
+                <summary className={s.inviteToggle}>ご利用開始のリンクを表示（電話などで個別に伝える場合）</summary>
+                <Input readOnly value={result.link} onFocus={(e) => e.target.select()} />
+              </details>
+            )}
+          </Notice>
         </div>
       )}
-      <div className="row-between">
-        <div className="segmented" role="group" aria-label="表示" style={{ minWidth: 260 }}>
-          <button aria-pressed={filter === 'pending'} onClick={() => setFilter('pending')}>
-            未対応（{pendingCount}）
-          </button>
-          <button aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
-            すべて（{rows.length}）
-          </button>
-        </div>
-        <p className="fine-print" style={{ margin: 0 }}>
-          公開フォーム：<a href="/apply">/apply</a>
+      <div className={s.toolbar}>
+        <Segmented
+          label="表示"
+          className={s.filter}
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'pending', label: `未対応（${pendingCount}）` },
+            { value: 'all', label: `すべて（${rows.length}）` },
+          ]}
+        />
+        <p className={s.formLink}>
+          <LinkIcon size={20} aria-hidden focusable="false" />
+          <span>
+            公開フォーム：<a href="/apply">/apply</a>
+          </span>
         </p>
       </div>
       {shown.length === 0 ? (
-        <div className="card">
-          <Empty>{filter === 'pending' ? '承認を待っている掲載希望はありません。' : '掲載希望はまだありません。'}</Empty>
-        </div>
+        <Panel>
+          <Empty icon={ClipboardText}>{filter === 'pending' ? '承認を待っている掲載希望はありません。' : '掲載希望はまだありません。'}</Empty>
+        </Panel>
       ) : (
-        shown.map((a) => (
-          <section key={a.id} className="card">
-            <div className="row-between">
-              <p className="card-title" style={{ margin: 0 }}>
-                {a.salon_name}
-              </p>
-              <span className="pill-row">
-                <span className={`pill ${a.applicant_user_id ? 'pill-open' : 'pill-closed'}`}>{a.applicant_user_id ? '自己登録' : 'フォーム'}</span>
-                <span className={`pill pill-${STATUS[a.status].pill}`}>{STATUS[a.status].label}</span>
-              </span>
-            </div>
-            <p className="fine-print" style={{ margin: '4px 0 0' }}>
-              {a.applicant_user_id
-                ? 'お店が自分でアカウントを作り、お店の情報を登録済みです。承認すると、そのまま掲載が始まります。'
-                : '公開フォームからの申込です。承認すると、サロンとスタッフのアカウントを作り、ご利用開始のご案内を送ります。'}
-            </p>
-            <dl className="detail-dl" style={{ marginTop: 10 }}>
-              <dt>担当者</dt>
-              <dd>{a.contact_name}</dd>
-              <dt>メール</dt>
-              <dd className="break">{a.email}</dd>
-              <dt>電話</dt>
-              <dd>{a.phone ?? '—'}</dd>
-              <dt>エリア</dt>
-              <dd>{a.area_text}</dd>
-              <dt>ご質問</dt>
-              <dd>{a.question ?? '—'}</dd>
-              <dt>受付</dt>
-              <dd className="num">{dt.format(new Date(a.created_at))}</dd>
-              {a.status === 'approved' && (
-                <>
-                  <dt>ご案内</dt>
-                  <dd className="num">
-                    {a.invite_sent_at ? `${dt.format(new Date(a.invite_sent_at))} に送信（${a.invite_count}回）` : '未送信'}
-                    {!a.salon_id && '（サロンは削除済み）'}
-                  </dd>
-                </>
-              )}
-            </dl>
-            {a.status === 'pending' && (
-              <div className="action-pair" style={{ marginTop: 12 }}>
-                <button
-                  className="btn btn-quiet"
-                  disabled={busy !== null}
-                  onClick={() => {
-                    setNotifyReject(true);
-                    setRejecting(a);
-                  }}
-                >
-                  見送る
-                </button>
-                <button className="btn btn-primary" disabled={busy !== null} onClick={() => approve(a)}>
-                  {busy === a.id ? '処理中…' : a.salon_id ? '承認して掲載を始める' : '承認してご案内を送る'}
-                </button>
-              </div>
-            )}
-            {a.status === 'approved' && a.salon_id && !a.applicant_user_id && (
-              <button className="btn btn-secondary btn-block" style={{ marginTop: 12 }} disabled={busy !== null} onClick={() => resend(a)}>
-                {busy === a.id ? '送信中…' : 'ご案内メールをもう一度送る（新しいリンク）'}
-              </button>
-            )}
-          </section>
-        ))
+        <div className={s.cards}>
+          {shown.map((a) => {
+            const status = STATUS[a.status];
+            return (
+              <Panel key={a.id} className={s.card} data-application="" data-status={a.status}>
+                <div className={s.cardHead}>
+                  <p className={s.name}>
+                    <Storefront size={24} weight="duotone" aria-hidden focusable="false" />
+                    {a.salon_name}
+                  </p>
+                  <span className={s.labels}>
+                    <Label kind="condition" icon={a.applicant_user_id ? UserPlus : ClipboardText}>
+                      {a.applicant_user_id ? '新規登録' : 'フォーム'}
+                    </Label>
+                    <Label kind={status.kind} icon={status.icon} weight={a.status === 'approved' ? 'fill' : undefined}>
+                      {status.label}
+                    </Label>
+                  </span>
+                </div>
+                <p className={s.kind}>
+                  {kindOf(a) === 'signup'
+                    ? 'サロンの画面の「新規登録」からの申込です。承認すると、お店を作り、ご登録のメールアドレスへ確認のリンクを自動で送ります。リンクを開くと登録が完了し、サロンの画面に入れます（新しく作ったアカウントは、それまでログインできません）。'
+                    : kindOf(a) === 'self'
+                      ? 'お店が自分でアカウントを作り、お店の情報を登録済みです。承認すると、そのまま掲載が始まります。'
+                      : '公開フォームからの申込です。承認すると、サロンとスタッフのアカウントを作り、ご利用開始のご案内を送ります。'}
+                </p>
+                <DataList
+                  className={s.details}
+                  items={[
+                    ['担当者', a.contact_name],
+                    ['メール', <span key="mail" className="break">{a.email}</span>],
+                    ['電話', <span key="tel" className="num">{a.phone ?? '—'}</span>],
+                    ['エリア', a.area_text],
+                    ['ご質問', a.question ?? '—'],
+                    ['受付', <span key="at" className="num">{dt.format(new Date(a.created_at))}</span>],
+                    ...(a.status === 'approved'
+                      ? ([
+                          [
+                            'ご案内',
+                            <span key="invite" className="num">
+                              {a.invite_sent_at ? `${dt.format(new Date(a.invite_sent_at))} に送信（${a.invite_count}回）` : '未送信'}
+                              {!a.salon_id && '（サロンは削除済み）'}
+                            </span>,
+                          ],
+                        ] as [ReactNode, ReactNode][])
+                      : []),
+                  ]}
+                />
+                {a.status === 'pending' && (
+                  <div className={s.actions}>
+                    <Button
+                      variant="quiet"
+                      size="md"
+                      icon={XCircle}
+                      disabled={busy !== null}
+                      onClick={() => {
+                        setNotifyReject(true);
+                        setRejecting(a);
+                      }}
+                    >
+                      見送る
+                    </Button>
+                    <Button variant="primary" size="md" icon={CheckCircle} disabled={busy !== null} onClick={() => approve(a)}>
+                      {busy === a.id ? '処理中…' : kindOf(a) === 'self' ? '承認して掲載を始める' : kindOf(a) === 'signup' ? '承認して確認のリンクを送る' : '承認してご案内を送る'}
+                    </Button>
+                  </div>
+                )}
+                {a.status === 'approved' && a.salon_id && (
+                  <Button variant="secondary" size="md" block icon={PaperPlaneTilt} className={s.resend} disabled={busy !== null} onClick={() => resend(a)}>
+                    {busy === a.id ? '送信中…' : 'ご案内メールをもう一度送る'}
+                  </Button>
+                )}
+              </Panel>
+            );
+          })}
+        </div>
       )}
 
       {rejecting && (
         <Sheet label="掲載を見送りますか" role="alertdialog" narrow onClose={() => setRejecting(null)}>
-          <p className="card-title">{rejecting.salon_name} の掲載を見送りますか？</p>
-          <ul className="delete-list">
+          <SectionHead icon={XCircle} title={`${rejecting.salon_name} の掲載を見送りますか？`} as="p" />
+          <ul className={s.points}>
             <li>申込は「見送り」になります。元に戻せません。</li>
-            {rejecting.applicant_user_id && <li>お店が作ったアカウントとお店の情報は残ります（掲載はされません）。不要なら「サロン」のタブから削除できます。</li>}
+            {kindOf(rejecting) === 'signup' && <li>新規登録で作った確認前のアカウントは削除します（同じメールアドレスで、改めて申し込めます）。</li>}
+            {kindOf(rejecting) === 'self' && <li>お店が作ったアカウントとお店の情報は残ります（掲載はされません）。不要なら「サロン」のタブから削除できます。</li>}
           </ul>
-          <label className="check">
-            <input type="checkbox" checked={notifyReject} onChange={(e) => setNotifyReject(e.target.checked)} />
-            <span>
-              {rejecting.email} へ「見送りのご連絡」をメールで送る
-            </span>
-          </label>
-          <div className="action-pair">
-            <button className="btn btn-quiet" onClick={() => setRejecting(null)}>
+          <Check checked={notifyReject} onChange={setNotifyReject} className={s.notify}>
+            {rejecting.email} へ「見送りのご連絡」をメールで送る
+          </Check>
+          <Pair>
+            <Button variant="quiet" size="md" onClick={() => setRejecting(null)}>
               やめる
-            </button>
-            <button className="btn btn-danger" disabled={busy !== null} onClick={() => reject(rejecting, notifyReject)}>
+            </Button>
+            <Button variant="dangerSolid" size="md" disabled={busy !== null} onClick={() => reject(rejecting, notifyReject)}>
               {busy === rejecting.id ? '処理中…' : '見送る'}
-            </button>
-          </div>
+            </Button>
+          </Pair>
         </Sheet>
       )}
-    </div>
+    </Stack>
   );
 }

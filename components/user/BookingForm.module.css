@@ -1,0 +1,263 @@
+/* 予約の確認（詳細シート）：①写真（シートの上）②お店・住所・徒歩 ③今日の空き（時刻のチップ）④メニューと当日価格 ⑤担当 ⑥お店のルール
+   1回のスクロールで読めるよう、見出しはアイコンつきの1行にして、線で区切る */
+
+.when {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding-block-end: var(--space-3);
+}
+
+.start {
+  font-family: var(--font-num);
+  font-size: var(--text-figure);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: var(--tracking-num);
+}
+
+.end {
+  color: var(--color-ink-2);
+  font-family: var(--font-num);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+}
+
+.until {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.sections {
+  list-style: none;
+}
+
+.section {
+  display: grid;
+  grid-template-columns: var(--icon-md) 1fr;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  border-block-start: 1px solid var(--color-line);
+}
+
+.section > svg {
+  margin-block-start: 2px;
+  color: var(--color-ink-sub);
+}
+
+.sectionTitle {
+  grid-column: 2;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.sectionBody {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.strong {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.sub {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+.sub > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.textStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.placeRow a {
+  white-space: nowrap;
+}
+
+.placeRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.menuRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+/* 今日の空き：横にスクロールできる時刻のチップ。いま選んでいる枠は、インクで塗る */
+.chips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  margin-inline-end: calc(-1 * var(--space-5));
+  padding-inline-end: var(--space-5);
+  padding-block: var(--space-1);
+  list-style: none;
+  scroll-snap-type: x proximity;
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-block-size: var(--tap-min);
+  padding-block: var(--space-1);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  scroll-snap-align: start;
+  white-space: nowrap;
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--color-selected);
+  background: var(--color-selected);
+  color: var(--color-selected-ink);
+}
+
+.chipTime {
+  font-family: var(--font-num);
+  font-size: var(--text-body);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+}
+
+.chipMenu {
+  max-inline-size: 9em;
+  overflow: hidden;
+  font-size: var(--text-caption);
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* お店のルール */
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.rule {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.rule > svg {
+  margin-block-start: 1px;
+  color: var(--color-ink-sub);
+}
+
+.rule strong {
+  font-weight: var(--weight-bold);
+}
+
+.rule[data-urgent="true"] {
+  color: var(--color-time-text);
+}
+
+.rule[data-urgent="true"] > svg {
+  color: var(--color-time);
+}
+
+/* お店に伝えること（任意）：開くと出る */
+.optional {
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+.optional > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--space-12);
+  padding-inline: var(--space-4);
+  cursor: pointer;
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  list-style: none;
+}
+
+.optional > summary::-webkit-details-marker {
+  display: none;
+}
+
+.optional > summary small {
+  margin-inline-start: auto;
+  color: var(--color-ink-sub);
+  font-weight: var(--weight-regular);
+}
+
+.optionalBody {
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.photoPick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.photoPick img {
+  inline-size: var(--size-thumb);
+  block-size: var(--size-thumb);
+  border-radius: var(--radius-photo);
+  object-fit: cover;
+}
+
+/* 確定の操作：シートの下に残す（スクロールしても見える） */
+.confirm {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  padding-block: var(--space-3) var(--space-1);
+  background: var(--color-surface);
+  box-shadow: 0 calc(-1 * var(--space-4)) var(--space-4) calc(-1 * var(--space-2)) var(--color-surface);
+}
+
+.pickButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.alert {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+}

@@ -24,6 +24,11 @@ for round in 1 2; do
   $DB -f "$ROOT/supabase/migrations/0007_salon_lifecycle.sql"
   $DB -f "$ROOT/supabase/migrations/0008_listing_visibility.sql"
   $DB -f "$ROOT/supabase/migrations/0009_registration.sql"
+  $DB -f "$ROOT/supabase/migrations/0010_salon_multi.sql"
+  $DB -f "$ROOT/supabase/migrations/0011_demo_anytime.sql"
+  $DB -f "$ROOT/supabase/migrations/0012_completion.sql"
+  $DB -f "$ROOT/supabase/migrations/0013_salon_signup_approval.sql"
+  $DB -f "$ROOT/supabase/migrations/0014_salon_joined.sql"
   $DB -f "$ROOT/supabase/seed_0002.sql"
 done
 echo "追加のマイグレーションを2回流しても、エラーはありませんでした"

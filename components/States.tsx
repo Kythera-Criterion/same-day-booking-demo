@@ -1,10 +1,17 @@
 import type { ReactNode } from 'react';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import Button from '@/components/ui/Button';
+import Notice from '@/components/ui/Notice';
+import { Page } from '@/components/ui/Layout';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ArrowsClockwise, Leaf, WarningCircle } from '@/components/ui/icons';
+import s from './States.module.css';
 
 // 読み込み中・データなし・エラーの表示（すべての画面で同じ見た目にする）
 
 export function Loading({ rows = 2, label = '読み込み中' }: { rows?: number; label?: string }) {
   return (
-    <div className="skeleton-list" aria-busy="true" aria-label={label}>
+    <div className={s.skeleton} aria-busy="true" aria-label={label} role="status">
       {Array.from({ length: rows }, (_, i) => (
         <span key={i} />
       ))}
@@ -12,39 +19,38 @@ export function Loading({ rows = 2, label = '読み込み中' }: { rows?: number
   );
 }
 
-export function Empty({ children, icon = '○' }: { children: ReactNode; icon?: string }) {
+export function Empty({ children, icon = Leaf }: { children: ReactNode; icon?: PhosphorIcon }) {
+  const Glyph = icon;
   return (
-    <p className="state">
-      <span className="state-icon" aria-hidden>
-        {icon}
-      </span>
-      {children}
+    <p className={s.empty}>
+      <Glyph size={24} aria-hidden focusable="false" />
+      <span>{children}</span>
     </p>
   );
 }
 
 export function ErrorState({ children, onRetry }: { children: ReactNode; onRetry?: () => void }) {
   return (
-    <div className="state state-error" role="alert">
-      {children}
-      {onRetry && (
-        <div>
-          <button className="btn btn-text" onClick={onRetry}>
+    <Notice tone="danger" role="alert" icon={WarningCircle}>
+      <div className={s.error}>
+        <span>{children}</span>
+        {onRetry && (
+          <Button variant="text" size="sm" icon={ArrowsClockwise} onClick={onRetry}>
             もう一度読み込む
-          </button>
-        </div>
-      )}
-    </div>
+          </Button>
+        )}
+      </div>
+    </Notice>
   );
 }
 
 export function NotConfigured() {
   return (
-    <main className="app">
-      <div className="card" style={{ marginTop: 24 }}>
-        <h2 className="card-title">設定が必要です</h2>
-        <p className="card-sub">.env.local に Supabase のURLとキーを設定してから、もう一度起動してください。</p>
-      </div>
-    </main>
+    <Page>
+      <Panel className={s.config}>
+        <SectionHead title="設定が必要です" />
+        <SubText>.env.local に Supabase のURLとキーを設定してから、もう一度起動してください。</SubText>
+      </Panel>
+    </Page>
   );
 }

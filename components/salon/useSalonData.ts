@@ -1,9 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { one } from '@/lib/supabase';
 import { jstTodayEnd, jstTodayStart } from '@/lib/time';
+
+// 1つのアカウントで複数のお店（系列店など）を扱うとき、最後に開いたお店をこの端末に覚えておく
+export function currentSalonKey(userId: string) {
+  return `salon-current-${userId}`;
+}
+export function rememberSalon(userId: string, salonId: string) {
+  try {
+    localStorage.setItem(currentSalonKey(userId), salonId);
+  } catch {
+    // 保存できなくても動く（最初のお店を開く）
+  }
+}
+function rememberedSalon(userId: string): string | null {
+  try {
+    return localStorage.getItem(currentSalonKey(userId));
+  } catch {
+    return null;
+  }
+}
 
 export type SalonInfo = {
   id: string;
@@ -71,6 +90,7 @@ export function activeBooking(slot: SalonSlot): Booking | null {
 
 export function useSalonData(client: SupabaseClient | null, session: Session | null) {
   const [salon, setSalon] = useState<SalonInfo | null | undefined>(undefined);
+  const [salons, setSalons] = useState<SalonInfo[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [stylists, setStylists] = useState<Stylist[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -80,25 +100,38 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
   const [slots, setSlots] = useState<SalonSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = session?.user.id ?? null;
+  const salonId = salon?.id ?? null;
+  // いま開いているお店（読み直しても変えない。切り替えたときと、最初に開くときだけ決める）
+  const currentId = useRef<string | null>(null);
+
   const loadSalon = useCallback(async () => {
-    if (!client || !session) {
+    if (!client || !userId) {
+      currentId.current = null;
       setSalon(undefined);
       return;
     }
     setError(null);
-    const { data: member, error: e } = await client
+    const { data: members, error: e } = await client
       .from('salon_members')
       .select('salon_id,salons(id,name,address,phone,accepts_genders,area_id,lat,lng,is_approved)')
-      .eq('user_id', session.user.id)
-      .limit(1)
-      .maybeSingle();
+      .eq('user_id', userId);
     if (e) {
       setError('サロンの情報を読み込めませんでした。');
       return;
     }
-    const s = member ? one(member.salons as SalonInfo | SalonInfo[] | null) : null;
-    setSalon(s);
-    if (!s) return;
+    const list = (members ?? [])
+      .map((m) => one(m.salons as SalonInfo | SalonInfo[] | null))
+      .filter((x): x is SalonInfo => !!x)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const want = currentId.current ?? rememberedSalon(userId);
+    const s = list.find((x) => x.id === want) ?? list[0] ?? null;
+    if (!s) {
+      setSalons(list);
+      setSalon(null);
+      return;
+    }
+    currentId.current = s.id;
     const [m, st, p, priv, status] = await Promise.all([
       client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price'),
       client.from('stylists').select('id,name,is_active').eq('salon_id', s.id).order('name'),
@@ -106,23 +139,28 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
       client.from('salon_private').select('line_group_id,onboarding_step').eq('salon_id', s.id).maybeSingle(),
       client.rpc('my_salon_status', { p_salon_id: s.id }),
     ]);
+    // 読み込んでいる間に別のお店へ切り替えたときは、古い結果を使わない
+    if (currentId.current !== s.id) return;
+    // お店の名前・メニュー・担当・いつもの枠・掲載の状態は、まとめて切り替える（別のお店の内容が混ざらないように）
+    setSalons(list);
+    setSalon((prev) => (prev && JSON.stringify(prev) === JSON.stringify(s) ? prev : s));
     setListing(((status.data as Listing | null) ?? (s.is_approved ? 'listed' : 'suspended')) as Listing);
     setMenus((m.data ?? []) as Menu[]);
     setStylists((st.data ?? []) as Stylist[]);
     setPresets((p.data ?? []) as Preset[]);
     setLineGroup((priv.data?.line_group_id as string | null | undefined) ?? null);
     setOnboardingStep((priv.data?.onboarding_step as number | undefined) ?? 0);
-  }, [client, session]);
+  }, [client, userId]);
 
   const loadSlots = useCallback(async () => {
-    if (!client || !salon) return;
+    if (!client || !salonId) return;
     const { data, error: e } = await client
       .from('slots')
       .select(
         'id,start_at,end_at,deadline_at,status,closed_reason,price,created_at,stylist_id,menus(name,duration_min),stylists(name),' +
           'bookings(id,status,booking_no,contact_name,contact_phone,contact_email,karte,conversation_pref,note,photo_path,photo_note,created_at)',
       )
-      .eq('salon_id', salon.id)
+      .eq('salon_id', salonId)
       .gte('start_at', jstTodayStart().toISOString())
       .lt('start_at', jstTodayEnd().toISOString())
       .order('start_at');
@@ -130,6 +168,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
       setError('今日の枠を読み込めませんでした。');
       return;
     }
+    if (currentId.current !== salonId) return;
     const rows = ((data ?? []) as unknown as RawSlot[]).map((r) => ({
       ...r,
       menu: one(r.menus),
@@ -140,7 +179,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     setSlots(
       rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.closed_reason !== 'suspended' && r.bookings.length === 0)),
     );
-  }, [client, salon]);
+  }, [client, salonId]);
 
   useEffect(() => {
     loadSalon();
@@ -152,15 +191,27 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
 
   // 掲載の状態が変わったら（運営の承認・停止・再開）すぐに読み直す
   useEffect(() => {
-    if (!client || !salon) return;
+    if (!client || !salonId) return;
     const channel = client
-      .channel(`salon-listing-${salon.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_events', filter: `salon_id=eq.${salon.id}` }, () => loadSalon())
+      .channel(`salon-listing-${salonId}-${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listing_events', filter: `salon_id=eq.${salonId}` }, () => loadSalon())
       .subscribe();
     return () => {
       client.removeChannel(channel);
     };
-  }, [client, salon, loadSalon]);
+  }, [client, salonId, loadSalon]);
 
-  return { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots };
+  // 開くお店を切り替える（覚えてから読み直す）
+  const selectSalon = useCallback(
+    (id: string) => {
+      if (!userId) return;
+      currentId.current = id;
+      rememberSalon(userId, id);
+      setSlots(null);
+      loadSalon();
+    },
+    [userId, loadSalon],
+  );
+
+  return { salon, salons, selectSalon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots };
 }

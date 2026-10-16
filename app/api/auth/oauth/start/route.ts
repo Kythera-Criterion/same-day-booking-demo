@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isServerConfigured, userFromRequest } from '@/lib/server/supabase-admin';
 import { appOrigin } from '@/lib/server/invite';
 import { allow, clientIp } from '@/lib/server/rate-limit';
-import { FLOW_COOKIE, authorizeUrl, cookieOptions, isProviderId, newFlow, providerState, sealFlow } from '@/lib/server/oauth';
+import { BACK_COOKIE, FLOW_COOKIE, authorizeUrl, cookieOptions, isProviderId, newFlow, providerState, sealFlow } from '@/lib/server/oauth';
 import { safePath, type FlowMode, type FlowRole } from '@/lib/oauth-shared';
 
 // 外部の ID での登録・ログインを始める。
@@ -46,5 +46,6 @@ export async function POST(req: Request) {
   const url = flow.sim ? `${origin}/auth/demo-provider?provider=${provider}` : authorizeUrl(flow, challenge, origin);
   const res = NextResponse.json({ url, simulated: flow.sim });
   res.cookies.set(FLOW_COOKIE, sealFlow(flow), cookieOptions(origin.startsWith('https://')));
+  res.cookies.set(BACK_COOKIE, flow.b, { ...cookieOptions(origin.startsWith('https://')), maxAge: 24 * 60 * 60 });
   return res;
 }

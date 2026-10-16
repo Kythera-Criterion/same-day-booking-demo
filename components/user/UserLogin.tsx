@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import { Loading, NotConfigured } from '@/components/States';
 import SocialButtons, { AuthErrorNotice, LoggedOutNotice, hasAnyProvider } from '@/components/auth/SocialButtons';
+import { ButtonLink } from '@/components/ui/Button';
+import { Page } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { UserPlus } from '@/components/ui/icons';
 import { useRoleSession } from '@/lib/supabase';
 import { safePath, type Providers } from '@/lib/oauth-shared';
+import s from './UserLogin.module.css';
 
 const DEMO_ACCOUNTS = [
   { email: 'user1@demo.test', label: '山田 花子', sub: '女性・20代' },
@@ -43,10 +47,14 @@ export default function UserLogin({
   const back = `/login${target !== '/' ? `?next=${encodeURIComponent(target)}` : ''}`;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role="利用者" />
       <RoleIntro kind="user" />
-      {verified &&<p className="notice notice-ok">メールアドレスを確認しました。ログインしてください。</p>}
+      {verified && (
+        <Notice tone="success" className={s.notice}>
+          メールアドレスを確認しました。ログインしてください。
+        </Notice>
+      )}
       {loggedOut && !session && <LoggedOutNotice />}
       <AuthErrorNotice code={authError} />
       {!ready || session ? (
@@ -59,15 +67,15 @@ export default function UserLogin({
           demoAccounts={DEMO_ACCOUNTS}
           social={hasAnyProvider(providers) ? <SocialButtons providers={providers} role="user" mode="login" next={target} back={back} /> : null}
           footer={
-            <div className="signup-cta">
+            <div className={s.signup}>
               <p>はじめての方</p>
-              <Link className="btn btn-secondary btn-block" href={`/signup${target !== '/' ? `?next=${encodeURIComponent(target)}` : ''}`}>
+              <ButtonLink variant="secondary" size="md" block icon={UserPlus} href={`/signup${target !== '/' ? `?next=${encodeURIComponent(target)}` : ''}`}>
                 新規登録（無料）
-              </Link>
+              </ButtonLink>
             </div>
           }
         />
       )}
-    </main>
+    </Page>
   );
 }

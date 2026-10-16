@@ -7,7 +7,13 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import PasswordInput from './PasswordInput';
 import { ProviderIcon, startSocial } from './SocialButtons';
-import { AUTH_ERROR, PROVIDER_IDS, PROVIDER_LABEL, type FlowRole, type ProviderId, type Providers } from '@/lib/oauth-shared';
+import Button from '@/components/ui/Button';
+import { Field } from '@/components/ui/Form';
+import Notice from '@/components/ui/Notice';
+import { DataList, Panel, SectionHead } from '@/components/ui/Surface';
+import { Key, LinkIcon, LockSimple } from '@/components/ui/icons';
+import { PROVIDER_IDS, PROVIDER_LABEL, authErrorText, type FlowRole, type ProviderId, type Providers } from '@/lib/oauth-shared';
+import s from './AccountSecurity.module.css';
 
 type Identity = { provider: ProviderId; email: string | null; created_at: string; last_used_at: string };
 
@@ -35,7 +41,7 @@ export default function AccountSecurity({
     linked && PROVIDER_IDS.includes(linked as ProviderId)
       ? { kind: 'ok', text: `${PROVIDER_LABEL[linked as ProviderId]}と連携しました。次回から、${PROVIDER_LABEL[linked as ProviderId]}でログインできます。` }
       : authError
-        ? { kind: 'error', text: AUTH_ERROR[authError] ?? '連携できませんでした。' }
+        ? { kind: 'error', text: authErrorText(authError, '連携できませんでした。') }
         : null,
   );
   const [busy, setBusy] = useState<string | null>(null);
@@ -124,29 +130,26 @@ export default function AccountSecurity({
   const lastMethod = !hasPassword && (identities?.length ?? 0) <= 1;
 
   return (
-    <section className="card account-security">
-      <p className="card-title">ログインの方法</p>
-      <dl className="detail-dl">
-        <dt>メールアドレス</dt>
-        <dd className="break">{email || '—'}</dd>
-      </dl>
+    <Panel as="section">
+      <SectionHead icon={Key} title="ログインの方法" as="p" />
+      <DataList items={[['メールアドレス', <span key="e" className="break">{email || '—'}</span>]]} />
 
       {msg && (
-        <p className={`notice ${msg.kind === 'ok' ? 'notice-ok' : 'notice-error'}`} role={msg.kind === 'error' ? 'alert' : 'status'}>
+        <Notice tone={msg.kind === 'ok' ? 'success' : 'danger'} role={msg.kind === 'error' ? 'alert' : 'status'} className={s.notice}>
           {msg.text}
-        </p>
+        </Notice>
       )}
 
       {shown.length > 0 && (
-        <ul className="linked-list" aria-label="連携している外部のアカウント">
+        <ul className={s.linked} aria-label="連携している外部のアカウント">
           {shown.map((p) => {
             const id = identities?.find((i) => i.provider === p);
             return (
               <li key={p}>
-                <span className="linked-icon">
+                <span className={s.linkedIcon}>
                   <ProviderIcon provider={p} height={p === 'google' ? 20 : 14} />
                 </span>
-                <span className="linked-body">
+                <span className={s.linkedBody}>
                   <strong>{PROVIDER_LABEL[p]}</strong>
                   <small>
                     {identities === null
@@ -155,18 +158,18 @@ export default function AccountSecurity({
                         ? `連携済み${id.email ? `（${id.email}）` : ''}・${dt.format(new Date(id.created_at))}から`
                         : '未連携'}
                     {providers[p] === 'simulated' && '・デモ'}
-                    {id && lastMethod && <span className="linked-hint">パスワードを設定すると、連携を解除できます</span>}
+                    {id && lastMethod && <span className={s.linkedHint}>パスワードを設定すると、連携を解除できます</span>}
                   </small>
                 </span>
                 {identities !== null &&
                   (id ? (
-                    <button className="btn btn-quiet btn-sm" disabled={busy !== null || lastMethod} onClick={() => disconnect(p)}>
+                    <Button variant="quiet" size="sm" disabled={busy !== null || lastMethod} onClick={() => disconnect(p)}>
                       {busy === p ? '解除中…' : '解除'}
-                    </button>
+                    </Button>
                   ) : providers[p] !== 'off' ? (
-                    <button className="btn btn-secondary btn-sm" disabled={busy !== null} onClick={() => connect(p)}>
+                    <Button variant="secondary" size="sm" icon={LinkIcon} disabled={busy !== null} onClick={() => connect(p)}>
                       {busy === p ? '移動しています…' : '連携する'}
-                    </button>
+                    </Button>
                   ) : null)}
               </li>
             );
@@ -174,29 +177,24 @@ export default function AccountSecurity({
         </ul>
       )}
 
-      <form onSubmit={savePassword} noValidate className="pw-form">
-        <p className="field-label" style={{ marginTop: 12 }}>
+      <form onSubmit={savePassword} noValidate className={s.pwForm}>
+        <p className={s.formTitle}>
+          <LockSimple size={20} aria-hidden focusable="false" />
           {hasPassword ? 'パスワードの変更' : 'パスワードの設定'}
         </p>
-        {!hasPassword && <p className="field-hint">外部のアカウントで登録したため、パスワードはまだありません。設定すると、メールアドレスとパスワードでもログインできます。</p>}
-        <div className="field-row">
-          <div className="field">
-            <label className="field-label" htmlFor={`${role}-new-pw`}>
-              新しいパスワード
-            </label>
+        {!hasPassword && <p className={s.hint}>外部のアカウントで登録したため、パスワードはまだありません。設定すると、メールアドレスとパスワードでもログインできます。</p>}
+        <div className={s.pwRow}>
+          <Field id={`${role}-new-pw`} label="新しいパスワード">
             <PasswordInput id={`${role}-new-pw`} isNew value={pw} onChange={setPw} />
-          </div>
-          <div className="field">
-            <label className="field-label" htmlFor={`${role}-new-pw2`}>
-              もう一度
-            </label>
+          </Field>
+          <Field id={`${role}-new-pw2`} label="もう一度">
             <PasswordInput id={`${role}-new-pw2`} isNew={false} autoComplete="new-password" value={pw2} onChange={setPw2} />
-          </div>
+          </Field>
         </div>
-        <button className="btn btn-secondary btn-block" type="submit" disabled={busy !== null || !pw}>
+        <Button variant="secondary" size="md" block type="submit" disabled={busy !== null || !pw}>
           {busy === 'pw' ? '保存中…' : hasPassword ? 'パスワードを変更' : 'パスワードを設定'}
-        </button>
+        </Button>
       </form>
-    </section>
+    </Panel>
   );
 }

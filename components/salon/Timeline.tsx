@@ -1,10 +1,12 @@
 'use client';
 
-// 今日のタイムライン（9時〜24時）。枠と予約を状態ごとの色で並べる
+// 今日のタイムライン（9時〜24時）。枠と予約を、状態ごとの塗り・枠線・模様・アイコンで並べる
 
 import { useEffect, useMemo, useRef } from 'react';
 import { fmtTime, jstMinuteOfDay } from '@/lib/time';
 import { activeBooking, type SalonSlot } from './useSalonData';
+import { FreshMark, StateIcon, stateClass } from './SlotStateMark';
+import st from './Timeline.module.css';
 
 const START = 9 * 60;
 const END = 24 * 60;
@@ -76,19 +78,19 @@ export default function Timeline({
   const hours = Array.from({ length: (END - START) / 60 + 1 }, (_, i) => START / 60 + i);
 
   return (
-    <div className="timeline" ref={ref}>
-      <div className="timeline-canvas" style={{ height: (END - START) * PX_PER_MIN }}>
+    <div className={st.scroll} ref={ref}>
+      <div className={st.canvas} style={{ height: (END - START) * PX_PER_MIN }}>
         {hours.map((h) => (
-          <div key={h} className="timeline-hour" style={{ top: (h * 60 - START) * PX_PER_MIN }}>
+          <div key={h} className={st.hour} style={{ top: (h * 60 - START) * PX_PER_MIN }}>
             <span>{h}:00</span>
           </div>
         ))}
         {nowMin >= START && nowMin <= END && (
-          <div className="timeline-now" style={{ top: (nowMin - START) * PX_PER_MIN }}>
+          <div className={st.now} style={{ top: (nowMin - START) * PX_PER_MIN }}>
             <span>{fmtTime(now)}</span>
           </div>
         )}
-        <div className="timeline-lanes">
+        <div className={st.lanes}>
           {placed.map(({ slot, s, e, lane }) => {
             const state = slotState(slot);
             const b = activeBooking(slot);
@@ -96,7 +98,8 @@ export default function Timeline({
             return (
               <button
                 key={slot.id}
-                className={`tl-block tl-${state} ${height < 44 ? 'tl-compact' : ''} ${b && freshIds.includes(b.id) ? 'is-fresh' : ''}`}
+                className={`${st.block} ${stateClass(state)} ${height < 44 ? st.compact : ''}`}
+                data-state={state}
                 style={{
                   top: (s - START) * PX_PER_MIN + 1,
                   height,
@@ -105,12 +108,16 @@ export default function Timeline({
                 }}
                 onClick={() => onSelect(slot)}
               >
-                <span className="tl-time num">
-                  {fmtTime(slot.start_at)}〜{fmtTime(slot.end_at)}
+                <span className={st.top}>
+                  <StateIcon state={state} />
+                  <span className={st.time}>
+                    {fmtTime(slot.start_at)}〜{fmtTime(slot.end_at)}
+                  </span>
+                  {b && freshIds.includes(b.id) && <FreshMark />}
                 </span>
-                <span className="tl-title">{b ? `${b.contact_name} 様` : STATE_LABEL[state] ?? state}</span>
+                <span className={st.title}>{b ? `${b.contact_name} 様` : STATE_LABEL[state] ?? state}</span>
                 {height > 52 && (
-                  <span className="tl-sub">
+                  <span className={st.sub}>
                     {slot.menu?.name}
                     {slot.stylist && ` ・ ${slot.stylist.name}`}
                   </span>

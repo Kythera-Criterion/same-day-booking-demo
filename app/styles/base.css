@@ -1,6 +1,6 @@
 /* =========================================================
-   土台：リセット・文字・リンク・フォーカス・動きを減らす設定
-   値はすべて tokens.css の意味のトークンを使う
+   土台：リセット・文字・リンク・フォーカスの輪郭・最小限の補助クラス
+   色や数値は tokens.css の意味の値だけを使う
    ========================================================= */
 
 *,
@@ -9,54 +9,71 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
 body {
+  margin: 0;
   min-height: 100dvh;
   background: var(--color-bg);
   color: var(--color-ink);
-  font-family: var(--font-family-base);
+  font-family: var(--font-sans);
   font-size: var(--text-body);
   line-height: var(--leading-body);
   letter-spacing: var(--tracking-body);
   -webkit-font-smoothing: antialiased;
-  transition: background-color var(--motion-standard) var(--ease-standard);
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* 役割の色の線（お客様・サロン・運営のどの画面かを上端で示す） */
-:root:has(.topbar[data-role]) body {
-  border-top: var(--size-stroke-bold) solid var(--color-accent);
+/* どの役割のページかが分かるよう、上端に役割の色の線を引く */
+:root:has(header[data-role]) body {
+  border-block-start: var(--line-accent) solid var(--color-action);
+}
+
+/* ページの背景の虹（役割ごとの --page-wash）。画面に固定して内容の後ろに敷き、スクロールしても動かさない */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-backdrop);
+  background: var(--page-wash);
+  pointer-events: none;
 }
 
 h1,
 h2,
 h3,
-p {
+h4,
+p,
+dl,
+dd,
+figure,
+blockquote {
   margin: 0;
 }
 
-/* 見出しと短い案内は、日本語の文節で折り返す（対応していないブラウザはふつうの折り返し） */
 h1,
 h2,
 h3,
-.card-title,
-.empty-title,
-.empty-sub {
-  word-break: auto-phrase;
+h4 {
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: 0.01em;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
 }
 
 img,
-svg {
+video {
   max-width: 100%;
+  height: auto;
 }
 
 button,
@@ -64,85 +81,84 @@ input,
 select,
 textarea {
   font: inherit;
-  color: inherit;
   letter-spacing: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 a {
-  color: var(--color-accent);
-  text-underline-offset: 0.2em;
+  color: var(--color-action-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
 }
 
-/* フォーカスリング（デジタル庁デザインシステムの考え方：黒の外枠＋黄色の輪。どの背景でも見える） */
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* キーボード操作のときだけ、太めの二重の輪郭を出す（どの背景の上でも見える） */
 :focus-visible {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: var(--focus-offset);
-  box-shadow: 0 0 0 var(--focus-halo-width) var(--focus-halo-color);
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--color-accent-muted);
+  background: var(--color-action-soft);
   color: var(--color-ink);
 }
 
+/* ---------- 補助のクラス（文字に関するものだけ） ---------- */
+
+/* 読み上げソフトにだけ伝える */
 .sr-only {
   position: absolute;
-  width: var(--space-px);
-  height: var(--space-px);
+  inline-size: 1px;
+  block-size: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-/* 数字は桁をそろえる */
+/* 数字の桁をそろえる（時刻・金額・件数） */
 .num {
+  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--tracking-num);
 }
 
-.muted {
-  color: var(--color-ink-muted);
-}
-
+/* 長いメールアドレスなどを折り返す */
 .break {
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
-.mono {
-  font-family: var(--font-family-mono);
-  font-size: var(--text-xs);
-  color: var(--color-ink-2);
-}
-
-/* キーボードで操作する人向けの「本文へ移動」 */
+/* 本文へ移動（キーボードで最初に止まる） */
 .skip-link {
   position: absolute;
-  left: var(--space-2);
-  top: calc(-1 * var(--space-16));
-  z-index: var(--z-skip);
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+  inset-inline-start: var(--space-2);
+  inset-block-start: calc(-1 * var(--space-16));
+  z-index: var(--z-alert);
   padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+  font-weight: var(--weight-bold);
   text-decoration: none;
 }
+
 .skip-link:focus {
-  top: var(--space-2);
+  inset-block-start: var(--space-2);
 }
 
-/* 動きを減らす設定：動きは止め、色の変化だけにする */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: var(--duration-instant) !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: var(--duration-instant) !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
   }
 }

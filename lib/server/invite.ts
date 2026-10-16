@@ -17,7 +17,10 @@ export function appOrigin(req: Request): string {
   return (process.env.APP_URL || new URL(req.url).origin).replace(/\/$/, '');
 }
 
-// 新しいアカウントなら招待、すでにあるアカウントならログイン用のリンクを作る（運営への招待は role=admin）
+// 新しいアカウントなら招待、すでにあるアカウントならログイン用のリンクを作る（運営への招待は role=admin）。
+// パスワードのあるアカウント（サロンの画面の「新規登録」で申し込んだ、確認前のアカウントを含む）には、必ずログイン用のリンクを使う。
+// 招待のリンクを開くと「パスワードを決める前」の扱いになり、申し込みのときに決めたパスワードが使えなくなるため。
+// ログイン用のリンクを開くと、メールアドレスの確認も済む（確認前のアカウントは、ここで登録が完了する）
 export async function createStartLink(
   admin: SupabaseClient,
   email: string,
@@ -25,8 +28,11 @@ export async function createStartLink(
   origin: string,
   prefer: 'invite' | 'magiclink' = 'invite',
   role: 'salon' | 'admin' = 'salon',
-): Promise<{ userId: string; link: string; type: 'invite' | 'magiclink' }> {
-  const order: ('invite' | 'magiclink')[] = prefer === 'invite' ? ['invite', 'magiclink'] : ['magiclink', 'invite'];
+): Promise<{ userId: string; link: string; type: 'invite' | 'magiclink'; created: boolean }> {
+  const { data: existing } = await admin.rpc('find_user_id_by_email', { p_email: email });
+  const { data: hasPassword } = existing ? await admin.rpc('user_has_password', { p_user_id: existing }) : { data: false };
+  const order: ('invite' | 'magiclink')[] =
+    hasPassword === true ? ['magiclink'] : prefer === 'invite' ? ['invite', 'magiclink'] : ['magiclink', 'invite'];
   let lastError = '';
   for (const type of order) {
     const { data, error } = await admin.auth.admin.generateLink(
@@ -35,7 +41,7 @@ export async function createStartLink(
     const hashed = data?.properties?.hashed_token;
     if (!error && data?.user && hashed) {
       const roleParam = role === 'admin' ? '&role=admin' : '';
-      return { userId: data.user.id, link: `${origin}/welcome?token_hash=${encodeURIComponent(hashed)}&type=${type}${roleParam}`, type };
+      return { userId: data.user.id, link: `${origin}/welcome?token_hash=${encodeURIComponent(hashed)}&type=${type}${roleParam}`, type, created: !existing };
     }
     lastError = error?.message ?? 'no_link';
   }
@@ -43,7 +49,7 @@ export async function createStartLink(
 }
 
 // ご案内メールを送信待ちに積み、送った回数と日時を掲載希望に残す
-export async function enqueueWelcome(admin: SupabaseClient, app: Application, salonId: string | null, link: string) {
+export async function enqueueWelcome(admin: SupabaseClient, app: Application, salonId: string | null, link: string, passwordSet = false) {
   const count = (app.invite_count ?? 0) + 1;
   const { error } = await admin.from('notification_outbox').insert({
     dedupe_key: `salon_welcome_mail:${app.id}:${count}`,
@@ -57,6 +63,7 @@ export async function enqueueWelcome(admin: SupabaseClient, app: Application, sa
       email: app.email,
       invite_link: link,
       resend: count > 1,
+      password_set: passwordSet,
     },
   });
   if (error) throw new Error(`ご案内メールを積めませんでした（${error.message}）`);

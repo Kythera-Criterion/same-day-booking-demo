@@ -5,7 +5,7 @@ import { safePath } from '@/lib/oauth-shared';
 import { adminClient } from './supabase-admin';
 import { completeUrl, resolveAccount, sessionToken } from './accounts';
 import { appOrigin } from './invite';
-import { FLOW_COOKIE, FLOW_COOKIE_PATH, type ExternalProfile, type Flow } from './oauth';
+import { BACK_COOKIE, FLOW_COOKIE, FLOW_COOKIE_PATH, type ExternalProfile, type Flow } from './oauth';
 
 // 外部の ID の手続きの最後：アカウントを決めてログイン状態を作り、画面へ戻す（失敗したら、元の画面へ理由つきで戻す）
 
@@ -21,7 +21,9 @@ function clearCookie(res: NextResponse) {
 }
 
 export function failRedirect(req: Request, flow: Pick<Flow, 'b'> | null, code: string, fallback = '/login'): NextResponse {
-  const back = safePath(flow?.b, fallback);
+  // 手続きの Cookie が切れていても、始めた画面（サロン・運営のログインなど）へ戻す
+  const saved = new RegExp(`(?:^|;\\s*)${BACK_COOKIE}=([^;]+)`).exec(req.headers.get('cookie') ?? '')?.[1];
+  const back = safePath(flow?.b ?? (saved ? decodeURIComponent(saved) : undefined), fallback);
   return clearCookie(NextResponse.redirect(`${appOrigin(req)}${withParam(back, 'auth_error', code)}`, 303));
 }
 

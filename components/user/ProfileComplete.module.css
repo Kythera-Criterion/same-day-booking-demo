@@ -1,0 +1,40 @@
+/* 登録の仕上げ：ログイン用のメールアドレス → 予約に必要な情報 → 登録して始める */
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--color-line);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.account > svg {
+  flex: none;
+  color: var(--color-ink-sub);
+}
+
+.account strong {
+  color: var(--color-ink);
+}
+
+.error {
+  margin-block-end: var(--space-3);
+}
+
+.later {
+  margin-block-start: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  text-align: center;
+}
+
+/* 単独で置くリンクも、押せる高さ（44px）を取る */
+.later a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--tap-min);
+}

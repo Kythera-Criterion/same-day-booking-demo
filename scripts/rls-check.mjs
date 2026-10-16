@@ -140,6 +140,17 @@ try {
     const { error } = await user1.from('admins').insert({ user_id: me1.user.id });
     check('利用者は、自分を運営に加えられない', !!error, error?.message);
   }
+  {
+    // 運営へのお知らせ（新しいサロンが加わりました）は、運営だけが読める。画面側からは書けない
+    const [{ data: u }, { data: s, error: se }, { error: ae }, { error: we }] = await Promise.all([
+      user1.from('admin_notices').select('id').limit(1),
+      salonA.from('admin_notices').select('id').limit(1),
+      operator.from('admin_notices').select('id').limit(1),
+      salonA.from('admin_notices').insert({ kind: 'salon_joined', salon_name: 'x' }),
+    ]);
+    check('運営へのお知らせは、利用者・サロンからは見えず、運営は読める', (u?.length ?? 0) === 0 && (!!se || (s?.length ?? 0) === 0) && !ae, ae?.message);
+    check('運営へのお知らせは、画面側から書けない', !!we, we?.message);
+  }
 } finally {
   // 後片付け（テスト用の予約と枠を消す）
   await removeTestSlot(slot.id);

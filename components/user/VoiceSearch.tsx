@@ -5,6 +5,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseVoice, type VoiceQuery } from '@/lib/voice-parse';
 import type { WindowKey } from '@/lib/time';
+import Button from '@/components/ui/Button';
+import Label from '@/components/ui/Label';
+import Notice from '@/components/ui/Notice';
+import { Input } from '@/components/ui/Form';
+import { MagnifyingGlass, Microphone } from '@/components/ui/icons';
+import s from './VoiceSearch.module.css';
 
 type Recognition = {
   lang: string;
@@ -67,24 +73,29 @@ export default function VoiceSearch({ onResult }: { onResult: (window: WindowKey
 
   if (!open) {
     return (
-      <button className="btn btn-text voice-open" onClick={() => setOpen(true)}>
-        話しかけて探す <span className="pill pill-simulated">プレビュー</span>
+      <button type="button" className={s.entry} onClick={() => setOpen(true)}>
+        <MagnifyingGlass size={20} aria-hidden focusable="false" />
+        <span className={s.entryText}>話しかけて探す（プレビュー）</span>
+        <span className={s.mic} aria-hidden>
+          <Microphone size={20} weight="duotone" />
+        </span>
       </button>
     );
   }
 
   return (
-    <section className="card voice fade-in" aria-label="話しかけて探す（プレビュー）">
-      <div className="row-between">
-        <p className="card-title" style={{ margin: 0 }}>
+    <section className={s.panel} aria-label="話しかけて探す（プレビュー）">
+      <div className={s.head}>
+        <p className={s.title}>
+          <Microphone size={20} weight="duotone" aria-hidden focusable="false" />
           話しかけて探す
         </p>
-        <span className="pill pill-simulated">将来構想のプレビュー</span>
+        <Label kind="state">将来構想のプレビュー</Label>
       </div>
-      <p className="card-sub">例：「1時間以内に駅の近くでカット」。言葉の決まりで読み取ります（外部の AI は使いません）。</p>
-      <form onSubmit={submit} className="voice-form">
-        <input
-          className="input"
+      <p className={s.sub}>例：「1時間以内に駅の近くでカット」。言葉の決まりで読み取ります（外部の AI は使いません）。</p>
+      <form onSubmit={submit} className={s.form}>
+        <Input
+          aria-label="いつ・何をしたいか"
           value={text}
           placeholder="いつ・何をしたいかを入力"
           onChange={(e) => {
@@ -93,25 +104,27 @@ export default function VoiceSearch({ onResult }: { onResult: (window: WindowKey
           }}
         />
         {supported && (
-          <button
-            type="button"
-            className={`btn ${listening ? 'btn-danger' : 'btn-secondary'}`}
+          <Button
+            variant={listening ? 'danger' : 'secondary'}
+            size="md"
+            icon={Microphone}
+            iconWeight={listening ? 'fill' : 'regular'}
             onClick={() => (listening ? rec.current?.stop() : listen())}
             aria-label={listening ? '聞き取りをやめる' : '話しかける'}
           >
-            {listening ? '停止' : '🎤 話す'}
-          </button>
+            {listening ? '停止' : '話す'}
+          </Button>
         )}
       </form>
       {parsed && (
-        <p className="voice-parsed">
+        <p className={s.parsed}>
           読み取った内容：{parsed.matched.length ? parsed.matched.join(' ・ ') : '（時間帯の指定なし → 1時間以内）'}
         </p>
       )}
-      {error && <p className="notice notice-error">{error}</p>}
-      <button className="btn btn-primary btn-block" disabled={!text.trim()} onClick={submit}>
+      {error && <Notice tone="danger">{error}</Notice>}
+      <Button variant="primary" size="md" block icon={MagnifyingGlass} disabled={!text.trim()} onClick={submit}>
         この内容で探す
-      </button>
+      </Button>
     </section>
   );
 }

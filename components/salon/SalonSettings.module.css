@@ -1,0 +1,107 @@
+/* 店舗の設定：白い面を並べ、面の中は細い線で区切る。広い画面では2列に並べる
+   メニュー・美容師の一覧は「名前（太字）＋補足」の行。止めているものは薄い文字と一時停止のアイコンで示す */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 広い画面：左にお店の情報と場所（縦に長い）、右にメニュー・美容師・受付と連絡、下に通知ログ */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .grid > .place {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+
+  .grid > .side {
+    grid-column: 2;
+  }
+
+  .grid > .full {
+    grid-column: 1 / -1;
+  }
+}
+
+.list {
+  list-style: none;
+  margin-block-end: var(--space-2);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: var(--space-16);
+  padding-block: var(--space-2);
+}
+
+.item > :last-child {
+  flex: none;
+  white-space: nowrap;
+}
+
+.item + .item {
+  border-block-start: 1px solid var(--color-line);
+}
+
+.itemBody {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-inline-size: 0;
+}
+
+.itemName {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.itemSub {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+.item[data-off] .itemName {
+  color: var(--color-ink-sub);
+}
+
+/* メニューを足す・直す：沈んだ面で囲む */
+.editor {
+  margin-block-start: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface-sunken);
+}
+
+.editorActions {
+  margin-block-start: var(--space-2);
+}
+
+.inlineForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.save {
+  margin-block-start: var(--space-2);
+}

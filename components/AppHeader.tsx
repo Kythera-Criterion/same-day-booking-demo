@@ -1,11 +1,16 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import BrandMark from '@/components/ui/BrandMark';
+import { Scissors, ShieldCheck, User } from '@/components/ui/icons';
+import type { MarkKind } from '@/lib/brand-mark';
+import s from './AppHeader.module.css';
 
 // 画面上部の帯（ブランド・役割・主な移動先）。
 // お客様・サロン・運営のどのページかが一目で分かるよう、役割ごとに色（テーマ）・アイコン・呼び名を変える。
-// テーマの色は、この帯の data-role をもとに globals.css でページ全体に効かせる
+// テーマの色は、この帯の data-role をもとに app/styles/tokens.css でページ全体に効かせる
 
-export type RoleKind = 'user' | 'salon' | 'admin';
+export type RoleKind = MarkKind;
 
 const KIND_BY_LABEL: Record<string, RoleKind> = {
   利用者: 'user',
@@ -21,35 +26,16 @@ export const ROLE_INFO: Record<RoleKind, { pill: string; title: string; desc: st
   admin: { pill: '運営', title: '運営事務局向けのページ', desc: '審査・サロンの管理・実証の数字（関係者のみ）' },
 };
 
+const ROLE_ICON: Record<RoleKind, PhosphorIcon> = { user: User, salon: Scissors, admin: ShieldCheck };
+
 export function roleKind(label?: string | null): RoleKind | null {
   return label ? (KIND_BY_LABEL[label] ?? null) : null;
 }
 
 // 役割のアイコン（お客様：人、サロン：はさみ、運営：盾）
-export function RoleIcon({ kind, size = 16 }: { kind: RoleKind; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
-      {kind === 'user' && (
-        <>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5" />
-        </>
-      )}
-      {kind === 'salon' && (
-        <>
-          <circle cx="6" cy="6" r="3" />
-          <circle cx="6" cy="18" r="3" />
-          <path d="M8.6 7.6 20 19M8.6 16.4 20 5" />
-        </>
-      )}
-      {kind === 'admin' && (
-        <>
-          <path d="M12 3 5 6v5.2c0 4.3 2.9 8.2 7 9.8 4.1-1.6 7-5.5 7-9.8V6z" />
-          <path d="m9 12 2.2 2.2L15.5 10" />
-        </>
-      )}
-    </svg>
-  );
+export function RoleIcon({ kind, size = 20 }: { kind: RoleKind; size?: 20 | 24 }) {
+  const Glyph = ROLE_ICON[kind];
+  return <Glyph size={size} weight="bold" aria-hidden focusable="false" />;
 }
 
 // 入口の画面（ログイン・新規登録など）の上に置く「どのページか」の帯。
@@ -58,18 +44,18 @@ export function RoleIntro({ kind, compact = false }: { kind: RoleKind; compact?:
   const info = ROLE_INFO[kind];
   if (compact) {
     return (
-      <p className={`role-eyebrow role-eyebrow-${kind}`}>
-        <RoleIcon kind={kind} size={15} />
+      <p className={s.eyebrow}>
+        <RoleIcon kind={kind} />
         {info.title}
       </p>
     );
   }
   return (
-    <div className={`role-intro role-intro-${kind}`}>
-      <span className="role-intro-icon">
-        <RoleIcon kind={kind} size={22} />
+    <div className={s.intro}>
+      <span className={s.introIcon}>
+        <RoleIcon kind={kind} size={24} />
       </span>
-      <span className="role-intro-body">
+      <span className={s.introBody}>
         <strong>{info.title}</strong>
         <small>{info.desc}</small>
       </span>
@@ -80,24 +66,23 @@ export function RoleIntro({ kind, compact = false }: { kind: RoleKind; compact?:
 export default function AppHeader({ role, home = '/', children }: { role?: string; home?: string; children?: ReactNode }) {
   const kind = roleKind(role);
   return (
-    <header className="topbar" data-role={kind ?? undefined}>
-      {/* 読み上げの名前は、見えている文字（当日予約デモ・役割）をそのまま含める（WCAG 2.5.3） */}
-      <Link href={home} className="brand">
-        <span className="brand-mark" aria-hidden>
-          今
-        </span>
-        <span>当日予約デモ</span>
+    <header className={s.bar} data-role={kind ?? undefined}>
+      <Link href={home} className={s.brand}>
+        <BrandMark kind={kind} />
+        <span className={s.name}>当日予約デモ</span>
         {kind ? (
-          <span className={`role-pill role-pill-${kind}`}>
-            <RoleIcon kind={kind} size={13} />
+          <span className={s.role}>
+            <RoleIcon kind={kind} />
             {ROLE_INFO[kind].pill}
           </span>
         ) : (
-          role && <span className="role-pill">{role}</span>
+          role && <span className={s.role}>{role}</span>
         )}
         <span className="sr-only">（ホームへ）</span>
       </Link>
-      <nav className="topnav">{children}</nav>
+      <nav className={s.nav} aria-label="主な移動先">
+        {children}
+      </nav>
     </header>
   );
 }

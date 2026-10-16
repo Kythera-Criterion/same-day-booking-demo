@@ -103,7 +103,8 @@ export async function dispatchPending(limit = 10): Promise<DispatchSummary> {
       if (redact && SECRET_LINK_KINDS.includes(row.kind) && row.payload.invite_link) {
         await admin
           .from('notification_outbox')
-          .update({ payload: { ...row.payload, invite_link: null, link_redacted: true }, response: { http: result.status === 'sent' ? 200 : 0, simulated: result.status === 'simulated' } })
+          // 送った記録（送信の ID・シミュレーションの理由など）は残し、リンクを含む本文（rendered）だけを消す
+          .update({ payload: { ...row.payload, invite_link: null, link_redacted: true }, response: withoutRendered(result.response) })
           .eq('id', row.id);
       }
       summary[result.status]++;
@@ -125,6 +126,12 @@ export async function dispatchPending(limit = 10): Promise<DispatchSummary> {
 function lineRetryKey(id: number): string {
   const hex = id.toString(16).padStart(12, '0').slice(-12);
   return `00000000-0000-4000-8000-${hex}`;
+}
+
+function withoutRendered(response: Record<string, unknown>): Record<string, unknown> {
+  const { rendered: _rendered, ...rest } = response;
+  void _rendered;
+  return rest;
 }
 
 function safeJson(text: string): unknown {

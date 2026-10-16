@@ -1,0 +1,90 @@
+/* 話しかけて探す（将来構想のプレビュー）：検索欄に似た細長い入口。開くと、入力欄とマイクのボタン
+   入口は「押せる面」なので枠線を付けず、ほかの面と同じ白い面で示す（白地に線を引いた検索欄とは形を変える） */
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--space-12);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-4) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  text-align: start;
+  transition: border-color var(--motion-short) var(--ease-out);
+}
+
+.entry:hover {
+  border-color: var(--color-line-strong);
+}
+
+.entryText {
+  flex: 1;
+}
+
+.mic {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  flex: none;
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  animation: open var(--motion-base) var(--ease-out);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+}
+
+.sub {
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.parsed {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+@keyframes open {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}

@@ -1,17 +1,41 @@
 'use client';
 
 // 予約の確認と確定（ボトムシートと単独のページで共通）。
-// 内容・受付の締切・「変更・キャンセルはお店へ直接お電話ください」「お支払いは店頭で」を見せてから、スライドで確定する
+// 1回のスクロールで読める「詳細シート」：①写真（シートの上・呼び出し側）②お店・住所・徒歩 ③今日の空き（時刻のチップ）
+// ④メニューと当日価格 ⑤担当 ⑥お店のルール（店頭払い・キャンセルはお店に電話・受付締切）を見せてから、スライドで確定する
 
 import { useState } from 'react';
 import Link from 'next/link';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Field, formClass, Input, LabeledField, Textarea } from '@/components/ui/Form';
+import Label from '@/components/ui/Label';
+import { Fine, Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import Price from '@/components/ui/Price';
+import {
+  Camera,
+  Clock,
+  Hourglass,
+  MapPin,
+  NavigationArrow,
+  NotePencil,
+  PersonSimpleWalk,
+  Phone,
+  Scissors,
+  ShieldCheck,
+  Storefront,
+  Timer,
+  User,
+  Wallet,
+} from '@/components/ui/icons';
 import { errorCode, toMessage } from '@/lib/errors';
 import { requestDispatch } from '@/lib/dispatch-client';
 import { shrinkImage } from '@/lib/image';
 import { CONVERSATION_PREFS } from '@/lib/profile-options';
-import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
+import { fmtDate, fmtRemaining, fmtTime, minutesUntil } from '@/lib/time';
 import SlideToConfirm from './SlideToConfirm';
+import s from './BookingForm.module.css';
 
 export type BookTarget = {
   id: string;
@@ -27,6 +51,11 @@ export type BookTarget = {
   lng?: number;
 };
 
+export type Alternative = { id: string; start_at: string; menu_name: string };
+
+// 受付締切までこの分数を切ったら、時間の色で知らせる
+const URGENT_MIN = 15;
+
 export default function BookingForm({
   client,
   session,
@@ -37,6 +66,12 @@ export default function BookingForm({
   now,
   unavailable = null,
   profileMissing = false,
+  walk = null,
+  stylist = null,
+  condition = null,
+  alternatives = [],
+  stickyConfirm = false,
+  onSwitch,
   onChooseOther,
   onBooked,
   onUnavailable,
@@ -50,6 +85,12 @@ export default function BookingForm({
   suspendedUntil: string | null;
   now: Date;
   unavailable?: string | null;
+  walk?: { min: number; label: string } | null;
+  stylist?: string | null;
+  condition?: string | null;
+  alternatives?: Alternative[];
+  stickyConfirm?: boolean;
+  onSwitch?: (slotId: string) => void;
   onChooseOther?: () => void;
   onBooked: (bookingId: string) => void;
   onUnavailable?: () => void;
@@ -64,6 +105,8 @@ export default function BookingForm({
 
   const conversation = pref ?? defaultPref ?? 'either';
   const deadlineLeft = minutesUntil(slot.deadline_at, now);
+  const urgent = deadlineLeft <= URGENT_MIN;
+  const chips = alternatives.some((a) => a.id === slot.id) ? alternatives : [{ id: slot.id, start_at: slot.start_at, menu_name: slot.menu_name }, ...alternatives];
 
   async function pickPhoto(file: File | undefined) {
     if (!file) return;
@@ -111,113 +154,184 @@ export default function BookingForm({
     onBooked((data as { id: string }).id);
   }
 
-  return (
-    <div className="stack">
-      {unavailable && !busy && !booked && (
-        <p className="notice notice-error sheet-alert" role="alert">
-          {unavailable}
-        </p>
-      )}
-      <section className="ticket">
-        <p className="ticket-date">{fmtDate(slot.start_at)}（今日）</p>
-        <p className="ticket-time num">
-          {fmtTime(slot.start_at)}
-          <span>〜{fmtTime(slot.end_at)}</span>
-        </p>
-        <p className="ticket-left num">開始まで {fmtRemaining(minutesUntil(slot.start_at, now))}</p>
-        <dl className="ticket-dl">
-          <dt>お店</dt>
-          <dd>
-            {slot.salon_name}
-            <small>{slot.salon_address}</small>
-          </dd>
-          <dt>メニュー</dt>
-          <dd>
-            {slot.menu_name}
-            <small>所要 {slot.duration_min}分</small>
-          </dd>
-          <dt>当日価格</dt>
-          <dd className="ticket-price num">{fmtYen(slot.price)}</dd>
-        </dl>
-        {slot.lat !== undefined && slot.lng !== undefined && (
-          <a
-            className="btn btn-quiet btn-block ticket-map"
-            href={`https://www.google.com/maps/search/?api=1&query=${slot.lat},${slot.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            お店の場所を地図で見る
-          </a>
-        )}
-      </section>
+  const mapUrl = slot.lat !== undefined && slot.lng !== undefined ? `https://www.google.com/maps/search/?api=1&query=${slot.lat},${slot.lng}` : null;
 
-      <ul className="promise">
-        <li>
-          <strong>お支払いは店頭で</strong>
-          <span>アプリでのお支払いはありません。</span>
+  return (
+    <Stack gap={3}>
+      {unavailable && !busy && !booked && (
+        <div className={s.alert}>
+          <Notice tone="danger" role="alert">
+            {unavailable}
+          </Notice>
+        </div>
+      )}
+
+      <div className={s.when}>
+        <span className={s.start}>{fmtTime(slot.start_at)}</span>
+        <span className={`${s.end} num`}>〜{fmtTime(slot.end_at)}</span>
+        <span className={`${s.until} num`}>
+          <Timer size={20} aria-hidden focusable="false" />
+          {fmtDate(slot.start_at)}（今日）・開始まで {fmtRemaining(minutesUntil(slot.start_at, now))}
+        </span>
+      </div>
+
+      <ul className={s.sections}>
+        {/* ② お店・住所・徒歩 */}
+        <li className={s.section}>
+          <Storefront size={20} aria-hidden focusable="false" />
+          <h3 className={s.sectionTitle}>お店</h3>
+          <div className={`${s.sectionBody} ${s.placeRow}`}>
+            <div className={s.textStack}>
+              <span className={s.strong}>{slot.salon_name}</span>
+              <span className={s.sub}>
+                <span>
+                  <MapPin size={20} aria-hidden focusable="false" />
+                  {slot.salon_address}
+                </span>
+                {walk && (
+                  <span className="num">
+                    <PersonSimpleWalk size={20} aria-hidden focusable="false" />
+                    徒歩約{walk.min}分・{walk.label}
+                  </span>
+                )}
+              </span>
+              {condition && (
+                <span>
+                  <Label kind="condition">{condition}</Label>
+                </span>
+              )}
+            </div>
+            {mapUrl && (
+              <ButtonLink href={mapUrl} variant="secondary" icon={NavigationArrow} target="_blank" rel="noopener noreferrer" aria-label="お店の場所を地図で見る">
+                地図
+              </ButtonLink>
+            )}
+          </div>
         </li>
-        <li>
-          <strong>変更・キャンセルはお店へ直接お電話ください</strong>
-          <span>アプリからはキャンセルできません。</span>
+
+        {/* ③ 今日の空き（このお店） */}
+        <li className={s.section}>
+          <Clock size={20} aria-hidden focusable="false" />
+          <h3 className={s.sectionTitle}>今日の空き（このお店）</h3>
+          <div className={s.sectionBody}>
+            <ul className={s.chips} aria-label="このお店の今日の空き枠">
+              {chips.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className={s.chip}
+                    aria-pressed={c.id === slot.id}
+                    disabled={busy || booked || !onSwitch}
+                    onClick={() => c.id !== slot.id && onSwitch?.(c.id)}
+                    aria-label={`${fmtTime(c.start_at)} ${c.menu_name}${c.id === slot.id ? '（選んでいる枠）' : 'に切り替える'}`}
+                  >
+                    <span className={s.chipTime}>{fmtTime(c.start_at)}</span>
+                    <span className={s.chipMenu}>{c.menu_name.replace(/（.*?）/g, '')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </li>
-        <li className={deadlineLeft <= 5 ? 'is-urgent' : ''}>
-          <strong className="num">受付の締切 {fmtTime(slot.deadline_at)}</strong>
-          <span className="num">{deadlineLeft > 0 ? `あと${deadlineLeft}分で受付が終わります。` : 'まもなく受付が終わります。'}</span>
+
+        {/* ④ メニューと当日価格 */}
+        <li className={s.section}>
+          <Scissors size={20} aria-hidden focusable="false" />
+          <h3 className={s.sectionTitle}>メニュー</h3>
+          <div className={`${s.sectionBody} ${s.menuRow}`}>
+            <div className={s.textStack}>
+              <span className={s.strong}>{slot.menu_name}</span>
+              <span className={`${s.sub} num`}>所要 {slot.duration_min}分</span>
+            </div>
+            <Price value={slot.price} size="lg" />
+          </div>
+        </li>
+
+        {/* ⑤ 担当 */}
+        <li className={s.section}>
+          <User size={20} aria-hidden focusable="false" />
+          <h3 className={s.sectionTitle}>担当</h3>
+          <div className={s.sectionBody}>
+            <span className={s.sub}>{stylist ?? '指定なし（お店にお任せ）'}</span>
+          </div>
+        </li>
+
+        {/* ⑥ お店のルール */}
+        <li className={s.section}>
+          <ShieldCheck size={20} aria-hidden focusable="false" />
+          <h3 className={s.sectionTitle}>お店のルール</h3>
+          <ul className={`${s.sectionBody} ${s.rules}`}>
+            <li className={s.rule}>
+              <Wallet size={20} aria-hidden focusable="false" />
+              <span>
+                <strong>お支払いは店頭で</strong>（アプリでのお支払いはありません）
+              </span>
+            </li>
+            <li className={s.rule}>
+              <Phone size={20} aria-hidden focusable="false" />
+              <span>
+                <strong>変更・キャンセルはお店へ直接お電話ください</strong>（アプリからはキャンセルできません）
+              </span>
+            </li>
+            <li className={s.rule} data-urgent={urgent ? 'true' : undefined}>
+              <Hourglass size={20} weight={urgent ? 'duotone' : 'regular'} aria-hidden focusable="false" />
+              <span className="num">
+                <strong>受付の締切 {fmtTime(slot.deadline_at)}</strong>
+                {deadlineLeft > 0 ? `（あと${deadlineLeft}分で受付が終わります）` : '（まもなく受付が終わります）'}
+              </span>
+            </li>
+          </ul>
         </li>
       </ul>
 
-      <details className="card optional">
+      <details className={s.optional}>
         <summary>
-          <span>お店に伝えること（任意）</span>
+          <NotePencil size={20} aria-hidden focusable="false" />
+          お店に伝えること（任意）
           <small>写真1枚・メモ・会話の好み</small>
         </summary>
-        <div className="field">
-          <span className="field-label">なりたい髪型の写真（1枚）</span>
-          {photo ? (
-            <div className="photo-pick">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.url} alt="添える写真" />
-              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setPhoto(null)}>
-                外す
-              </button>
-            </div>
-          ) : (
-            <label className="btn btn-quiet btn-block">
-              写真を選ぶ
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(e.target.files?.[0])} />
-            </label>
+        <div className={s.optionalBody}>
+          <Field label="なりたい髪型の写真（1枚）" hint="この予約のお店だけが見られます（表示のたびに60秒で切れるリンクを使います）。">
+            {photo ? (
+              <div className={s.photoPick}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt="添える写真" />
+                <Button variant="quiet" onClick={() => setPhoto(null)}>
+                  外す
+                </Button>
+              </div>
+            ) : (
+              <label className={`${formClass.choice} ${s.pickButton}`}>
+                <Camera size={20} aria-hidden focusable="false" />
+                写真を選ぶ
+                <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(e.target.files?.[0])} />
+              </label>
+            )}
+          </Field>
+          {photo && (
+            <LabeledField label="写真へのメモ">
+              <Input maxLength={200} value={photoNote} onChange={(e) => setPhotoNote(e.target.value)} />
+            </LabeledField>
           )}
-          <span className="field-hint">この予約のお店だけが見られます（表示のたびに60秒で切れるリンクを使います）。</span>
-        </div>
-        {photo && (
-          <label className="field">
-            <span className="field-label">写真へのメモ</span>
-            <input className="input" maxLength={200} value={photoNote} onChange={(e) => setPhotoNote(e.target.value)} />
-          </label>
-        )}
-        <label className="field">
-          <span className="field-label">ご予約のメモ</span>
-          <textarea className="textarea" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
-          <span className="field-hint">例：前髪は短めにしたい</span>
-        </label>
-        <div className="field">
-          <span className="field-label">施術中の会話</span>
-          <div className="choice-row" role="group" aria-label="施術中の会話">
-            {CONVERSATION_PREFS.map((c) => (
-              <button type="button" key={c.value} className="choice" aria-pressed={conversation === c.value} onClick={() => setPref(c.value)}>
-                {c.label}
-              </button>
-            ))}
-          </div>
+          <LabeledField label="ご予約のメモ" hint="例：前髪は短めにしたい">
+            <Textarea maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} />
+          </LabeledField>
+          <Field label="施術中の会話">
+            <div className={formClass.choices} role="group" aria-label="施術中の会話">
+              {CONVERSATION_PREFS.map((c) => (
+                <button type="button" key={c.value} className={formClass.choice} aria-pressed={conversation === c.value} onClick={() => setPref(c.value)}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </Field>
         </div>
       </details>
 
-      <p className="fine-print">
-        お店には、お名前・電話番号・メールアドレス・カルテ・会話の好み・上の内容をお伝えします。性別・年代・職業・現在地はお伝えしません。
-      </p>
+      <Fine>お店には、お名前・電話番号・メールアドレス・カルテ・会話の好み・上の内容をお伝えします。性別・年代・職業・現在地はお伝えしません。</Fine>
 
       {error && (
-        <div className="notice notice-error" role="alert">
+        <Notice tone="danger" role="alert">
           {error.text}
           {error.code === 'has_active_booking' && activeBookingId && (
             <>
@@ -231,31 +345,35 @@ export default function BookingForm({
               <Link href={`/signup/complete?next=${encodeURIComponent(`/book/${slot.id}`)}`}>登録を仕上げる</Link>
             </>
           )}
-        </div>
+        </Notice>
       )}
-      {suspendedUntil && <p className="notice notice-error">{fmtDate(suspendedUntil)}から予約できます。</p>}
+      {suspendedUntil && (
+        <Notice tone="danger">
+          {fmtDate(suspendedUntil)} {fmtTime(suspendedUntil)}から予約できます。
+        </Notice>
+      )}
 
-      {profileMissing && !unavailable ? (
-        <div className="confirm-ctl">
-          <p className="notice notice-info">ご予約の前に、電話番号・18歳以上の確認など、登録の仕上げが必要です（1分ほどで終わります）。</p>
-          <Link className="btn btn-primary btn-lg btn-block" href={`/signup/complete?next=${encodeURIComponent(`/book/${slot.id}`)}`}>
-            登録を仕上げて予約へ進む
-          </Link>
-        </div>
-      ) : unavailable && !busy && !booked && onChooseOther ? (
-        <div className="confirm-ctl">
-          <button className="btn btn-primary btn-lg btn-block" onClick={onChooseOther}>
+      <div className={stickyConfirm ? s.confirm : undefined}>
+        {profileMissing && !unavailable ? (
+          <Stack gap={2}>
+            <Notice tone="info">ご予約の前に、電話番号・18歳以上の確認など、登録の仕上げが必要です（1分ほどで終わります）。</Notice>
+            <ButtonLink variant="primary" size="lg" block href={`/signup/complete?next=${encodeURIComponent(`/book/${slot.id}`)}`}>
+              登録を仕上げて予約へ進む
+            </ButtonLink>
+          </Stack>
+        ) : unavailable && !busy && !booked && onChooseOther ? (
+          <Button variant="primary" size="lg" block onClick={onChooseOther}>
             ほかの枠を選ぶ
-          </button>
-        </div>
-      ) : (
-        <SlideToConfirm
-          label="スライドして予約を確定"
-          busy={busy || booked}
-          disabled={!!suspendedUntil || deadlineLeft < 0 || (!!unavailable && !busy && !booked)}
-          onConfirm={confirm}
-        />
-      )}
-    </div>
+          </Button>
+        ) : (
+          <SlideToConfirm
+            label="スライドして予約を確定"
+            busy={busy || booked}
+            disabled={!!suspendedUntil || deadlineLeft < 0 || (!!unavailable && !busy && !booked)}
+            onConfirm={confirm}
+          />
+        )}
+      </div>
+    </Stack>
   );
 }

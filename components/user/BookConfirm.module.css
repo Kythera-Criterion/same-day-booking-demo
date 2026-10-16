@@ -1,0 +1,23 @@
+/* 予約の確認（単独のページ）：上にお店の写真 */
+
+.hero {
+  margin-inline: calc(-1 * var(--pad-page));
+}
+
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-shadow: var(--shadow-text-on-photo);
+}
+
+.captionTime {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.captionName {
+  font-size: var(--text-heading);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}

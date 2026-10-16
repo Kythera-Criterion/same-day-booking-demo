@@ -1,0 +1,59 @@
+/* 短い知らせ（浮いているので影を付ける） */
+
+.toast {
+  position: fixed;
+  inset-inline: 0;
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: min(var(--width-phone), calc(100% - var(--space-8)));
+  margin-inline: auto;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+  box-shadow: var(--shadow-float);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  animation: in var(--motion-base) var(--ease-out);
+}
+
+.top {
+  inset-block-start: var(--space-4);
+}
+
+.bottom {
+  inset-block-end: calc(var(--space-4) + env(safe-area-inset-bottom));
+}
+
+.action {
+  background: var(--color-action);
+  color: var(--color-action-ink);
+}
+
+.success {
+  background: var(--color-success-text);
+  color: var(--color-ink-on-strong);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.body small {
+  font-size: var(--text-caption);
+  opacity: 0.88;
+}
+
+@keyframes in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}

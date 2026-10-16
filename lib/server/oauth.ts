@@ -78,6 +78,8 @@ export function redirectUri(origin: string, id: ProviderId): string {
 // ---------------------------------------------------------
 export const FLOW_COOKIE = 'sdb_oauth_flow';
 export const FLOW_COOKIE_PATH = '/api/auth';
+// 失敗・期限切れのときの戻り先（手続きの Cookie が切れても、サロン・運営の人を利用者のログインへ戻さないため。1日だけ残す）
+export const BACK_COOKIE = 'sdb_oauth_back';
 const FLOW_TTL_MS = 10 * 60 * 1000;
 
 export type Flow = {

@@ -1,0 +1,89 @@
+/* 今日の枠と予約の一覧（時刻の順）：表の行は線で区切り、次の枠を太い左線で示す */
+
+.wrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--color-line-strong);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--color-line);
+  vertical-align: middle;
+}
+
+.table td small {
+  display: block;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--color-surface-sunken);
+}
+
+.past {
+  color: var(--color-ink-sub);
+}
+
+.next td:first-child {
+  box-shadow: inset var(--space-1) 0 0 var(--color-time);
+}
+
+.time {
+  font-family: var(--font-num);
+  font-size: var(--text-body);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.time span {
+  display: block;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-label);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.cellRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.no {
+  font-family: var(--font-num);
+  font-size: var(--text-body);
+  font-weight: var(--weight-heavy);
+}

@@ -1,0 +1,331 @@
+/* デモ用の舞台（/demo）：利用者（スマートフォン）・サロン（タブレット）・運営の3画面を並べる。画面録画にそのまま使う
+   淡い虹（左から右へ）に沈んだ面を半分重ねた上に、濃い縁の端末を置く。広い画面では横に3つ、狭くなると折り返す（運営は2段目に広く） */
+
+.stage {
+  /* 端末の大きさ：スマートフォンは縁を含めて 408px（中は 392px）、高さは画面の高さから操作の帯の分を引く */
+  --device-phone: calc(var(--width-phone) - var(--space-16) - var(--space-2));
+  --device-height: calc(100dvh - var(--space-16) * 2);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-block-size: 100dvh;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--stage-wash), var(--color-surface-sunken);
+}
+
+/* 上の帯：印・名前・注意のラベル／操作 */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.title {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.select > select {
+  inline-size: auto;
+  min-block-size: var(--tap-min);
+  font-size: var(--text-small);
+}
+
+.controls .check {
+  align-items: center;
+  padding-block: 0;
+  padding-inline-end: var(--space-2);
+}
+
+/* シナリオの進み具合：済んだ手順は成功の面と印、今の手順は役割の色で塗る */
+.scenario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.scenario li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--space-10);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  transition: background-color var(--motion-base) var(--ease-out), color var(--motion-base) var(--ease-out);
+}
+
+.scenario li[data-state="done"] {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.scenario li[data-state="now"] {
+  background: var(--color-action);
+  color: var(--color-action-ink);
+  font-weight: var(--weight-bold);
+}
+
+.scenario li[data-state="error"] {
+  padding-inline-start: var(--space-3);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+  font-weight: var(--weight-bold);
+}
+
+.stepNo {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-heavy);
+}
+
+.wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-16) var(--space-4);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+}
+
+/* 3つの端末 */
+.grid {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.device {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+}
+
+.phone {
+  flex: 0 0 min(100%, var(--device-phone));
+}
+
+.tablet,
+.desk {
+  flex: 1 1 calc(var(--width-dialog) * 3 / 4);
+}
+
+.device figcaption {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.device iframe {
+  display: block;
+  inline-size: 100%;
+  block-size: var(--device-height);
+  border: 0;
+  background: var(--color-bg);
+  transition: box-shadow var(--motion-base) var(--ease-out);
+}
+
+/* 端末の縁：スマートフォンとタブレットは濃い縁、運営（パソコン）は細い線 */
+.phone iframe,
+.tablet iframe {
+  border: var(--space-2) solid var(--color-surface-strong);
+  border-radius: var(--radius-surface);
+}
+
+.phone iframe {
+  max-block-size: calc(var(--device-phone) * 2 + var(--space-6));
+}
+
+.desk iframe {
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-surface);
+}
+
+/* シナリオで今動いている画面：役割の色の輪郭で示す */
+.device[data-focus="true"] iframe {
+  box-shadow: 0 0 0 var(--space-1) var(--color-action);
+}
+
+/* 同時予約チャレンジ（浮いているので影を付ける） */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--color-overlay);
+  animation: fade var(--motion-base) var(--ease-out);
+}
+
+.race {
+  inline-size: min(100%, calc(var(--width-dialog) + var(--space-10)));
+  max-block-size: 100%;
+  overflow-y: auto;
+  padding: var(--space-6);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
+  animation: rise var(--motion-long) var(--ease-out);
+}
+
+.raceTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.raceTitle > svg {
+  color: var(--color-action-text);
+}
+
+.raceSub {
+  margin-block: var(--space-1) var(--space-4);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.raceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+  list-style: none;
+}
+
+@media (min-width: 720px) {
+  .raceGrid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--space-3);
+  }
+}
+
+.raceGrid li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  text-align: center;
+  transition: background-color var(--motion-base) var(--ease-out);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-12);
+  block-size: var(--space-12);
+  border-radius: 50%;
+  background: var(--color-line-strong);
+  color: var(--color-ink);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+}
+
+.raceName {
+  color: var(--color-ink);
+  font-size: var(--text-caption);
+}
+
+.raceResult {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.raceGrid li[data-state="wait"] .avatar {
+  animation: pulse calc(var(--motion-long) * 2) var(--ease-in-out) infinite alternate;
+}
+
+/* 予約が成立した1人：成功の面と輪郭・塗った印 */
+.raceGrid li[data-state="win"] {
+  background: var(--color-success-soft);
+  box-shadow: inset 0 0 0 2px var(--color-success);
+}
+
+.raceGrid li[data-state="win"] .avatar {
+  background: var(--color-success);
+  color: var(--color-ink-on-strong);
+}
+
+.raceGrid li[data-state="win"] .raceResult {
+  color: var(--color-success-text);
+}
+
+.raceGrid li[data-state="lose"] .avatar {
+  background: var(--color-line);
+  color: var(--color-ink-sub);
+}
+
+.raceWhy {
+  margin-block-end: var(--space-4);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-6));
+  }
+}

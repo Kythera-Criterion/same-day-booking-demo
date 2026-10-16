@@ -5,15 +5,20 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useState } from 'react';
+import Button from '@/components/ui/Button';
+import { Pair } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead } from '@/components/ui/Surface';
+import { ArrowLeft, ArrowRight, Check as CheckMark, CheckCircle, ClipboardText } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
 import SalonSettings from './SalonSettings';
 import type { Menu, SalonInfo, Stylist } from './useSalonData';
-import styles from './Onboarding.module.css';
+import ob from './Onboarding.module.css';
 
 const STEPS = [
-  { title: 'メニューと当日価格', note: '当日価格と、開始の何分前まで予約を受けるかを決めます。1つ以上登録してください。' },
-  { title: '担当の名前', note: '担当を指定しない場合は、そのまま次へ進めます。' },
-  { title: 'お店の場所と連絡先', note: '位置は、お客様の画面の距離に使います。受け付ける性別と LINE の連絡先もここで決めます（LINE はデモでは空のままで動きます）。' },
+  { title: 'メニューと価格・受付の締切', note: '当日価格と、開始の何分前まで予約を受けるかを決めます。1つ以上登録してください。' },
+  { title: '担当', note: '担当を指定しない場合は、そのまま次へ進めます。' },
+  { title: 'お店の場所・受け付ける性別・LINE の連絡先', note: 'お店の住所と位置（必須）は、利用者の画面の地図と距離に使います。LINE の連絡用グループは、デモでは空のままで動きます。設定を終えると、運営にもお知らせが届きます。' },
 ];
 
 export default function Onboarding({
@@ -36,6 +41,10 @@ export default function Onboarding({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const current = Math.min(step, 2);
+  // 設定を終えるには、受付中のメニューと、お店の場所（住所）が必要（終えると、運営に「新しいサロンが加わりました」と知らせる）
+  const hasMenu = menus.some((m) => m.is_active);
+  const hasPlace = salon.address.trim() !== '';
+  const blocked = (current === 0 && !hasMenu) || (current === 2 && (!hasMenu || !hasPlace));
 
   async function go(next: number) {
     setBusy(true);
@@ -47,46 +56,60 @@ export default function Onboarding({
   }
 
   return (
-    <div className="stack onboarding">
-      <section className={styles.intro} aria-labelledby="onb-title">
-        <p className={styles.kicker}>はじめの設定 {current + 1} / {STEPS.length}</p>
-        <h1 id="onb-title" className={styles.title}>
-          {STEPS[current].title}
-        </h1>
-        <p className={styles.note}>{STEPS[current].note}</p>
-        <ol className={styles.dots} aria-label="設定の進み具合（途中でやめても、次回は続きから始まります）">
+    <div className={ob.wrap} data-onboarding="">
+      <Panel className={ob.intro}>
+        <SectionHead icon={ClipboardText} title="はじめに、3つだけ設定してください" />
+        <ol className={ob.steps} data-onboarding-steps="">
           {STEPS.map((s, i) => {
-            const state = i < current ? 'done' : i === current ? 'now' : 'todo';
+            const state = i < current ? 'done' : i === current ? 'now' : undefined;
             return (
-              <li key={s.title} className={styles.dot} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
-                <span className={styles.dotLabel}>
-                  {i + 1}. {s.title}
-                  {state === 'done' ? '（済み）' : ''}
+              <li key={s.title} className={ob.step} data-state={state} aria-current={i === current ? 'step' : undefined}>
+                <span className={ob.no}>
+                  {i < current ? <CheckMark size={20} weight="bold" aria-hidden focusable="false" /> : i + 1}
+                </span>
+                <span>
+                  {s.title}
+                  {i < current && <span className="sr-only">（済み）</span>}
                 </span>
               </li>
             );
           })}
         </ol>
-      </section>
+        <p className={ob.note}>{STEPS[current].note} 途中でやめても、次回は続きから始まります。</p>
+      </Panel>
 
-      <SalonSettings
-        client={client}
-        salon={salon}
-        menus={menus}
-        stylists={stylists}
-        lineGroup={lineGroup}
-        onSaved={onSaved}
-        only={current === 0 ? 'menus' : current === 1 ? 'stylists' : 'contact'}
-      />
+      <div className={ob.main}>
+        <SalonSettings
+          client={client}
+          salon={salon}
+          menus={menus}
+          stylists={stylists}
+          lineGroup={lineGroup}
+          onSaved={onSaved}
+          only={current === 0 ? 'menus' : current === 1 ? 'stylists' : 'contact'}
+        />
 
-      {error && <p className="notice notice-error">{error}</p>}
-      <div className="action-pair">
-        <button className="btn btn-quiet" disabled={busy || current === 0} onClick={() => go(current - 1)}>
-          戻る
-        </button>
-        <button className="btn btn-primary" disabled={busy || (current === 0 && menus.filter((m) => m.is_active).length === 0)} onClick={() => go(current + 1)}>
-          {current === 2 ? '設定を終えて始める' : '次へ'}
-        </button>
+        {current === 2 && !hasPlace && (
+          <Notice tone="info" role="status">
+            上の「お店の情報と場所」で住所と位置を保存すると、設定を終えられます（利用者の画面の地図と距離に使います）。
+          </Notice>
+        )}
+        {error && <Notice tone="danger">{error}</Notice>}
+        <Pair>
+          <Button variant="quiet" size="lg" icon={ArrowLeft} disabled={busy || current === 0} onClick={() => go(current - 1)}>
+            戻る
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={current === 2 ? CheckCircle : undefined}
+            iconEnd={current === 2 ? undefined : ArrowRight}
+            disabled={busy || blocked}
+            onClick={() => go(current + 1)}
+          >
+            {current === 2 ? '設定を終えて始める' : '次へ'}
+          </Button>
+        </Pair>
       </div>
     </div>
   );

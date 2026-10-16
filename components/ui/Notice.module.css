@@ -1,0 +1,78 @@
+/* お知らせ：背景の色の差で分け、左にアイコンを置く（色だけに頼らない） */
+
+.notice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4) var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.plain {
+  grid-template-columns: 1fr;
+}
+
+.notice > svg {
+  margin-block-start: 1px;
+}
+
+.body {
+  min-inline-size: 0;
+}
+
+.body a {
+  color: inherit;
+  font-weight: var(--weight-bold);
+}
+
+.body strong {
+  font-weight: var(--weight-bold);
+}
+
+.info {
+  background: var(--color-info-soft);
+  color: var(--color-info-text);
+}
+
+.success {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.time {
+  background: var(--color-time-soft);
+  color: var(--color-time-text);
+}
+
+.neutral {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+}
+
+/* 落ち着いた1本の帯（ホームの「実証実験中」など）：細い線で区切るだけ */
+.band {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border-block: 1px solid var(--color-line);
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-label);
+}
+
+.band strong {
+  color: var(--color-ink);
+  font-weight: var(--weight-bold);
+}

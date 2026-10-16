@@ -1,0 +1,267 @@
+/* グラフ：控えめな目盛りの上に細い棒。系列は塗り（予約）と、淡い面＋線（公開した枠）で見分ける。
+   文字はすべて文字の色（系列の色は使わない）。数値の表を必ず添える */
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.title > svg {
+  flex: none;
+  color: var(--color-action-text);
+}
+
+/* 凡例：見本（塗り／線）＋名前 */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  list-style: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  inline-size: var(--space-3);
+  block-size: var(--space-3);
+}
+
+.swatchPrimary {
+  background: var(--color-action);
+}
+
+.swatchSecondary {
+  border: 2px solid var(--color-ink-2);
+  background: var(--color-surface-sunken);
+}
+
+/* 描く場所 */
+.plot {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.svg {
+  display: block;
+  max-inline-size: 100%;
+  block-size: auto;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--color-line);
+  stroke-width: 1;
+}
+
+.baseline {
+  stroke: var(--color-line-strong);
+  stroke-width: 1;
+}
+
+.axis {
+  fill: var(--color-ink-sub);
+  font-family: var(--font-num);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.hoverBand {
+  fill: var(--color-surface-sunken);
+}
+
+.markPrimary {
+  fill: var(--color-action);
+}
+
+.markSecondary {
+  fill: var(--color-surface-sunken);
+  stroke: var(--color-ink-2);
+  stroke-width: 1.5;
+}
+
+/* ツールチップ（浮いているので影を付ける） */
+.tip {
+  position: absolute;
+  inset-block-start: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-strong);
+  box-shadow: var(--shadow-float);
+  color: var(--color-ink-on-strong);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.tip span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tip b {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-2);
+  font-weight: var(--weight-bold);
+}
+
+/* 線の見本は、濃い面の上でも見えるよう面を白く */
+.tip .swatchSecondary {
+  background: var(--color-surface);
+}
+
+.note {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+/* 数値の表 */
+.tableBox {
+  margin-block-end: calc(-1 * var(--space-2));
+  border-block-start: 1px solid var(--color-line);
+}
+
+.tableToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  color: var(--color-action-text);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tableToggle::-webkit-details-marker {
+  display: none;
+}
+
+.tableToggle:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--color-line-strong);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--color-line);
+}
+
+.table .numCell {
+  text-align: end;
+}
+
+/* 横棒の一覧 */
+.barlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.barlist li {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space-16) + var(--space-6)), 34%) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.barLabel {
+  min-inline-size: 0;
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.barLabel small {
+  display: block;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.track {
+  display: block;
+  block-size: var(--space-3);
+  background: var(--color-surface-sunken);
+}
+
+.bar {
+  display: block;
+  block-size: 100%;
+  min-inline-size: 2px;
+  border-start-end-radius: calc(var(--radius-label) * 2 / 3);
+  border-end-end-radius: calc(var(--radius-label) * 2 / 3);
+  transition: inline-size var(--motion-long) var(--ease-out);
+}
+
+.barPrimary {
+  background: var(--color-action);
+}
+
+.barSecondary {
+  border: 2px solid var(--color-ink-2);
+  background: var(--color-surface-sunken);
+}
+
+.barValue {
+  min-inline-size: var(--space-10);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  text-align: end;
+}
+
+.barValue small {
+  margin-inline-start: 2px;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}

@@ -1,0 +1,39 @@
+/* 価格：ラベルにせず、太い数字と小さな「当日価格」で見せる。色は付けない */
+
+.price {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--color-price);
+}
+
+.caption {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-sub);
+  letter-spacing: var(--tracking-label);
+}
+
+.value {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-heavy);
+  font-size: var(--text-title);
+  line-height: 1;
+  letter-spacing: var(--tracking-num);
+}
+
+.yen {
+  margin-inline-end: 1px;
+  font-size: 0.7em;
+  font-weight: var(--weight-bold);
+}
+
+.lg .value {
+  font-size: var(--text-heading);
+}
+
+.start {
+  align-items: flex-start;
+}

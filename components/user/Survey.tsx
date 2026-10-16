@@ -5,6 +5,13 @@
 import { useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { toMessage } from '@/lib/errors';
+import Button from '@/components/ui/Button';
+import { formClass } from '@/components/ui/Form';
+import { Pair } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ChatCircle } from '@/components/ui/icons';
+import st from './Survey.module.css';
 
 type Question = { id: string; body: string; choices: string[] };
 
@@ -57,22 +64,22 @@ export default function Survey({ client, bookingId }: { client: SupabaseClient; 
 
   if (state === 'skipped' || !questions || questions.length === 0) return null;
   if (state === 'done') {
-    return <p className="notice notice-ok fade-in">ご協力ありがとうございました。</p>;
+    return <Notice tone="success">ご協力ありがとうございました。</Notice>;
   }
 
   return (
-    <section className="card survey fade-in" aria-label="アンケート">
-      <p className="card-title">よろしければ、2つだけ教えてください</p>
-      <p className="card-sub">任意です。お店には伝わりません。サービスの改善だけに使います。</p>
+    <Panel aria-label="アンケート" data-survey="">
+      <SectionHead icon={ChatCircle} title="よろしければ、2つだけ教えてください" as="p" />
+      <SubText>任意です。お店には伝わりません。サービスの改善だけに使います。</SubText>
       {questions.map((q) => (
-        <fieldset key={q.id} className="survey-q">
+        <fieldset key={q.id} className={st.q}>
           <legend>{q.body}</legend>
-          <div className="chips">
+          <div className={formClass.choices}>
             {q.choices.map((c) => (
               <button
                 key={c}
                 type="button"
-                className={`chip ${answers[q.id] === c ? 'chip-on' : ''}`}
+                className={formClass.choice}
                 aria-pressed={answers[q.id] === c}
                 onClick={() => setAnswers((a) => ({ ...a, [q.id]: c }))}
               >
@@ -82,15 +89,15 @@ export default function Survey({ client, bookingId }: { client: SupabaseClient; 
           </div>
         </fieldset>
       ))}
-      {error && <p className="notice notice-error">{error}</p>}
-      <div className="action-pair">
-        <button className="btn btn-quiet" onClick={() => close('skipped')}>
+      {error && <Notice tone="danger">{error}</Notice>}
+      <Pair>
+        <Button variant="quiet" size="md" onClick={() => close('skipped')}>
           答えない
-        </button>
-        <button className="btn btn-primary" disabled={Object.keys(answers).length === 0 || state === 'sending'} onClick={submit}>
+        </Button>
+        <Button variant="primary" size="md" disabled={Object.keys(answers).length === 0 || state === 'sending'} onClick={submit}>
           {state === 'sending' ? '送信中…' : '送信する'}
-        </button>
-      </div>
-    </section>
+        </Button>
+      </Pair>
+    </Panel>
   );
 }

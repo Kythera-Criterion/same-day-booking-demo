@@ -7,5 +7,5 @@ export const dynamic = 'force-dynamic';
 
 export default async function SalonSignupPage({ searchParams }: { searchParams: Promise<{ auth_error?: string }> }) {
   const { auth_error } = await searchParams;
-  return <SalonSignup providers={providerStates()} authError={auth_error ?? null} />;
+  return <SalonSignup providers={providerStates()} authError={auth_error ?? null} demoMode={process.env.DEMO_MODE === 'true'} />;
 }

@@ -1,12 +1,11 @@
 'use client';
 
 // サロンの画面
-//   営業の始めに「通知音をオンにして始める」→ 予約が入ると画面全体の点滅と音で知らせ、どこを押しても確認・詳細が開く
+//   営業の始めに「通知音をオンにして始める」→ 予約が入ると画面全体を覆う知らせ（点滅なし）と音で知らせ、どこを押しても確認・詳細が開く
 //   今日の成果・来店の記録漏れ・「今日はここまで」・担当ごとの帯（タブレット横向き）／縦のタイムライン（スマートフォン）
 //   空いた時間を伝えると枠に切り分けて出せる。初めてのときは3ステップの初期設定
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import AppHeader, { RoleIntro } from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
@@ -15,22 +14,45 @@ import { logout } from '@/lib/logout';
 import AccountSecurity from '@/components/auth/AccountSecurity';
 import type { Providers } from '@/lib/oauth-shared';
 import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Check, Field, Segmented, Select } from '@/components/ui/Form';
+import Label from '@/components/ui/Label';
+import { Fine, Page, Pair, ScreenTitle, Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import ToastBar from '@/components/ui/Toast';
+import {
+  ArrowCounterClockwise,
+  BellRinging,
+  CalendarCheck,
+  Clock,
+  Gear,
+  HourglassMedium,
+  PauseCircle,
+  Plus,
+  Prohibit,
+  SealCheck,
+  SignOut,
+  Sparkle,
+  Storefront,
+} from '@/components/ui/icons';
 import { one, useRoleSession } from '@/lib/supabase';
 import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
 import { askNotificationPermission, browserNotify, notificationPermission } from '@/lib/alerts';
 import { toMessage } from '@/lib/errors';
 import { UI_OPTIONS } from '@/lib/ui-options';
-import { fmtTime, fmtYen } from '@/lib/time';
+import { fmtTime, fmtYen, jstDateKey } from '@/lib/time';
 import { keepScreenOn, rekeepOnVisible, wakeLockSupported } from '@/lib/wakelock';
 import { AlertGate, NewBookingAlert, type IncomingBooking } from './Alerts';
 import Onboarding from './Onboarding';
-import styles from './SalonApp.module.css';
 import PublishSheet, { publishFree, publishOffsets, type PublishResult } from './PublishSheet';
 import SalonSettings from './SalonSettings';
 import SlotPanel from './SlotPanel';
 import SlotList from './SlotList';
 import StaffBands from './StaffBands';
 import Timeline from './Timeline';
+import { FreshMark, StateLegend } from './SlotStateMark';
+import sa from './SalonApp.module.css';
 import { activeBooking, useSalonData, type Preset, type SalonSlot } from './useSalonData';
 
 const DEMO_ACCOUNTS = [
@@ -55,7 +77,6 @@ export default function SalonApp({
   linked,
   initialTab = 'today',
   loggedOut = false,
-  previewIncoming = false,
 }: {
   demoMode: boolean;
   providers: Providers;
@@ -63,20 +84,18 @@ export default function SalonApp({
   linked?: string | null;
   initialTab?: 'today' | 'settings';
   loggedOut?: boolean;
-  previewIncoming?: boolean;
 }) {
   const { client, session, ready, signedOut } = useRoleSession('salon');
-  const { salon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
+  const { salon, salons, selectSalon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
   const [tab, setTab] = useState<'today' | 'settings'>(initialTab);
-  const [sheet, setSheet] = useState<{ start: Date | null; stylistId: string | null } | null>(null);
+  const [sheet, setSheetState] = useState<{ start: Date | null; stylistId: string | null; openedAt: Date } | null>(null);
+  const setSheet = useCallback(
+    (v: { start: Date | null; stylistId: string | null } | null) => setSheetState(v ? { ...v, openedAt: new Date() } : null),
+    [],
+  );
   const [selected, setSelected] = useState<SalonSlot | null>(null);
   const [freshIds, setFreshIds] = useState<string[]>([]);
-  // デモの見本表示（DEMO_MODE のときだけ。予約の知らせの見た目を確かめる）
-  const [incoming, setIncoming] = useState<IncomingBooking[]>(() =>
-    demoMode && previewIncoming
-      ? [{ bookingId: 'preview', slotId: 'preview', name: '見本 花子', startAt: new Date(Date.now() + 45 * 60_000).toISOString(), menu: 'カット', bookingNo: 12 }]
-      : [],
-  );
+  const [incoming, setIncoming] = useState<IncomingBooking[]>([]);
   const [started, setStarted] = useState(false);
   const [wake, setWake] = useState<'idle' | 'on' | 'unsupported'>('idle');
   const [confirmPause, setConfirmPause] = useState(false);
@@ -85,6 +104,9 @@ export default function SalonApp({
   const [now, setNow] = useState(() => new Date());
   const [view, setView] = useState<'chart' | 'list'>('chart');
   const [showEnded, setShowEnded] = useState(false);
+  const [presetBusy, setPresetBusy] = useState<string | null>(null);
+  // お店がまだないアカウントの、いちばん新しい掲載の申し込み（運営の確認待ちかどうか）
+  const [myApp, setMyApp] = useState<{ status: string; salon_name: string } | null>(null);
 
   useDispatchTicker(client, !!salon);
 
@@ -92,7 +114,7 @@ export default function SalonApp({
   useEffect(() => {
     if (!signedOut || session) return;
     setTab('today');
-    setSheet(null);
+    setSheetState(null);
     setSelected(null);
     setIncoming([]);
     setConfirmPause(false);
@@ -127,17 +149,19 @@ export default function SalonApp({
   }, []);
 
   // 予約が入った瞬間（Realtime）：画面全体の点滅・繰り返しの音・振動・ブラウザ通知
+  const salonId = salon?.id ?? null;
   useEffect(() => {
-    if (!client || !salon) return;
+    if (!client || !salonId) return;
     const channel = client
-      .channel(`salon-live-${salon.id}`)
+      .channel(`salon-live-${salonId}-${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'bookings' }, async (payload) => {
         const row = payload.new as { id: string; contact_name: string; slot_id: string; booking_no: number | null; status: string };
         if (row.status !== 'confirmed') return;
+        const { data: slotRow } = await client.from('slots').select('salon_id,start_at,menus(name)').eq('id', row.slot_id).maybeSingle();
+        if (!slotRow || slotRow.salon_id !== salonId) return;
         setFreshIds((ids) => [...ids, row.id]);
         loadSlots();
-        const { data: slotRow } = await client.from('slots').select('start_at,menus(name)').eq('id', row.slot_id).maybeSingle();
-        const slot = slotRow ? { start_at: slotRow.start_at as string, menu: one(slotRow.menus as { name: string } | { name: string }[] | null) } : null;
+        const slot = { start_at: slotRow.start_at as string, menu: one(slotRow.menus as { name: string } | { name: string }[] | null) };
         setIncoming((list) => [
           ...list,
           {
@@ -157,7 +181,21 @@ export default function SalonApp({
     return () => {
       client.removeChannel(channel);
     };
-  }, [client, salon, loadSlots]);
+  }, [client, salonId, loadSlots]);
+
+  useEffect(() => {
+    if (!client || !session || salon !== null) {
+      setMyApp(null);
+      return;
+    }
+    client.rpc('my_salon_application').then(({ data }) => setMyApp(((data as { status: string; salon_name: string }[] | null) ?? [])[0] ?? null));
+  }, [client, session, salon]);
+
+  // 日付が変わったら（画面を開いたまま0時を過ぎたら）、今日の枠を読み直す
+  const today = jstDateKey(now);
+  useEffect(() => {
+    loadSlots();
+  }, [today, loadSlots]);
 
   // 開いている枠・予約の内容を最新に保つ
   useEffect(() => {
@@ -189,14 +227,19 @@ export default function SalonApp({
   }
 
   async function quickPreset(p: Preset) {
-    if (!client) return;
-    const menu = menus.find((m) => m.id === p.menu_id);
+    if (!client || presetBusy) return;
+    const menu = menus.find((m) => m.id === p.menu_id && m.is_active);
     if (!menu) return;
-    reportPublish(
-      p.kind === 'free' && p.free_minutes
-        ? await publishFree(client, menu, p.stylist_id, p.free_minutes)
-        : await publishOffsets(client, menu, p.stylist_id, p.offsets_min),
-    );
+    setPresetBusy(p.id);
+    try {
+      reportPublish(
+        p.kind === 'free' && p.free_minutes
+          ? await publishFree(client, menu, p.stylist_id, p.free_minutes)
+          : await publishOffsets(client, menu, p.stylist_id, p.offsets_min),
+      );
+    } finally {
+      setPresetBusy(null);
+    }
   }
 
   async function pauseToday() {
@@ -264,31 +307,36 @@ export default function SalonApp({
   const visibleSlots = showEnded ? list : list.filter((s) => !isEnded(s));
 
   // 掲載中でなければ、枠は出せない（審査中・見送り・運営が掲載を止めている）
-  const canPublish = listing === null || listing === 'listed';
+  const canPublish = listing === 'listed';
+  // いつもの枠は、使えるメニュー・担当のものだけを出す（止めたメニュー・担当のものは押しても出せないため）
+  const usablePresets = presets.filter(
+    (p) => menus.some((m) => m.id === p.menu_id && m.is_active) && (p.stylist_id === null || stylists.some((x) => x.id === p.stylist_id && x.is_active)),
+  );
   const listingBanner =
     listing === 'reviewing' ? (
-      <div className="notice notice-info suspended-banner" role="status">
+      <Notice tone="info" role="status" icon={HourglassMedium}>
         <strong>掲載の審査中です。</strong>
         運営が承認すると、掲載が始まり、メールでお知らせします。承認までの間も、メニュー・担当・お店の場所などの設定は進められます（枠の公開は承認のあとにできます）。
-      </div>
+      </Notice>
     ) : listing === 'rejected' ? (
-      <div className="notice notice-error suspended-banner" role="alert">
+      <Notice tone="danger" role="alert">
         <strong>今回は掲載を見送らせていただきました。</strong>
         詳しくは、お送りしたメールをご確認ください。ご不明な点は運営事務局へお問い合わせください。
-      </div>
+      </Notice>
     ) : listing === 'suspended' ? (
-      <div className="notice notice-error suspended-banner" role="alert">
+      <Notice tone="danger" role="alert" icon={Prohibit}>
         <strong>現在、掲載が止められています。</strong>
         公開中だった枠は取り下げられ、利用者の画面には表示されません。入っている予約はそのままです。再開については運営事務局へお問い合わせください。
-      </div>
+      </Notice>
     ) : null;
 
   return (
     // ログイン・登録の案内は、利用者の画面と同じスマートフォンの幅にそろえる（営業中の画面だけ広く使う）
-    <main className={!session || salon === null ? 'app' : 'app app-salon'}>
+    <Page width={!session || salon === null ? 'phone' : 'wide'} bar={!!salon && !onboarding}>
       <AppHeader role="サロン" home="/salon">
         {session && (
           <button onClick={() => logout('salon')} aria-label="ログアウト">
+            <SignOut size={20} aria-hidden focusable="false" />
             ログアウト
           </button>
         )}
@@ -308,11 +356,11 @@ export default function SalonApp({
             resendRole="salon"
             social={hasAnyProvider(providers) ? <SocialButtons providers={providers} role="salon" mode="login" next="/salon" back="/salon" /> : null}
             footer={
-              <div className="signup-cta">
+              <div className={sa.signupCta}>
                 <p>はじめて掲載するお店</p>
-                <Link className="btn btn-secondary btn-block" href="/salon/signup">
+                <ButtonLink variant="secondary" size="md" block href="/salon/signup" icon={Storefront}>
                   新規登録（掲載のお申し込み）
-                </Link>
+                </ButtonLink>
               </div>
             }
           />
@@ -320,21 +368,61 @@ export default function SalonApp({
       )}
       {error && <ErrorState onRetry={loadSalon}>{error}</ErrorState>}
       {session && salon === undefined && !error && <Loading rows={3} />}
-      {session && salon === null && (
-        <div className="card">
-          <p className="card-title">お店の情報がまだ登録されていません</p>
-          <p className="card-sub">
-            このアカウント（<span className="break">{session.user.email}</span>）は、まだどのお店にも紐づいていません。新しく掲載する場合は、お店の情報を登録してください。すでに掲載しているお店のスタッフとして使う場合は、運営事務局へご連絡ください。
-          </p>
-          <Link className="btn btn-primary btn-block" href="/salon/signup">
-            お店の情報を登録する
-          </Link>
-        </div>
+      {session && salon === null && myApp?.status === 'pending' && (
+        <Panel>
+          <SectionHead icon={HourglassMedium} title="運営の確認待ちです" as="p" />
+          <SubText>
+            「{myApp.salon_name}」のお申し込みを受け付けています。運営が確認したあと、<span className="break">{session.user.email}</span> に確認のリンクをお送りします。リンクを開くと、このサロンの画面でメニュー・担当・お店の場所などを設定できます。
+          </SubText>
+        </Panel>
+      )}
+      {session && salon === null && myApp?.status !== 'pending' && (
+        <Panel>
+          <Stack gap={3}>
+            {myApp?.status === 'rejected' && <Notice tone="info">前回のお申し込み（{myApp.salon_name}）は、掲載を見送らせていただきました。</Notice>}
+            <SectionHead icon={Storefront} title="お店の情報がまだ登録されていません" as="p" />
+            <SubText>
+              このアカウント（<span className="break">{session.user.email}</span>）は、まだどのお店にも紐づいていません。新しく掲載する場合は、掲載を申し込んでください（運営が確認したあと、確認のリンクをお送りします）。すでに掲載しているお店のスタッフとして使う場合は、運営事務局へご連絡ください。
+            </SubText>
+            <ButtonLink variant="primary" size="md" block href="/salon/signup">
+              掲載を申し込む
+            </ButtonLink>
+          </Stack>
+        </Panel>
       )}
 
+      {salon && salons.length > 1 && (
+        <div className={sa.switch}>
+          <Field id="salon-switch" label={`表示中のお店（${salons.length}店舗）`}>
+            <Select
+              id="salon-switch"
+              value={salon.id}
+              onChange={(e) => {
+                setSelected(null);
+                setSheet(null);
+                setIncoming([]);
+                setFreshIds([]);
+                setConfirmPause(false);
+                selectSalon(e.target.value);
+              }}
+            >
+              {salons.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                  {x.is_approved ? '' : '（審査中・停止中）'}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <ButtonLink href="/salon/signup" variant="text" icon={Plus}>
+            別のお店を申し込む
+          </ButtonLink>
+        </div>
+      )}
       {salon && onboarding && listingBanner}
       {salon && onboarding && (
         <Onboarding
+          key={salon.id}
           client={client}
           salon={salon}
           menus={menus}
@@ -347,163 +435,173 @@ export default function SalonApp({
 
       {salon && !onboarding && (
         <>
-          <div className="salon-head">
-            <h1 className="screen-title salon-title">{salon.name}</h1>
-            {tab === 'today' && (openCount > 0 || pausedFuture > 0) && (
-              <div className="pause-ctl">
-                {/* 受付中／今日はここまで：押すと切り替わる（受付を止めるときは確認する） */}
-                <button
-                  type="button"
-                  className={styles.status}
-                  data-state={openCount > 0 ? 'open' : 'paused'}
-                  onClick={() => (openCount > 0 ? setConfirmPause(true) : resumeToday())}
-                >
-                  <span className={styles.knob} aria-hidden>
-                    {openCount > 0 ? '●' : 'Ⅱ'}
-                  </span>
-                  {openCount > 0 ? '受付中' : '今日はここまで'}
-                  <span className={`${styles.statusSub} num`}>{openCount > 0 ? `${openCount}枠` : `${pausedFuture}枠を止め中`}</span>
-                  <span className="sr-only">{openCount > 0 ? '。押すと今日の受付を止めます' : '。押すと受付を再開します'}</span>
-                </button>
-                {openCount > 0 && pausedFuture > 0 && (
-                  <button className="btn btn-text btn-sm" onClick={resumeToday}>
-                    止めた枠を戻す（{pausedFuture}）
-                  </button>
+          <div className={sa.head} data-salon-head="">
+            <h1 className={sa.title}>
+              <Storefront size={24} weight="duotone" aria-hidden focusable="false" />
+              {salon.name}
+            </h1>
+            {tab === 'today' && canPublish && (openCount > 0 || pausedFuture > 0) && (
+              <div className={sa.pause}>
+                {openCount > 0 && (
+                  <Button variant="secondary" icon={PauseCircle} onClick={() => setConfirmPause(true)}>
+                    今日はここまで
+                  </Button>
+                )}
+                {pausedFuture > 0 && (
+                  <Button variant="quiet" icon={ArrowCounterClockwise} onClick={resumeToday}>
+                    元に戻す（{pausedFuture}枠）
+                  </Button>
                 )}
               </div>
             )}
           </div>
 
-          {tab === 'today' && overdue.length > 0 && (
-            <section className={styles.overdue} role="alert">
-              <div className={styles.overdueHead}>
-                <p className={styles.overdueTitle}>来店の記録がまだです（{overdue.length}件）</p>
-                <p className={styles.overdueSub}>開始から{UI_OPTIONS.overdueMinutes}分以上</p>
-              </div>
-              <ul className={styles.overdueList}>
-                {overdue.map((s) => {
-                  const b = activeBooking(s)!;
-                  return (
-                    <li key={s.id} className={styles.overdueItem}>
-                      <span className={`${styles.overdueWho} num`}>
-                        {fmtTime(s.start_at)} {b.contact_name} 様{UI_OPTIONS.showBookingNo && b.booking_no !== null && `（${b.booking_no}）`}
-                      </span>
-                      <span className={styles.overdueActions}>
-                        <button className="btn btn-primary btn-sm" onClick={() => record(b.id, 'complete')}>
-                          来店済み
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => record(b.id, 'no_show')}>
-                          無断キャンセル
-                        </button>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          {listingBanner}
-          {!started && <AlertGate wake={wake} onStart={start} />}
-          {started && wake === 'unsupported' && (
-            <p className="notice notice-info">この端末では、画面が自動で消えるのを止められません。端末の設定で、自動ロックを長めにしてください。</p>
-          )}
+          <Stack gap={3}>
+            {listingBanner}
+            {!started && <AlertGate wake={wake} onStart={start} />}
+            {started && wake === 'unsupported' && (
+              <Notice tone="info">この端末では、画面が自動で消えるのを止められません。端末の設定で、自動ロックを長めにしてください。</Notice>
+            )}
+          </Stack>
 
           {tab === 'today' && (
-            <div className="salon-grid">
-              <div className="stack">
+            <div className={sa.grid}>
+              <Stack gap={3}>
                 {UI_OPTIONS.salonAchievement && (
-                  <section className="achieve" aria-label="今日の成果">
-                    <p className="achieve-label">今日、空き時間から生まれた予約</p>
-                    <p className="achieve-main num">
-                      <strong>{achievement.count}</strong>件
-                      <span className="achieve-sep">・</span>
-                      <strong>{hm(achievement.minutes)}</strong>
-                      <span className="achieve-sep">・</span>
-                      <strong>{fmtYen(achievement.yen)}</strong>
-                      <small>（来店済みの合計）</small>
+                  <section className={sa.metrics} aria-label="今日の成果">
+                    <p className={sa.metricsTitle}>
+                      <Sparkle size={20} weight="duotone" aria-hidden focusable="false" />
+                      今日、空き時間から生まれた予約
+                    </p>
+                    <p className={sa.metric}>
+                      <span className={sa.metricValue}>{achievement.count}件</span>
+                      <span className={sa.metricLabel}>予約</span>
+                    </p>
+                    <p className={sa.metric}>
+                      <span className={sa.metricValue}>{hm(achievement.minutes)}</span>
+                      <span className={sa.metricLabel}>埋まった時間</span>
+                    </p>
+                    <p className={sa.metric}>
+                      <span className={sa.metricValue}>{fmtYen(achievement.yen)}</span>
+                      <span className={sa.metricLabel}>来店済みの合計</span>
                     </p>
                   </section>
                 )}
 
-                {started && permission === 'default' && (
-                  <button className="btn btn-quiet btn-block" onClick={async () => setPermission(await askNotificationPermission())}>
-                    ほかのタブを見ているときも、ブラウザの通知で知らせる
-                  </button>
+                {overdue.length > 0 && (
+                  <section className={sa.overdue} role="alert">
+                    <p className={sa.overdueTitle}>
+                      <HourglassMedium size={24} weight="duotone" aria-hidden focusable="false" />
+                      来店の記録がまだです（{overdue.length}件）
+                    </p>
+                    <p className={sa.overdueSub}>開始から{UI_OPTIONS.overdueMinutes}分以上たっています。記録すると、来店率が正しく数えられます。</p>
+                    <ul className={sa.overdueList}>
+                      {overdue.map((s) => {
+                        const b = activeBooking(s)!;
+                        return (
+                          <li key={s.id} className={sa.overdueItem}>
+                            <span className="num">
+                              {fmtTime(s.start_at)} {b.contact_name} 様{UI_OPTIONS.showBookingNo && b.booking_no !== null && `（${b.booking_no}）`}
+                            </span>
+                            <span className={sa.overdueActions}>
+                              <Button variant="primary" icon={SealCheck} onClick={() => record(b.id, 'complete')}>
+                                来店済み
+                              </Button>
+                              <Button variant="danger" icon={Prohibit} onClick={() => record(b.id, 'no_show')}>
+                                無断キャンセル
+                              </Button>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
                 )}
 
-                <section className="card">
-                  <h2 className="card-title">これからの予約</h2>
+                {started && permission === 'default' && (
+                  <Button variant="quiet" size="md" block icon={BellRinging} onClick={async () => setPermission(await askNotificationPermission())}>
+                    ほかのタブを見ているときも、ブラウザの通知で知らせる
+                  </Button>
+                )}
+
+                <Panel>
+                  <SectionHead icon={CalendarCheck} title="これからの予約" />
                   {slots === null ? (
                     <Loading rows={1} />
                   ) : upcoming.length === 0 ? (
-                    <Empty>これからの予約はまだありません。</Empty>
+                    <Empty icon={CalendarCheck}>これからの予約はまだありません。</Empty>
                   ) : (
-                    <ul className="upcoming">
+                    <ul className={sa.upcoming}>
                       {upcoming.map((s) => {
                         const b = activeBooking(s)!;
                         const fresh = freshIds.includes(b.id);
                         return (
                           <li key={s.id}>
-                            <button className={fresh ? 'is-fresh' : ''} onClick={() => setSelected(s)}>
-                              <span className="upcoming-time num">{fmtTime(s.start_at)}</span>
-                              <span className="upcoming-body">
-                                <strong>
+                            <button className={sa.upItem} onClick={() => setSelected(s)}>
+                              <span className={sa.upTime}>{fmtTime(s.start_at)}</span>
+                              <span className={sa.upBody}>
+                                <span className={sa.upName}>
                                   {b.contact_name} 様
-                                  {UI_OPTIONS.showBookingNo && b.booking_no !== null && <span className="no-tag num">{b.booking_no}</span>}
-                                </strong>
-                                <small>
+                                  {UI_OPTIONS.showBookingNo && b.booking_no !== null && <span className={sa.upNo}>{b.booking_no}</span>}
+                                </span>
+                                <span className={sa.upSub}>
                                   {s.menu?.name}
                                   {s.stylist && ` ・ ${s.stylist.name}`}
                                   {b.photo_path && ' ・ 写真あり'}
                                   {b.note && ' ・ メモあり'}
-                                </small>
+                                </span>
                               </span>
-                              <span className="pill pill-confirmed">{fresh ? '新しい予約' : '予約あり'}</span>
+                              {fresh ? <FreshMark /> : <Label kind="action">予約あり</Label>}
                             </button>
                           </li>
                         );
                       })}
                     </ul>
                   )}
-                </section>
-              </div>
+                </Panel>
+              </Stack>
 
-              <section className="card card-flush timeline-card">
-                <div className="plan-head card-pad">
-                  <h2 className="card-title">今日の予定</h2>
-                  <div className="segmented plan-view" role="group" aria-label="表示の切り替え">
-                    <button aria-pressed={view === 'chart'} onClick={() => setView('chart')}>
-                      <span className="only-wide">担当ごとの帯</span>
-                      <span className="only-narrow">タイムライン</span>
-                    </button>
-                    <button aria-pressed={view === 'list'} onClick={() => setView('list')}>
-                      時刻の順の一覧
-                    </button>
-                  </div>
+              <Panel flush>
+                <div className={sa.planHead}>
+                  <SectionHead icon={Clock} title="今日の予定" />
+                  <Segmented
+                    label="表示の切り替え"
+                    className={sa.planView}
+                    value={view}
+                    onChange={setView}
+                    options={[
+                      {
+                        value: 'chart',
+                        label: (
+                          <>
+                            <span className={sa.onlyWide}>担当ごとの帯</span>
+                            <span className={sa.onlyNarrow}>タイムライン</span>
+                          </>
+                        ),
+                      },
+                      { value: 'list', label: '時刻の順の一覧' },
+                    ]}
+                  />
                 </div>
-                <div className="plan-sub card-pad">
-                  <span className="legend">
-                    <i className="lg-open" />公開中 <i className="lg-confirmed" />予約あり <i className="lg-completed" />来店済み <i className="lg-closed" />取り下げ・受付終了
-                  </span>
+                <div className={sa.planSub}>
+                  <StateLegend />
                   {endedCount > 0 && (
-                    <label className="check plan-toggle">
-                      <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} />
-                      <span>受付終了・取り下げの枠も表示（{endedCount}件）</span>
-                    </label>
+                    <Check checked={showEnded} onChange={setShowEnded}>
+                      受付終了・取り下げの枠も表示（{endedCount}件）
+                    </Check>
                   )}
                 </div>
                 {slots === null ? (
-                  <div className="card-pad">
+                  <div className={sa.planPad}>
                     <Loading rows={2} />
                   </div>
                 ) : visibleSlots.length === 0 ? (
-                  <Empty>{slots.length === 0 ? '今日はまだ枠を出していません。下の「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
+                  <Empty icon={Clock}>{slots.length === 0 ? '今日はまだ枠を出していません。下の「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
                 ) : view === 'list' ? (
                   <SlotList slots={visibleSlots} now={now} freshIds={freshIds} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
                 ) : (
                   <>
-                    <div className="only-wide">
+                    <div className={sa.onlyWide}>
                       <StaffBands
                         slots={visibleSlots}
                         stylists={stylists}
@@ -512,26 +610,29 @@ export default function SalonApp({
                         showNo={UI_OPTIONS.showBookingNo}
                         onSelect={setSelected}
                         onEmpty={(startAt, stylistId) => {
-                          if (canPublish) setSheet({ start: startAt, stylistId });
+                          const usable = stylistId && stylists.some((x) => x.id === stylistId && x.is_active) ? stylistId : null;
+                          if (canPublish) setSheet({ start: startAt, stylistId: usable });
                         }}
                       />
-                      <p className="fine-print card-pad">
-                        横にスクロールできます。枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。
-                      </p>
+                      <div className={sa.planPad}>
+                        <Fine>横にスクロールできます。枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。</Fine>
+                      </div>
                     </div>
-                    <div className="only-narrow">
+                    <div className={sa.onlyNarrow}>
                       <Timeline slots={visibleSlots} now={now} freshIds={freshIds} onSelect={setSelected} />
                     </div>
                   </>
                 )}
-              </section>
+              </Panel>
             </div>
           )}
 
           {tab === 'settings' && (
-            <>
-              <SalonSettings client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} />
-              <h2 className="section-title">スタッフのアカウント</h2>
+            <Stack gap={4}>
+              <SalonSettings key={salon.id} client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} />
+              <ScreenTitle as="h2" tight>
+                スタッフのアカウント
+              </ScreenTitle>
               <AccountSecurity
                 client={client}
                 role="salon"
@@ -540,8 +641,16 @@ export default function SalonApp({
                 linked={linked}
                 authError={session ? authError : null}
               />
-              <button
-                className="btn btn-text"
+              <Panel>
+                <SectionHead icon={Storefront} title="別のお店（系列店・2店舗目）" as="p" />
+                <SubText>このアカウントのまま、別のお店の掲載を申し込めます。運営の審査のあと、画面の上でお店を切り替えて使えます。</SubText>
+                <ButtonLink href="/salon/signup" variant="secondary" size="md" block icon={Plus}>
+                  別のお店を申し込む
+                </ButtonLink>
+              </Panel>
+              <Button
+                variant="text"
+                icon={ArrowCounterClockwise}
                 onClick={async () => {
                   await client.rpc('salon_set_onboarding', { p_salon_id: salon.id, p_step: 0 });
                   setTab('today');
@@ -549,36 +658,42 @@ export default function SalonApp({
                 }}
               >
                 初期設定の3ステップをもう一度表示する
-              </button>
-            </>
+              </Button>
+            </Stack>
           )}
 
-          <nav className="bottom-bar" aria-label="主な操作">
-            {tab === 'today' && canPublish && presets.length > 0 && (
-              <div className="preset-row">
-                {presets.slice(0, 4).map((p) => (
-                  <button key={p.id} className="preset" onClick={() => quickPreset(p)}>
-                    <small>{p.kind === 'free' ? 'いつもの空き方' : 'いつもの枠'}</small>
-                    {p.label}
-                  </button>
-                ))}
+          <nav className={sa.bar} aria-label="主な操作">
+            <div className={sa.barInner}>
+              {tab === 'today' && canPublish && usablePresets.length > 0 && (
+                <div className={sa.presets}>
+                  {usablePresets.slice(0, 4).map((p) => (
+                    <button key={p.id} className={sa.preset} disabled={presetBusy !== null} onClick={() => quickPreset(p)}>
+                      <small>{presetBusy === p.id ? '公開しています…' : p.kind === 'free' ? 'いつもの空き方' : 'いつもの枠'}</small>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className={sa.barMain}>
+                <button className={sa.tab} aria-current={tab === 'today' ? 'page' : undefined} onClick={() => setTab('today')}>
+                  <CalendarCheck size={24} weight={tab === 'today' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                  今日
+                </button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={canPublish ? Plus : undefined}
+                  disabled={!canPublish}
+                  title={canPublish ? undefined : '掲載中になると、枠を出せます'}
+                  onClick={() => setSheet({ start: null, stylistId: null })}
+                >
+                  {canPublish ? '枠を出す' : listing === 'reviewing' ? '審査中（承認後に枠を出せます）' : '枠は出せません'}
+                </Button>
+                <button className={sa.tab} aria-current={tab === 'settings' ? 'page' : undefined} onClick={() => setTab('settings')}>
+                  <Gear size={24} weight={tab === 'settings' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                  設定
+                </button>
               </div>
-            )}
-            <div className="bottom-main">
-              <button className={`bottom-tab ${tab === 'today' ? 'is-on' : ''}`} onClick={() => setTab('today')}>
-                今日
-              </button>
-              <button
-                className="btn btn-primary btn-lg bottom-cta"
-                disabled={!canPublish}
-                title={canPublish ? undefined : '掲載中になると、枠を出せます'}
-                onClick={() => setSheet({ start: null, stylistId: null })}
-              >
-                {canPublish ? '＋ 枠を出す' : listing === 'reviewing' ? '審査中（承認後に枠を出せます）' : '枠は出せません'}
-              </button>
-              <button className={`bottom-tab ${tab === 'settings' ? 'is-on' : ''}`} onClick={() => setTab('settings')}>
-                設定
-              </button>
             </div>
           </nav>
 
@@ -589,7 +704,7 @@ export default function SalonApp({
               menus={menus}
               stylists={stylists}
               presets={presets}
-              now={new Date()}
+              now={sheet.openedAt}
               initialStart={sheet.start}
               initialStylistId={sheet.stylistId}
               onPublished={reportPublish}
@@ -611,16 +726,16 @@ export default function SalonApp({
           )}
           {confirmPause && (
             <Sheet label="今日の受付をここまでにしますか" role="alertdialog" narrow onClose={() => setConfirmPause(false)}>
-              <p className="card-title">今日の受付をここまでにしますか？</p>
-              <p className="card-sub">公開中の{openCount}枠をすべて取り下げます。入っている予約はそのままです。取り下げた枠は一覧に残り、「元に戻す」で締切前のものだけ再び公開できます。</p>
-              <div className="action-pair">
-                <button className="btn btn-quiet" onClick={() => setConfirmPause(false)}>
+              <SectionHead icon={PauseCircle} title="今日の受付をここまでにしますか？" as="p" />
+              <SubText>公開中の{openCount}枠をすべて取り下げます。入っている予約はそのままです。取り下げた枠は一覧に残り、「元に戻す」で締切前のものだけ再び公開できます。</SubText>
+              <Pair>
+                <Button variant="quiet" size="md" onClick={() => setConfirmPause(false)}>
                   やめる
-                </button>
-                <button className="btn btn-danger" onClick={pauseToday}>
+                </Button>
+                <Button variant="dangerSolid" size="md" onClick={pauseToday}>
                   {openCount}枠を取り下げる
-                </button>
-              </div>
+                </Button>
+              </Pair>
             </Sheet>
           )}
           <NewBookingAlert items={incoming} soundOn={started} showNo={UI_OPTIONS.showBookingNo} onAcknowledge={acknowledge} />
@@ -628,10 +743,10 @@ export default function SalonApp({
       )}
 
       {toast && (
-        <div key={toast.id} className={`toast toast-top ${toast.accent ? 'toast-accent' : ''}`} role="status">
+        <ToastBar key={toast.id} tone={toast.accent ? 'action' : 'neutral'} position="top">
           {toast.text}
-        </div>
+        </ToastBar>
       )}
-    </main>
+    </Page>
   );
 }

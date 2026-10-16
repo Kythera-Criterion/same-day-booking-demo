@@ -1,0 +1,125 @@
+/* 通知ログ：1件ずつ細い線で区切る。上に経路（LINE／メール）・状態・時刻、下に中身のプレビュー
+   LINE は沈んだ面の上の吹き出し、メールは件名・宛先の帯と本文（どちらも枠線なし） */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+}
+
+.item:first-child {
+  padding-block-start: 0;
+}
+
+.item:last-child {
+  padding-block-end: 0;
+}
+
+.item + .item {
+  border-block-start: 1px solid var(--color-line);
+}
+
+/* 広い画面でも、メールの本文が読みやすい行の長さに収まるように */
+.item > * {
+  max-inline-size: var(--width-dialog);
+}
+
+/* 新しく届いた通知：役割の色の淡い面から、ゆっくり戻す */
+.fresh {
+  animation: fresh calc(var(--motion-long) * 6) var(--ease-out);
+}
+
+@keyframes fresh {
+  from {
+    background: var(--color-action-soft);
+  }
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.time {
+  margin-inline-start: auto;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+/* LINE 風：トークの面と吹き出し */
+.line {
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+.room {
+  margin-block-end: var(--space-2);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.bubble {
+  max-inline-size: 92%;
+  inline-size: fit-content;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-surface);
+  border-start-start-radius: var(--radius-label);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* メール風：件名・宛先の帯と本文 */
+.mail {
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+.body {
+  margin: 0 var(--space-1) var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-label);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+.error {
+  color: var(--color-danger-text);
+  font-weight: var(--weight-bold);
+}

@@ -1,23 +1,61 @@
 'use client';
 
-// マイページ：現在の予約（履歴は「予約」タブ）、カルテ（髪質・カラー・パーマ）、会話の好み、登録情報、ログインの方法、予約停止中なら再開日
+// マイページ：現在の予約、予約の履歴、カルテ（髪質・カラー・パーマ）、会話の好み、予約停止中なら再開日
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
-import { ErrorState, Loading, NotConfigured } from '@/components/States';
+import { Empty, ErrorState, Loading, NotConfigured } from '@/components/States';
+import Button, { ButtonLink } from '@/components/ui/Button';
+import { Input, LabeledField, Select, formClass } from '@/components/ui/Form';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import { Page, ScreenTitle } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import {
+  CalendarCheck,
+  CaretRight,
+  CheckCircle,
+  House,
+  IdentificationCard,
+  Lightning,
+  ListBullets,
+  NotePencil,
+  Prohibit,
+  SealCheck,
+  SignOut,
+  Timer,
+  XCircle,
+} from '@/components/ui/icons';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 import { useRoleSession } from '@/lib/supabase';
 import { AFTER_LOGOUT, logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/profile-options';
-import { fmtDate } from '@/lib/time';
+import { fmtDate, fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
 import type { Providers } from '@/lib/oauth-shared';
 import AccountSettings from './AccountSettings';
-import { ActiveCard, NoActive } from './BookingsList';
 import TabBar from './TabBar';
 import { needsProfile, useUserState, type MyProfile } from './useUserState';
+import s from './MyPage.module.css';
 
+const STATUS_LABEL: Record<string, string> = {
+  confirmed: '予約中',
+  completed: '来店済み',
+  no_show: '無断キャンセル',
+  cancelled_by_salon: 'サロン都合のキャンセル',
+  cancelled_by_customer: 'キャンセル（お店へ連絡済み）',
+};
+
+// 履歴の状態のラベル：色だけでなく、アイコンでも区別する
+const STATUS_LOOK: Record<string, { kind: LabelKind; icon: PhosphorIcon }> = {
+  confirmed: { kind: 'action', icon: CheckCircle },
+  completed: { kind: 'state', icon: SealCheck },
+  no_show: { kind: 'danger', icon: Prohibit },
+  cancelled_by_salon: { kind: 'state', icon: XCircle },
+  cancelled_by_customer: { kind: 'state', icon: XCircle },
+};
 
 type Draft = Pick<
   MyProfile,
@@ -44,8 +82,10 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
     return () => clearInterval(t);
   }, []);
 
+  const filledFor = useRef<string | null>(null);
   useEffect(() => {
-    if (profile) {
+    if (profile && filledFor.current !== profile.id) {
+      filledFor.current = profile.id;
       setDraft({
         display_name: profile.display_name,
         phone: profile.phone,
@@ -65,28 +105,37 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
     setDraft((d) => (d ? { ...d, [key]: value } : d));
   }
 
+  // 「カルテを保存」はカルテ・会話の好みだけ、「登録情報を保存」は登録情報だけを保存する（もう一方の入力中の内容は、保存しない）
   async function save(kind: 'karte' | 'profile') {
-    if (!client || !draft) return;
+    if (!client || !draft || !profile) return;
+    const base = kind === 'karte' ? profile : draft;
+    const karte = kind === 'karte' ? draft : profile;
     setSaving(kind);
     setMessage(null);
     const { error: e } = await client.rpc('update_my_profile', {
-      p_display_name: draft.display_name,
-      p_phone: draft.phone ?? '',
-      p_gender: draft.gender,
-      p_age_group: draft.age_group,
-      p_occupation: draft.occupation,
-      p_area_id: draft.area_id,
-      p_conversation_pref: draft.conversation_pref,
-      p_hair_type: draft.hair_type,
-      p_color_history: draft.color_history,
-      p_perm_history: draft.perm_history,
+      p_display_name: base.display_name,
+      p_phone: base.phone ?? '',
+      p_gender: base.gender,
+      p_age_group: base.age_group,
+      p_occupation: base.occupation,
+      p_area_id: base.area_id,
+      p_conversation_pref: karte.conversation_pref,
+      p_hair_type: karte.hair_type,
+      p_color_history: karte.color_history,
+      p_perm_history: karte.perm_history,
     });
     setSaving(null);
     if (e) {
-      setMessage({ kind: 'error', text: toMessage(e) });
+      setMessage({
+        kind: 'error',
+        text:
+          kind === 'profile' && e.message.includes('suspended')
+            ? '予約停止中は、電話番号を変更できません（予約停止は電話番号で判定するため）。電話番号を元に戻して保存してください。'
+            : toMessage(e),
+      });
       return;
     }
-    setMessage({ kind: 'ok', text: '保存しました。次のご予約から、お店にお伝えします。' });
+    setMessage({ kind: 'ok', text: kind === 'karte' ? 'カルテを保存しました。次のご予約から、お店にお伝えします。' : '登録情報を保存しました。' });
     reload();
   }
 
@@ -100,141 +149,208 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
 
   if (deleted) {
     return (
-      <main className="app">
+      <Page>
         <AppHeader role="利用者" />
-        <section className="card fade-in" style={{ marginTop: 16 }}>
-          <p className="card-title">アカウントを削除しました</p>
-          <p className="card-sub">ご利用ありがとうございました。</p>
-          <Link href="/" className="btn btn-secondary btn-block">
-            ホームへ
-          </Link>
-        </section>
-      </main>
+        <Panel as="section" className={s.deleted}>
+          <div className={s.deletedBody}>
+            <SectionHead icon={CheckCircle} title="アカウントを削除しました" as="p" />
+            <SubText>ご利用ありがとうございました。</SubText>
+            <ButtonLink href="/" variant="secondary" size="md" block icon={House}>
+              ホームへ
+            </ButtonLink>
+          </div>
+        </Panel>
+      </Page>
     );
   }
 
   const history = bookings.filter((b) => b.id !== active?.id);
 
   return (
-    <main className="app">
-      <AppHeader role="利用者" />
+    <Page tabs>
+      <AppHeader role="利用者">
+        <Link href="/">ホーム</Link>
+      </AppHeader>
 
-      <h1 className="screen-title">{profile ? `${profile.display_name} さん` : 'マイページ'}</h1>
+      <ScreenTitle>{profile ? `${profile.display_name} さん` : 'マイページ'}</ScreenTitle>
 
       {error && <ErrorState onRetry={reload}>{error}</ErrorState>}
       {!loaded && <Loading rows={3} />}
 
       {loaded && (
-        <div className="stack">
-          {suspendedUntil && (
-            <div className="notice notice-error">
-              無断キャンセルが続いたため、新しいご予約をお受けできません。
-              <strong> {fmtDate(suspendedUntil)}から予約できます。</strong>
+        <div className={s.sections}>
+          {(suspendedUntil || (profile && needsProfile(profile))) && (
+            <div className={s.alerts}>
+              {suspendedUntil && (
+                <Notice tone="danger" icon={Prohibit}>
+                  無断キャンセルが続いたため、新しいご予約をお受けできません。
+                  <strong> {fmtDate(suspendedUntil)} {fmtTime(suspendedUntil)}から予約できます。</strong>
+                </Notice>
+              )}
+
+              {profile && needsProfile(profile) && (
+                <Link href="/signup/complete?next=/mypage" className={s.finish}>
+                  <NotePencil size={20} aria-hidden focusable="false" />
+                  <span>
+                    <strong>登録を仕上げてください</strong>
+                    ご予約の前に、電話番号・18歳以上の確認などの入力が必要です。 <span className={s.finishGo}>入力する →</span>
+                  </span>
+                </Link>
+              )}
             </div>
           )}
 
-          {profile && needsProfile(profile) && (
-            <Link href="/signup/complete?next=/mypage" className="notice notice-info finish-banner">
-              <strong>登録を仕上げてください</strong>
-              ご予約の前に、電話番号・18歳以上の確認などの入力が必要です。 <span className="finish-go">入力する →</span>
-            </Link>
-          )}
+          <div id="bookings" className={s.bookings}>
+            <section className={s.section}>
+              <SectionHead icon={CalendarCheck} title="現在の予約" />
+              {active && active.slot ? (
+                <Link href={`/booking/${active.id}`} className={s.active}>
+                  <span className={s.activeLabel}>
+                    <CheckCircle size={20} weight="fill" aria-hidden focusable="false" />
+                    ご予約中
+                  </span>
+                  <span className={`${s.activeTime} num`}>
+                    <span className={s.today}>今日</span> <span className={s.clock}>{fmtTime(active.slot.start_at)}</span>
+                    <em>
+                      <Timer size={20} weight="duotone" aria-hidden focusable="false" />
+                      {fmtRemaining(minutesUntil(active.slot.start_at, now))}
+                    </em>
+                  </span>
+                  <span className={s.activeSub}>
+                    {active.slot.salon?.name} ・ {active.slot.menu?.name}
+                  </span>
+                  <span className={s.activeGo}>予約内容を見る →</span>
+                </Link>
+              ) : (
+                <Panel className={s.emptyPanel}>
+                  <Empty>いまご予約はありません。</Empty>
+                  <ButtonLink href="/" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
+                    今から行けるお店を探す
+                  </ButtonLink>
+                </Panel>
+              )}
+            </section>
 
-          <h2 className="section-title">現在の予約</h2>
-          {active && active.slot ? <ActiveCard booking={active} now={now} /> : <NoActive />}
-          <Link href="/bookings" className="btn btn-secondary btn-block">
-            これまでの予約を見る（{history.length}件）
-          </Link>
-          {message && <p className={`notice ${message.kind === 'ok' ? 'notice-ok' : 'notice-error'}`}>{message.text}</p>}
+            <section className={s.section}>
+              <SectionHead icon={ListBullets} title="予約の履歴" />
+              <Panel flush>
+                {history.length === 0 ? (
+                  <Empty>履歴はまだありません。</Empty>
+                ) : (
+                  <ul className={s.history} data-history="">
+                    {history.map((b) => {
+                      const look = STATUS_LOOK[b.status] ?? STATUS_LOOK.cancelled_by_customer;
+                      return (
+                        <li key={b.id}>
+                          <Link href={`/booking/${b.id}`}>
+                            <span className={s.historyBody}>
+                              <span className={`${s.historyDate} num`}>
+                                {b.slot ? `${fmtDate(b.slot.start_at)} ${fmtTime(b.slot.start_at)}` : '--'}
+                              </span>
+                              <span className={s.historySub}>
+                                {b.slot?.salon?.name} ・ {b.slot?.menu?.name} ・ {b.slot ? fmtYen(b.slot.price) : ''}
+                              </span>
+                              <Label kind={look.kind} icon={look.icon} className={s.historyState}>
+                                {STATUS_LABEL[b.status] ?? b.status}
+                              </Label>
+                            </span>
+                            <CaretRight size={20} className={s.historyCaret} aria-hidden focusable="false" />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </Panel>
+            </section>
+          </div>
+
+          {message && <Notice tone={message.kind === 'ok' ? 'success' : 'danger'}>{message.text}</Notice>}
 
           {draft && (
             <>
-              <h2 className="section-title">カルテ・会話の好み</h2>
-              <section className="card">
-                <p className="card-sub">ご予約のときに、その時点の内容をお店へお伝えします。</p>
-                <label className="field">
-                  <span className="field-label">髪質</span>
-                  <input className="input" maxLength={200} value={draft.hair_type ?? ''} onChange={(e) => set('hair_type', e.target.value)} placeholder="例：細くてやわらかい・くせが強い" />
-                </label>
-                <label className="field">
-                  <span className="field-label">カラーの履歴</span>
-                  <input className="input" maxLength={200} value={draft.color_history ?? ''} onChange={(e) => set('color_history', e.target.value)} placeholder="例：2か月前にブラウン" />
-                </label>
-                <label className="field">
-                  <span className="field-label">パーマの履歴</span>
-                  <input className="input" maxLength={200} value={draft.perm_history ?? ''} onChange={(e) => set('perm_history', e.target.value)} placeholder="例：半年前にデジタルパーマ" />
-                </label>
-                <div className="field">
-                  <span className="field-label">施術中の会話</span>
-                  <div className="segmented" role="group" aria-label="施術中の会話">
-                    {CONVERSATION_PREFS.map((c) => (
-                      <button key={c.value} aria-pressed={draft.conversation_pref === c.value} onClick={() => set('conversation_pref', c.value)}>
-                        {c.label}
-                      </button>
-                    ))}
+              <section className={s.section}>
+                <SectionHead icon={NotePencil} title="カルテ・会話の好み" />
+                <Panel>
+                  <p className={s.lead}>ご予約のときに、その時点の内容をお店へお伝えします。</p>
+                  <LabeledField label="髪質">
+                    <Input maxLength={200} value={draft.hair_type ?? ''} onChange={(e) => set('hair_type', e.target.value)} placeholder="例：細くてやわらかい・くせが強い" />
+                  </LabeledField>
+                  <LabeledField label="カラーの履歴">
+                    <Input maxLength={200} value={draft.color_history ?? ''} onChange={(e) => set('color_history', e.target.value)} placeholder="例：2か月前にブラウン" />
+                  </LabeledField>
+                  <LabeledField label="パーマの履歴">
+                    <Input maxLength={200} value={draft.perm_history ?? ''} onChange={(e) => set('perm_history', e.target.value)} placeholder="例：半年前にデジタルパーマ" />
+                  </LabeledField>
+                  <div className={formClass.field}>
+                    <span className={formClass.label}>施術中の会話</span>
+                    <div className={s.choices} role="group" aria-label="施術中の会話">
+                      {CONVERSATION_PREFS.map((c) => (
+                        <button key={c.value} type="button" className={formClass.choice} aria-pressed={draft.conversation_pref === c.value} onClick={() => set('conversation_pref', c.value)}>
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <button className="btn btn-primary btn-block" disabled={saving !== null} onClick={() => save('karte')}>
-                  {saving === 'karte' ? '保存中…' : 'カルテを保存'}
-                </button>
+                  <Button variant="primary" size="md" block disabled={saving !== null} onClick={() => save('karte')}>
+                    {saving === 'karte' ? '保存中…' : 'カルテを保存'}
+                  </Button>
+                </Panel>
               </section>
 
-              <h2 className="section-title">登録情報</h2>
-              <section className="card">
-                <label className="field">
-                  <span className="field-label">お名前</span>
-                  <input className="input" maxLength={60} value={draft.display_name} onChange={(e) => set('display_name', e.target.value)} />
-                </label>
-                <label className="field">
-                  <span className="field-label">電話番号</span>
-                  <input className="input" type="tel" value={draft.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
-                </label>
-                <div className="field">
-                  <span className="field-label">性別</span>
-                  <div className="segmented" role="group" aria-label="性別">
-                    {GENDERS.map((g) => (
-                      <button key={g.value} aria-pressed={draft.gender === g.value} onClick={() => set('gender', g.value)}>
-                        {g.label}
-                      </button>
-                    ))}
+              <section className={s.section}>
+                <SectionHead icon={IdentificationCard} title="登録情報" />
+                <Panel>
+                  <LabeledField label="お名前">
+                    <Input maxLength={60} value={draft.display_name} onChange={(e) => set('display_name', e.target.value)} />
+                  </LabeledField>
+                  <LabeledField label="電話番号">
+                    <Input type="tel" value={draft.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
+                  </LabeledField>
+                  <div className={formClass.field}>
+                    <span className={formClass.label}>性別</span>
+                    <div className={s.choices} role="group" aria-label="性別">
+                      {GENDERS.map((g) => (
+                        <button key={g.value} type="button" className={formClass.choice} aria-pressed={draft.gender === g.value} onClick={() => set('gender', g.value)}>
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <label className="field">
-                  <span className="field-label">年代</span>
-                  <select className="select" value={draft.age_group ?? ''} onChange={(e) => set('age_group', e.target.value || null)}>
-                    <option value="">未設定</option>
-                    {AGE_GROUPS.map((a) => (
-                      <option key={a.value} value={a.value}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span className="field-label">職業</span>
-                  <select className="select" value={draft.occupation ?? ''} onChange={(e) => set('occupation', e.target.value || null)}>
-                    <option value="">未設定</option>
-                    {OCCUPATIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span className="field-label">利用エリア</span>
-                  <select className="select" value={draft.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)}>
-                    <option value="">未設定</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button className="btn btn-secondary btn-block" disabled={saving !== null} onClick={() => save('profile')}>
-                  {saving === 'profile' ? '保存中…' : '登録情報を保存'}
-                </button>
+                  <LabeledField label="年代">
+                    <Select value={draft.age_group ?? ''} onChange={(e) => set('age_group', e.target.value || null)}>
+                      <option value="">未設定</option>
+                      {AGE_GROUPS.map((a) => (
+                        <option key={a.value} value={a.value}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </LabeledField>
+                  <LabeledField label="職業">
+                    <Select value={draft.occupation ?? ''} onChange={(e) => set('occupation', e.target.value || null)}>
+                      <option value="">未設定</option>
+                      {OCCUPATIONS.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </Select>
+                  </LabeledField>
+                  <LabeledField label="利用エリア">
+                    <Select value={draft.area_id ?? ''} onChange={(e) => set('area_id', e.target.value || null)}>
+                      <option value="">未設定</option>
+                      {areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </LabeledField>
+                  <Button variant="secondary" size="md" block disabled={saving !== null} onClick={() => save('profile')}>
+                    {saving === 'profile' ? '保存中…' : '登録情報を保存'}
+                  </Button>
+                </Panel>
               </section>
             </>
           )}
@@ -248,12 +364,12 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
             authError={authError}
           />
 
-          <button className="btn btn-text" disabled={leaving} onClick={signOutHere}>
+          <Button variant="text" icon={SignOut} className={s.signOut} disabled={leaving} onClick={signOutHere}>
             {leaving ? 'ログアウトしています…' : 'ログアウト'}
-          </button>
+          </Button>
         </div>
       )}
-      <TabBar hasActive={!!active} />
-    </main>
+      <TabBar activeBookingId={active?.id ?? null} />
+    </Page>
   );
 }

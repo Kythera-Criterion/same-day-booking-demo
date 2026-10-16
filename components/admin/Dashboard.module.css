@@ -1,0 +1,121 @@
+/* 実証の数字：期間の指定（1行）→ 数字のタイル → 日別・時間帯別のグラフ → 内訳。
+   数字は数字のフォントで大きく、補足は小さく。面は白いだけ（枠線・影なし） */
+
+.filterBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.filters > label {
+  margin-block-end: 0;
+}
+
+/* 継続の基準と書き出しは、狭い画面では1行ずつ */
+.filters > label:nth-child(3),
+.filters > button {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .filters {
+    grid-template-columns: repeat(3, 1fr) auto;
+  }
+
+  .filters > label:nth-child(3),
+  .filters > button {
+    grid-column: auto;
+  }
+}
+
+/* 数字のタイル */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+@media (min-width: 720px) {
+  .kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}
+
+/* 7つめ（継続して枠を出すサロン）は補足が長いので2列分（どの幅でも行の端までそろう） */
+.kpi:last-child {
+  grid-column: span 2;
+}
+
+.kpiLabel {
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.kpiNum {
+  color: var(--color-ink);
+  font-size: var(--text-heading);
+  font-weight: var(--weight-heavy);
+  line-height: var(--leading-tight);
+}
+
+.kpiSub {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+/* 予約や枠が変わって数字を読み直したとき：役割の色の淡い面から、白い面へ戻す */
+.fresh .kpi {
+  animation: fresh calc(var(--motion-long) * 6) var(--ease-out);
+}
+
+@keyframes fresh {
+  from {
+    background: var(--color-action-soft);
+  }
+}
+
+/* グラフ：広い画面では2つを横に並べる */
+.charts,
+.breakdown {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.charts > *,
+.breakdown > * {
+  min-inline-size: 0;
+}
+
+@media (min-width: 960px) {
+  .charts {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+@media (min-width: 720px) {
+  .breakdown {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}

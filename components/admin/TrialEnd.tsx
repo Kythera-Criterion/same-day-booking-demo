@@ -4,7 +4,15 @@
 
 import { useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import Button from '@/components/ui/Button';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import { Stack } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
+import { ChartBar, EyeSlash, Play, ShieldWarning, TrashSimple } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
+import s from './TrialEnd.module.css';
 
 type Item = { key: string; action: 'delete' | 'anonymize' | 'keep'; count: number };
 
@@ -21,10 +29,11 @@ const ITEM_LABEL: Record<string, string> = {
   survey_answers: 'アンケートの回答（個人と結びつかない形）',
 };
 
-const ACTION: Record<Item['action'], { label: string; pill: string }> = {
-  delete: { label: '削除', pill: 'no_show' },
-  anonymize: { label: '識別できない形に加工', pill: 'pending' },
-  keep: { label: '残す（集計用）', pill: 'completed' },
+// 扱いのラベル：色だけでなく、アイコン（ごみ箱・伏せる・集計）でも見分ける
+const ACTION: Record<Item['action'], { label: string; kind: LabelKind; icon: PhosphorIcon }> = {
+  delete: { label: '削除', kind: 'danger', icon: TrashSimple },
+  anonymize: { label: '識別できない形に加工', kind: 'action', icon: EyeSlash },
+  keep: { label: '残す（集計用）', kind: 'state', icon: ChartBar },
 };
 
 export default function TrialEnd({ client }: { client: SupabaseClient }) {
@@ -48,33 +57,35 @@ export default function TrialEnd({ client }: { client: SupabaseClient }) {
   }
 
   return (
-    <div className="stack">
-      <section className="card">
-        <h2 className="card-title">実証終了時の削除・加工</h2>
-        <p className="card-sub">
+    <Stack gap={4} className={s.root}>
+      <Panel>
+        <SectionHead icon={ShieldWarning} title="実証終了時の削除・加工" />
+        <SubText>
           実証の終了時に、個人情報を削除するか、個人を識別できない形に加工します。デモでは対象の件数を数える「試し実行」だけを行い、データは変更しません（実行したことは操作記録に残ります）。
-        </p>
-        <button className="btn btn-primary btn-block" disabled={busy} onClick={dryRun}>
+        </SubText>
+        <Button variant="primary" size="md" block icon={Play} disabled={busy} onClick={dryRun}>
           {busy ? '数えています…' : '試し実行（対象件数を表示）'}
-        </button>
-      </section>
-      {error && <p className="notice notice-error">{error}</p>}
+        </Button>
+      </Panel>
+      {error && <Notice tone="danger">{error}</Notice>}
       {items && (
-        <section className="card fade-in">
-          <p className="card-sub">
+        <Panel flush className={s.result}>
+          <p className={s.when}>
             {at && new Date(at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} 時点の対象件数（試し実行・変更なし）
           </p>
-          <ul className="overview-list">
+          <ul className={s.list}>
             {items.map((i) => (
               <li key={i.key}>
-                <span className="num">{i.count.toLocaleString()}件</span>
-                <span>{ITEM_LABEL[i.key] ?? i.key}</span>
-                <span className={`pill pill-${ACTION[i.action].pill}`}>{ACTION[i.action].label}</span>
+                <span className={`num ${s.count}`}>{i.count.toLocaleString()}件</span>
+                <span className={s.what}>{ITEM_LABEL[i.key] ?? i.key}</span>
+                <Label kind={ACTION[i.action].kind} icon={ACTION[i.action].icon}>
+                  {ACTION[i.action].label}
+                </Label>
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
-    </div>
+    </Stack>
   );
 }

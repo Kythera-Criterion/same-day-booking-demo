@@ -1,0 +1,89 @@
+/* はじめて開いた人にだけ出す3つの手順（押す → 選ぶ → 行く）。番号とアイコンを横に並べる */
+
+.box {
+  position: relative;
+  padding: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}
+
+.title {
+  margin-block-end: var(--space-3);
+  padding-inline-end: var(--space-16);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+  counter-increment: step;
+}
+
+/* 手順の間の矢印（飾り） */
+.step + .step::before {
+  content: "";
+  position: absolute;
+  inset-block-start: var(--space-5);
+  inset-inline-start: calc(-1 * var(--space-2));
+  inline-size: var(--space-3);
+  block-size: 1px;
+  background: var(--color-line-strong);
+}
+
+.icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-10);
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+.icon::after {
+  content: counter(step);
+  position: absolute;
+  inset-block-start: calc(-1 * var(--space-1));
+  inset-inline-end: calc(-1 * var(--space-1));
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  border-radius: 50%;
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+  font-family: var(--font-num);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-heavy);
+}
+
+.verb {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+}
+
+.desc {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+.close {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+}

@@ -1,35 +1,40 @@
 'use client';
 
-// 候補のカード
-//   左：大きな開始時刻（桁をそろえる）と、開始までの時間
-//   右：役割のラベル・メニュー・店名と徒歩の目安・当日価格
-//   左端の細い帯とラベルの色で、役割（いちばん早い／いちばん近い／もうひとつの候補）を見分ける
-//   下端：受付締切までの残りに合わせて減る細いバー（残りが少ないと警告の色）
-//   埋まったら灰色にして「埋まりました」を見せ、高さを0まで縮めて消す。新しい候補は下から差し込む
+// 候補カード（ホームの候補3件と「ほかの枠」で共通）
+//   開始時刻が主役。ラベルは2つまで：
+//     時間のラベル（塗り・時間の色・時計のアイコン）：受付締切まで15分以内／いちばん早く始まる
+//     条件のラベル（枠線）：女性限定・男性限定／いちばん近い
+//   価格はラベルにせず、太い数字と「当日価格」で見せる。右上にお店の正方形の写真
 
-import type { CSSProperties } from 'react';
-import { ROLE_LABEL, type PickRole } from '@/lib/picks';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import Button from '@/components/ui/Button';
+import Label, { type LabelKind } from '@/components/ui/Label';
+import Price from '@/components/ui/Price';
+import SalonPhoto from '@/components/ui/SalonPhoto';
+import { ArrowRight, Hourglass, HourglassMedium, Lightning, MapPin, PersonSimpleWalk, Scissors, Timer, User, XCircle } from '@/components/ui/icons';
 import { fmtDistance } from '@/lib/geo';
-import { fmtRemaining, fmtTime, fmtYen, minutesUntil } from '@/lib/time';
+import { ROLE_LABEL, type PickRole } from '@/lib/picks';
+import { fmtRemaining, fmtTime, minutesUntil } from '@/lib/time';
 import { walkMinutes } from '@/lib/walk';
-import styles from './CandidateCard.module.css';
+import { genderCondition, stylistLine, type SalonExtra } from './useSalonExtras';
+import s from './CandidateCard.module.css';
 
-export type CandidateSlot = {
+export type CardSlot = {
   id: string;
   start_at: string;
   deadline_at: string;
   price: number;
   menu_name: string;
   duration_min: number;
+  salon_id: string;
   salon_name: string;
   stylist_name: string | null;
   km: number | null;
   role: PickRole | null;
 };
 
-// 受付締切の残りを表すバーの長さ（60分を満タンとする）
-const FULL_MIN = 60;
-const URGENT_MIN = 5;
+// 受付締切までこの分数を切ったら、時間のラベルを出す
+const URGENT_MIN = 15;
 
 export default function CandidateCard({
   slot,
@@ -38,88 +43,106 @@ export default function CandidateCard({
   gone,
   selected,
   disabled,
+  extra,
   onSelect,
   onBook,
   refFn,
 }: {
-  slot: CandidateSlot;
+  slot: CardSlot;
   no?: number;
   now: Date;
   gone: boolean;
   selected: boolean;
   disabled: boolean;
+  extra?: SalonExtra;
   onSelect: () => void;
   onBook: () => void;
   refFn?: (el: HTMLLIElement | null) => void;
 }) {
-  const left = Math.max(0, minutesUntil(slot.deadline_at, now));
-  const remaining = Math.max(0, Math.min(1, left / FULL_MIN));
+  const left = minutesUntil(slot.deadline_at, now);
   const urgent = left <= URGENT_MIN;
-  const role = slot.role ?? 'balanced';
+
+  const labels: { kind: LabelKind; icon?: PhosphorIcon; text: string }[] = [];
+  if (urgent) labels.push({ kind: 'time', icon: HourglassMedium, text: `受付あと${Math.max(0, left)}分` });
+  if (slot.role === 'earliest') labels.push({ kind: 'time', icon: Lightning, text: ROLE_LABEL.earliest });
+  const cond = genderCondition(extra);
+  if (cond) labels.push({ kind: 'condition', text: cond });
+  if (slot.role === 'nearest') labels.push({ kind: 'condition', icon: MapPin, text: ROLE_LABEL.nearest });
+  const shownLabels = labels.slice(0, 2);
+  const staff = stylistLine(slot.stylist_name, extra);
+
   return (
-    <li ref={refFn} className={styles.item} data-gone={gone || undefined}>
-      <div className={styles.clip}>
-        <article
-          className={styles.card}
-          data-role={role}
-          data-selected={selected || undefined}
-          onClick={onSelect}
-          aria-label={`${no !== undefined ? `${no}番 ` : ''}${fmtTime(slot.start_at)}開始 ${slot.salon_name}`}
-        >
-          <div className={styles.when}>
-            {no !== undefined && <span className={`${styles.no} num`}>{no}</span>}
-            <span className={`${styles.start} num`}>{fmtTime(slot.start_at)}</span>
-            <span className={`${styles.until} num`}>{fmtRemaining(minutesUntil(slot.start_at, now))}</span>
-          </div>
-
-          <div className={styles.body}>
-            {slot.role && <span className={styles.roleLabel}>{ROLE_LABEL[slot.role]}</span>}
-            <p className={styles.menu}>
-              {slot.menu_name}
-              <span className={`${styles.duration} num`}>{slot.duration_min}分</span>
-            </p>
-            <p className={styles.salon}>{slot.salon_name}</p>
-            <p className={`${styles.meta} num`}>
-              {slot.km !== null && `徒歩約${walkMinutes(slot.km)}分・${fmtDistance(slot.km)}`}
-              {slot.stylist_name && `${slot.km !== null ? '・' : ''}担当 ${slot.stylist_name}`}
-            </p>
-          </div>
-
-          <div className={styles.side}>
-            <p className={styles.price}>
-              <span className={styles.priceLabel}>当日価格</span>
-              <span className="num">{fmtYen(slot.price)}</span>
-            </p>
-            <button
-              type="button"
-              className={`btn btn-primary ${styles.cta}`}
-              disabled={disabled || gone}
-              onClick={(e) => {
-                e.stopPropagation();
-                onBook();
-              }}
-              aria-label={`${fmtTime(slot.start_at)} ${slot.salon_name} を予約する`}
-            >
-              予約する
-            </button>
-          </div>
-
-          <div
-            className={styles.deadline}
-            data-urgent={urgent || undefined}
-            style={{ '--remaining': remaining } as CSSProperties}
-          >
-            <span className={`${styles.deadlineText} num`}>予約受付 残り{left}分</span>
-            <span className={styles.bar} aria-hidden />
-          </div>
-
-          {gone && (
-            <div className={styles.veil} role="status">
-              埋まりました
-            </div>
-          )}
-        </article>
+    <li ref={refFn} className={`${s.card} ${gone ? s.gone : ''}`} data-selected={selected ? 'true' : undefined} onClick={onSelect}>
+      <div className={s.head}>
+        {no !== undefined && <span className={s.no}>{no}</span>}
+        <span className={s.start}>{fmtTime(slot.start_at)}</span>
+        <span className={`${s.until} num`}>
+          <Timer size={20} aria-hidden focusable="false" />
+          開始まで{fmtRemaining(minutesUntil(slot.start_at, now)).replace('あと', '')}
+        </span>
       </div>
+
+      <SalonPhoto salonId={slot.salon_id} salonName={slot.salon_name} variant="thumb" className={s.photo} />
+
+      <div className={s.body}>
+        {shownLabels.length > 0 && (
+          <div className={s.labels}>
+            {shownLabels.map((l) => (
+              <Label key={l.text} kind={l.kind} icon={l.icon}>
+                {l.text}
+              </Label>
+            ))}
+          </div>
+        )}
+        <p className={s.salon}>{slot.salon_name}</p>
+        {slot.km !== null && (
+          <p className={`${s.meta} num`}>
+            <PersonSimpleWalk size={20} aria-hidden focusable="false" />
+            <span className={s.metaText}>
+              徒歩約{walkMinutes(slot.km)}分・{fmtDistance(slot.km)}
+            </span>
+          </p>
+        )}
+        <p className={s.meta}>
+          <Scissors size={20} aria-hidden focusable="false" />
+          <span className={s.metaText}>
+            {slot.menu_name}・{slot.duration_min}分
+          </span>
+        </p>
+        {staff && (
+          <p className={s.meta}>
+            <User size={20} aria-hidden focusable="false" />
+            <span className={s.metaText}>担当 {staff}</span>
+          </p>
+        )}
+      </div>
+
+      <div className={s.foot}>
+        <Price value={slot.price} align="start" />
+        <span className={`${s.deadline} num`} data-urgent={urgent ? 'true' : undefined}>
+          <Hourglass size={20} aria-hidden focusable="false" />
+          {urgent ? 'まもなく受付終了' : `受付 ${fmtTime(slot.deadline_at)}まで`}
+        </span>
+        <Button
+          variant="outline"
+          iconEnd={ArrowRight}
+          disabled={disabled || gone}
+          onClick={(e) => {
+            e.stopPropagation();
+            onBook();
+          }}
+          aria-label={`${fmtTime(slot.start_at)} ${slot.salon_name} を予約する`}
+        >
+          予約する
+        </Button>
+      </div>
+
+      {gone && (
+        <div className={s.veil} role="status">
+          <XCircle size={24} weight="duotone" aria-hidden focusable="false" />
+          埋まりました
+        </div>
+      )}
     </li>
   );
 }

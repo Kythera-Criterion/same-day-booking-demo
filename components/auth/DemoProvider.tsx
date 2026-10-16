@@ -5,7 +5,16 @@
 
 import { useEffect, useState } from 'react';
 import AppHeader from '@/components/AppHeader';
+import Button from '@/components/ui/Button';
+import { Input, LabeledField, formClass } from '@/components/ui/Form';
+import Label from '@/components/ui/Label';
+import { Page, Pair } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Panel } from '@/components/ui/Surface';
+import { Flag } from '@/components/ui/icons';
 import { PROVIDER_LABEL, isDemoEmail, type ProviderId } from '@/lib/oauth-shared';
+// 一覧の中で s（保存したアカウント）を使うため、別名で読み込む
+import ds from './DemoProvider.module.css';
 
 type Saved = { subject: string; name: string; email: string };
 
@@ -61,83 +70,86 @@ export default function DemoProvider({ provider }: { provider: ProviderId }) {
   const current = chosen ?? fresh;
 
   return (
-    <main className="app">
+    <Page>
       <AppHeader role="デモ" />
-      <section className="card demo-provider fade-in">
-        <p className="demo-provider-badge">デモ用の認証画面</p>
-        <h1 className="card-title">{label}との連携（デモ）</h1>
-        <p className="notice notice-info">
-          これは実際の {label} の画面ではありません。連携のキーが未設定のため、登録・ログインの流れを試せるようにした画面です。キーを設定すると、本物の認証画面に切り替わります。
-        </p>
-        <p className="card-sub">「当日予約デモ」が、次の情報の提供を求めています：お名前・メールアドレス</p>
+      <Panel as="section" className={ds.box}>
+        <div className={ds.body}>
+          <p>
+            <Label kind="strong" icon={Flag}>
+              デモ用の認証画面
+            </Label>
+          </p>
+          <h1 className={ds.title}>{label}との連携（デモ）</h1>
+          <Notice tone="info">
+            これは実際の {label} の画面ではありません。連携のキーが未設定のため、登録・ログインの流れを試せるようにした画面です。キーを設定すると、本物の認証画面に切り替わります。
+          </Notice>
+          <p className={ds.request}>「当日予約デモ」が、次の情報の提供を求めています：お名前・メールアドレス</p>
 
-        <form method="post" action="/api/auth/oauth/demo" onSubmit={(e) => e.preventDefault()} id="demo-provider-form">
-          <input type="hidden" name="decision" value="allow" />
-          <input type="hidden" name="subject" value={current?.subject ?? ''} />
-          <input type="hidden" name="name" value={current?.name ?? ''} />
-          <input type="hidden" name="email" value={current?.email ?? ''} />
+          <form method="post" action="/api/auth/oauth/demo" onSubmit={(e) => e.preventDefault()} id="demo-provider-form">
+            <input type="hidden" name="decision" value="allow" />
+            <input type="hidden" name="subject" value={current?.subject ?? ''} />
+            <input type="hidden" name="name" value={current?.name ?? ''} />
+            <input type="hidden" name="email" value={current?.email ?? ''} />
 
-          {saved.length > 0 && (
-            <fieldset className="demo-accounts">
-              <legend className="field-label">前に使ったデモのアカウント（同じ人として、もう一度ログインできます）</legend>
-              {saved.map((s) => (
-                <label key={s.subject} className="check">
-                  <input type="radio" name="pick" checked={chosen?.subject === s.subject} onChange={() => setChosen(s)} />
-                  <span>
-                    {s.name}
-                    <small className="muted"> {s.email}</small>
-                  </span>
+            {saved.length > 0 && (
+              <fieldset className={ds.accounts}>
+                <legend className={formClass.label}>前に使ったデモのアカウント（同じ人として、もう一度ログインできます）</legend>
+                {saved.map((s) => (
+                  <label key={s.subject} className={formClass.check}>
+                    <input type="radio" name="pick" checked={chosen?.subject === s.subject} onChange={() => setChosen(s)} />
+                    <span>
+                      {s.name}
+                      <small className={ds.email}> {s.email}</small>
+                    </span>
+                  </label>
+                ))}
+                <label className={formClass.check}>
+                  <input type="radio" name="pick" checked={chosen === null} onChange={() => setChosen(null)} />
+                  <span>別のアカウント（新しい人として試す）</span>
                 </label>
-              ))}
-              <label className="check">
-                <input type="radio" name="pick" checked={chosen === null} onChange={() => setChosen(null)} />
-                <span>別のアカウント（新しい人として試す）</span>
-              </label>
-            </fieldset>
-          )}
+              </fieldset>
+            )}
 
-          {chosen === null && fresh && (
-            <div className="field-row">
-              <label className="field">
-                <span className="field-label">お名前</span>
-                <input className="input" value={fresh.name} maxLength={60} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
-              </label>
-              <label className="field">
-                <span className="field-label">メールアドレス</span>
-                <input className="input" type="email" value={fresh.email} onChange={(e) => setFresh({ ...fresh, email: e.target.value.trim() })} />
-                <span className="field-hint">例示用のアドレス（@example.com・.test）だけ使えます。</span>
-              </label>
-            </div>
-          )}
+            {chosen === null && fresh && (
+              <div className={ds.row}>
+                <LabeledField label="お名前">
+                  <Input value={fresh.name} maxLength={60} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
+                </LabeledField>
+                <LabeledField label="メールアドレス" hint="例示用のアドレス（@example.com・.test）だけ使えます。">
+                  <Input type="email" value={fresh.email} onChange={(e) => setFresh({ ...fresh, email: e.target.value.trim() })} />
+                </LabeledField>
+              </div>
+            )}
 
-          {error && (
-            <p className="notice notice-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="action-pair">
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => {
-                const f = document.getElementById('demo-provider-form') as HTMLFormElement;
-                (f.elements.namedItem('decision') as HTMLInputElement).value = 'deny';
-                f.submit();
-              }}
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!current}
-              onClick={() => current && submitWith(current, document.getElementById('demo-provider-form') as HTMLFormElement)}
-            >
-              許可して続ける
-            </button>
-          </div>
-        </form>
-      </section>
-    </main>
+            {error && (
+              <Notice tone="danger" role="alert" className={ds.error}>
+                {error}
+              </Notice>
+            )}
+            <Pair>
+              <Button
+                variant="quiet"
+                size="md"
+                onClick={() => {
+                  const f = document.getElementById('demo-provider-form') as HTMLFormElement;
+                  (f.elements.namedItem('decision') as HTMLInputElement).value = 'deny';
+                  f.submit();
+                }}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                disabled={!current}
+                onClick={() => current && submitWith(current, document.getElementById('demo-provider-form') as HTMLFormElement)}
+              >
+                許可して続ける
+              </Button>
+            </Pair>
+          </form>
+        </div>
+      </Panel>
+    </Page>
   );
 }

@@ -166,7 +166,8 @@ if (SKIP_CRON) {
   console.log('- pg_cron の確認は省きました（--skip-cron）');
 } else {
   const deadline = new Date(Date.now() + 5000);
-  const startAt = new Date(Math.max(start.getTime() + 2 * 3600 * 1000, Date.now() + 3600 * 1000));
+  // 開始は1つ目の枠と同じ時刻にする（今日の9時以降に収まる。担当なしの枠どうしは重なってもよい）。夜遅くでも0時を越えない
+  const startAt = new Date(start.getTime());
   const { data: s2, error } = await admin
     .from('slots')
     .insert({ salon_id: slot.salon_id, menu_id: MENU_A, start_at: startAt.toISOString(), end_at: new Date(startAt.getTime() + 3600 * 1000).toISOString(), price: 4500, deadline_at: deadline.toISOString() })

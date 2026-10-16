@@ -8,31 +8,24 @@
 //     1画面に収まるよう、選択肢の多い項目はリストから選ぶ形にし、説明は1行にまとめる
 
 import type { ReactNode } from 'react';
+import { Field as FormField, Input, Select, formClass } from '@/components/ui/Form';
+import { WarningCircle } from '@/components/ui/icons';
 import { AGE_GROUPS, GENDERS, OCCUPATIONS, PRIVACY_URL, TERMS_URL } from '@/lib/profile-options';
+import s from './FormParts.module.css';
 
 export function Field({ id, label, required, error, hint, children }: { id: string; label: string; required?: boolean; error?: string; hint?: string; children: ReactNode }) {
   return (
-    <div className={`field ${error ? 'has-error' : ''}`}>
-      <label className="field-label" htmlFor={id} id={`${id}-label`}>
-        {label}
-        {required && <span className="req">必須</span>}
-      </label>
+    <FormField id={id} label={label} required={required} error={error} hint={hint} className={s.field}>
       {children}
-      {hint && !error && <span className="field-hint" id={`${id}-hint`}>{hint}</span>}
-      {error && (
-        <span className="field-error" id={`${id}-error`} role="alert">
-          {error}
-        </span>
-      )}
-    </div>
+    </FormField>
   );
 }
 
 export function Choices({ id, options, value, onChange }: { id: string; options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
   return (
-    <div id={id} tabIndex={-1} className="choice-row" role="radiogroup" aria-labelledby={`${id}-label`}>
+    <div id={id} tabIndex={-1} className={s.choices} role="radiogroup" aria-labelledby={`${id}-label`}>
       {options.map((o) => (
-        <button type="button" key={o.value} role="radio" aria-checked={value === o.value} className="choice" onClick={() => onChange(o.value)}>
+        <button type="button" key={o.value} role="radio" aria-checked={value === o.value} className={formClass.choice} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}
@@ -42,14 +35,14 @@ export function Choices({ id, options, value, onChange }: { id: string; options:
 
 export function MiniSteps({ step, total, label }: { step: number; total: number; label: string }) {
   return (
-    <div className="mini-steps" aria-label={`${total}段階のうち${step}段階目：${label}`}>
-      <span className="mini-steps-text">
-        <b className="num">
+    <div className={s.steps} aria-label={`${total}段階のうち${step}段階目：${label}`}>
+      <span className={s.stepsText}>
+        <b className={`num ${s.stepsNum}`}>
           {step}/{total}
         </b>
         {label}
       </span>
-      <span className="mini-steps-bar" aria-hidden>
+      <span className={s.stepsBar} aria-hidden>
         <i style={{ width: `${(step / total) * 100}%` }} />
       </span>
     </div>
@@ -84,53 +77,53 @@ export function ProfileFields({
   areas: { id: string; name: string }[];
 }) {
   return (
-    <>
-      <p className="form-note">すべて必須です。お名前と電話番号はご予約したお店にだけ伝え、性別・年代・職業はお店に伝えません。</p>
+    <div className={s.fields}>
+      <p className={s.note}>すべて必須です。お名前と電話番号はご予約したお店にだけ伝え、性別・年代・職業はお店に伝えません。</p>
       <Field id="name" label="お名前" error={errors.name}>
-        <input id="name" className="input" autoComplete="name" maxLength={60} value={form.name} aria-invalid={!!errors.name} onChange={(e) => onChange('name', e.target.value)} />
+        <Input id="name" autoComplete="name" maxLength={60} value={form.name} aria-invalid={!!errors.name} onChange={(e) => onChange('name', e.target.value)} />
       </Field>
       <Field id="phone" label="電話番号" error={errors.phone}>
-        <input id="phone" className="input" type="tel" inputMode="tel" autoComplete="tel" placeholder="090-1234-5678" value={form.phone} aria-invalid={!!errors.phone} onChange={(e) => onChange('phone', e.target.value)} />
+        <Input id="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="090-1234-5678" value={form.phone} aria-invalid={!!errors.phone} onChange={(e) => onChange('phone', e.target.value)} />
       </Field>
-      <div className="field-row">
+      <div className={s.row}>
         <Field id="gender" label="性別" error={errors.gender}>
           <Choices id="gender" options={[...GENDERS]} value={form.gender} onChange={(v) => onChange('gender', v)} />
         </Field>
         <Field id="age" label="年代" error={errors.age}>
-          <select id="age" className="select" value={form.age} aria-invalid={!!errors.age} onChange={(e) => onChange('age', e.target.value)}>
+          <Select id="age" value={form.age} aria-invalid={!!errors.age} onChange={(e) => onChange('age', e.target.value)}>
             <option value="">選択</option>
             {AGE_GROUPS.map((a) => (
               <option key={a.value} value={a.value}>
                 {a.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
-      <div className="field-row">
+      <div className={s.row}>
         <Field id="job" label="職業" error={errors.job}>
-          <select id="job" className="select" value={form.job} aria-invalid={!!errors.job} onChange={(e) => onChange('job', e.target.value)}>
+          <Select id="job" value={form.job} aria-invalid={!!errors.job} onChange={(e) => onChange('job', e.target.value)}>
             <option value="">選択</option>
             {OCCUPATIONS.map((o) => (
               <option key={o} value={o}>
                 {o}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field id="area" label="利用エリア" error={errors.area}>
-          <select id="area" className="select" value={form.area} aria-invalid={!!errors.area} onChange={(e) => onChange('area', e.target.value)}>
+          <Select id="area" value={form.area} aria-invalid={!!errors.area} onChange={(e) => onChange('area', e.target.value)}>
             <option value="">選択</option>
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
-      <div className={`field ${errors.agree ? 'has-error' : ''}`}>
-        <label className="check check-tight">
+      <div className={s.agree}>
+        <label className={formClass.check}>
           <input id="agree" type="checkbox" checked={form.agree} onChange={(e) => onChange('agree', e.target.checked)} />
           <span>
             18歳以上で、
@@ -145,11 +138,12 @@ export function ProfileFields({
           </span>
         </label>
         {errors.agree && (
-          <span className="field-error" role="alert">
+          <span className={formClass.error} role="alert">
+            <WarningCircle size={20} aria-hidden focusable="false" />
             {errors.agree}
           </span>
         )}
       </div>
-    </>
+    </div>
   );
 }

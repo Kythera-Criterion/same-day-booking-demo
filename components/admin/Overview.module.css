@@ -1,0 +1,73 @@
+/* 今日の状況：サロンごとの白い面に、時刻の順の表。広い画面では2つずつ並べる */
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.heading > svg {
+  flex: none;
+  color: var(--color-action-text);
+}
+
+.salons {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.salons > * {
+  min-inline-size: 0;
+}
+
+@media (min-width: 960px) {
+  .salons {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.salonHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-4) var(--pad-surface) var(--space-2);
+}
+
+.salonName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.salonName > svg {
+  flex: none;
+  color: var(--color-action-text);
+}
+
+.counts {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.stateCell {
+  inline-size: 1%;
+  white-space: nowrap;
+}
+
+.sub {
+  padding: var(--space-4) var(--pad-surface) var(--space-2);
+  color: var(--color-ink-sub);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}

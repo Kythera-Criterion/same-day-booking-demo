@@ -39,3 +39,19 @@ export async function DELETE(req: Request) {
   await admin.from('audit_logs').insert({ actor: caller.user.id, action: 'unlink_identity', target_id: caller.user.id, detail: { provider: body.provider } });
   return NextResponse.json(await load(caller.user.id));
 }
+
+// 招待のリンクを確かめた直後に呼ぶ：招待で作ったアカウントを「パスワードなし」として控える
+// （リンクを確かめると、本人の知らない値がパスワードの欄に入るため。本人がパスワードを決めると「あり」に戻る）
+export async function POST(req: Request) {
+  if (!isServerConfigured()) return NextResponse.json({ error: 'not_configured' }, { status: 500 });
+  const caller = await userFromRequest(req);
+  if (!caller) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 });
+  const admin = adminClient();
+  const before = await load(caller.user.id);
+  // 招待で作ったアカウントで、まだ一度もパスワードを決めていない場合だけ
+  if (caller.user.invited_at && !caller.user.user_metadata?.password_set) {
+    await admin.rpc('mark_passwordless', { p_user_id: caller.user.id });
+    return NextResponse.json(await load(caller.user.id));
+  }
+  return NextResponse.json(before);
+}

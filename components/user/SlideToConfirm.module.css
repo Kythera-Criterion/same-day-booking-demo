@@ -1,0 +1,96 @@
+/* スライドで確定（主要な操作の色）と、代わりの「長押しで確定」 */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--space-16);
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.off {
+  opacity: 0.45;
+}
+
+.fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--color-action-line);
+}
+
+.text {
+  position: relative;
+  padding-inline-start: var(--space-12);
+  color: var(--color-action-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.06em;
+}
+
+.thumb {
+  position: absolute;
+  inset-block: var(--space-1);
+  inset-inline-start: var(--space-1);
+  display: grid;
+  place-items: center;
+  inline-size: calc(var(--space-12) + var(--space-2));
+  border-radius: calc(var(--radius-control) - 2px);
+  background: var(--color-action);
+  color: var(--color-action-ink);
+  box-shadow: var(--shadow-lift);
+  cursor: grab;
+  touch-action: none;
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.thumb:active {
+  cursor: grabbing;
+}
+
+.hold {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: var(--space-12);
+  overflow: hidden;
+  border: 1px dashed var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.hold:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.holdFill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--color-action-soft);
+}
+
+.holdText {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

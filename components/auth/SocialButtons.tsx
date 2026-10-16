@@ -11,14 +11,18 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AUTH_ERROR, PROVIDER_IDS, PROVIDER_LABEL, type FlowMode, type FlowRole, type ProviderId, type Providers } from '@/lib/oauth-shared';
+import Label from '@/components/ui/Label';
+import { Fine } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { PROVIDER_IDS, PROVIDER_LABEL, authErrorText, type FlowMode, type FlowRole, type ProviderId, type Providers } from '@/lib/oauth-shared';
+import s from './SocialButtons.module.css';
 
 // 各社の公式のアイコン（高さをそろえ、縦横の比は変えない）
 export function ProviderIcon({ provider, height = 20 }: { provider: ProviderId; height?: number }) {
   return provider === 'google' ? (
-    <Image className="provider-icon" src="/brand/google-g.png" alt="" width={height} height={Math.round((height * 204) / 200)} unoptimized aria-hidden />
+    <Image className={s.icon} src="/brand/google-g.png" alt="" width={height} height={Math.round((height * 204) / 200)} unoptimized aria-hidden />
   ) : (
-    <Image className="provider-icon" src="/brand/yahoo-japan-icon.svg" alt="" width={Math.round((height * 64) / 36)} height={height} unoptimized aria-hidden />
+    <Image className={s.icon} src="/brand/yahoo-japan-icon.svg" alt="" width={Math.round((height * 64) / 36)} height={height} unoptimized aria-hidden />
   );
 }
 
@@ -46,7 +50,7 @@ export async function startSocial(opts: {
     body: JSON.stringify({ provider: opts.provider, role: opts.role, mode: opts.mode, next: opts.next, back: opts.back }),
   });
   const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-  if (!res.ok || !body.url) return AUTH_ERROR[body.error ?? ''] ?? '連携を始められませんでした。少し時間をおいてお試しください。';
+  if (!res.ok || !body.url) return authErrorText(body.error, '連携を始められませんでした。少し時間をおいてお試しください。');
   window.location.assign(body.url);
   return null;
 }
@@ -87,29 +91,27 @@ export default function SocialButtons({
   }
 
   return (
-    <div className="social">
+    <div className={s.list}>
       {shown.map((p) => (
-        <button key={p} type="button" className={`btn btn-block social-btn social-${p}`} disabled={busy !== null} onClick={() => go(p)}>
+        <button key={p} type="button" className={s.provider} disabled={busy !== null} onClick={() => go(p)}>
           <ProviderIcon provider={p} height={p === 'google' ? 20 : 16} />
-          <span className="social-text">{busy === p ? '移動しています…' : providerText(p, verb)}</span>
-          {providers[p] === 'simulated' && <span className="social-demo">デモ</span>}
+          <span className={s.text}>{busy === p ? '移動しています…' : providerText(p, verb)}</span>
+          {providers[p] === 'simulated' && <Label kind="state">デモ</Label>}
         </button>
       ))}
       {error && (
-        <p className="notice notice-error" role="alert">
+        <Notice tone="danger" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
-      {simulated && (
-        <p className="fine-print social-note">「デモ」は試用の画面です（各社に接続しません）。</p>
-      )}
+      {simulated && <Fine>「デモ」は試用の画面です（各社に接続しません）。</Fine>}
     </div>
   );
 }
 
 export function OrDivider({ children = 'または' }: { children?: string }) {
   return (
-    <div className="or-divider" role="separator">
+    <div className={s.or} role="separator">
       <span>{children}</span>
     </div>
   );
@@ -117,17 +119,17 @@ export function OrDivider({ children = 'または' }: { children?: string }) {
 
 export function LoggedOutNotice() {
   return (
-    <p className="notice notice-ok" role="status">
+    <Notice tone="success" role="status" className={s.pageNotice}>
       ログアウトしました。続けて使うときは、もう一度ログインしてください。
-    </p>
+    </Notice>
   );
 }
 
 export function AuthErrorNotice({ code }: { code?: string | null }) {
   if (!code) return null;
   return (
-    <p className="notice notice-error" role="alert">
-      {AUTH_ERROR[code] ?? 'ログインできませんでした。もう一度お試しください。'}
-    </p>
+    <Notice tone="danger" role="alert" className={s.pageNotice}>
+      {authErrorText(code, 'ログインできませんでした。もう一度お試しください。')}
+    </Notice>
   );
 }

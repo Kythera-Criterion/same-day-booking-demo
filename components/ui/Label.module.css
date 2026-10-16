@@ -1,0 +1,63 @@
+/* ラベルの文法（形で意味を分ける）
+   ・時間のラベル：塗りつぶし・時間の色・時計のアイコン（「受付あと12分」「いちばん早い」）
+   ・条件のラベル：枠線だけ（「女性限定」「いちばん近い」）
+   ・状態のラベル：沈んだ面の上の文字（「公開中」「来店済み」など、業務の画面で使う）
+   1枚のカードに付けるのは2つまで（並べる側で決める） */
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--size-label);
+  padding-block: 0;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-label);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-label);
+  white-space: nowrap;
+}
+
+.time {
+  background: var(--color-time);
+  color: var(--color-time-ink);
+}
+
+/* 締切まで余裕があるときは、時間の色を薄く使う（強く塗るのは急ぐときだけ） */
+.timeSoft {
+  background: var(--color-time-soft);
+  color: var(--color-time-text);
+}
+
+.condition {
+  border: 1px solid var(--color-line-strong);
+  background: transparent;
+  color: var(--color-ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.state {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+}
+
+.action {
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+.success {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.strong {
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
+}

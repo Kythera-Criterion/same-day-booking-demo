@@ -1,418 +1,313 @@
 /* =========================================================
-   トークン（色・文字・余白・形・影・動き）
-   ---------------------------------------------------------
-   1. 基本トークン（デジタル庁デザインシステム）
-        @digital-go-jp/design-tokens 2.0.1（MIT License / Copyright (c) 2023 デジタル庁。全文は THIRD_PARTY_LICENSES.md）
-        app/layout.tsx で dist/tokens.css を先に読み込む。
-        使うもの：--font-size-*・--line-height-*・--font-weight-*・--font-family-sans・--border-radius-*・
-                  --color-neutral-*・--color-primitive-yellow-300（フォーカスの輪）
-   2. 基本トークン（このサービス）：色の段階・余白・大きさ・時間・重なり
-   3. 意味のトークン：各画面の CSS は、ここで決めた名前だけを使う（色や数値を直接書かない）
-   4. 役割ごとのテーマ（お客様：緑／サロン：青／運営：紫）
-   5. 動きを減らす設定
-   参考サイトで測った値は、docs/design-references.md の「変換のルール」で置き換えてから使っている
+   デザイントークン
+   2段に分ける：
+     1. 基本の値（primitive）：色の段階・文字の大きさ・余白などの「材料」。画面の CSS からは直接使わない
+     2. 意味の値（semantic）：--color-action（主要な操作）、--color-time（受付締切が近い）など「役割」。画面の CSS はこちらだけを使う
+   トーンの言葉：「澄んだ」「間に合う」「確か」（docs/design-references.md）
    ========================================================= */
 
 :root {
-  /* ---------------------------------------------------------
-     2. このサービスの基本トークン
-     --------------------------------------------------------- */
+  /* ---------- 基本の値：色 ---------- */
+  /* 青緑（アクセントの軸 #1f6f5c を 600 に置き、OKLCH で明るさの段階を作った） */
+  --teal-50: #edfaf6;
+  --teal-100: #def5ed;
+  --teal-200: #c1e8db;
+  --teal-300: #98d3c0;
+  --teal-400: #68b29d;
+  --teal-500: #388d77;
+  --teal-600: #1f6f5c;
+  --teal-700: #045645;
+  --teal-800: #014436;
+  --teal-900: #023025;
 
-  /* アクセント（深い緑 #1f6f5c を 600 とした 50〜900 の段階） */
-  --brand-green-50: #e9f4f0;
-  --brand-green-100: #d1e8df;
-  --brand-green-200: #a8d3c3;
-  --brand-green-300: #78b9a3;
-  --brand-green-400: #4c9d84;
-  --brand-green-500: #2e8770;
-  --brand-green-600: #1f6f5c;
-  --brand-green-700: #17574a;
-  --brand-green-800: #114439;
-  --brand-green-900: #0b2f28;
+  /* 琥珀（時間の色：受付締切が近い・いちばん早い）。600 に白い文字で 5.25:1 */
+  --amber-50: #fdf6ea;
+  --amber-100: #f9e9cc;
+  --amber-200: #f0d19a;
+  --amber-500: #b9741a;
+  --amber-600: #9d5d03;
+  --amber-700: #7e4a00;
+  --amber-800: #5f3800;
 
-  /* サロンの画面（青） */
-  --brand-blue-50: #eaf0fa;
-  --brand-blue-100: #d6e2f4;
-  --brand-blue-200: #b1c7ea;
-  --brand-blue-300: #87a9dd;
-  --brand-blue-400: #5a86cb;
-  --brand-blue-500: #3d6db8;
-  --brand-blue-600: #2c5aa0;
-  --brand-blue-700: #1f437c;
-  --brand-blue-800: #17335e;
-  --brand-blue-900: #0f2240;
+  /* 中立：わずかに青緑に寄せた灰色（ベージュをやめ、澄んだ白に） */
+  --gray-0: #ffffff;
+  --gray-25: #f5f8f7;
+  --gray-50: #edf2f0;
+  --gray-100: #e3e9e7;
+  --gray-200: #d3dbd8;
+  --gray-300: #b9c2bf;
+  --gray-500: #737a78;
+  --gray-600: #555c5a;
+  --gray-700: #3b4240;
+  --gray-800: #262c2a;
+  --gray-900: #141a18;
 
-  /* 運営の画面（紫） */
-  --brand-purple-50: #f3eefa;
-  --brand-purple-100: #e6ddf4;
-  --brand-purple-200: #cdbbe8;
-  --brand-purple-300: #b096d9;
-  --brand-purple-400: #9172c6;
-  --brand-purple-500: #7655b0;
-  --brand-purple-600: #5b3f99;
-  --brand-purple-700: #452f78;
-  --brand-purple-800: #33235a;
-  --brand-purple-900: #22173c;
+  /* 状態 */
+  --red-50: #fdf0ee;
+  --red-600: #b3261e;
+  --red-700: #8f1d17;
+  --green-50: #eef7ee;
+  --green-600: #2e7d32;
+  --green-700: #22602a;
+  --blue-50: #eef4fb;
+  --blue-600: #2f5f9e;
+  --blue-700: #234a7c;
 
-  /* 背景と文字（温かみのある灰色の段階） */
-  --sand-0: #ffffff;
-  --sand-50: #faf8f4;
-  --sand-100: #f5f3ee;
-  --sand-150: #efece6;
-  --sand-200: #e6e2d9;
-  --sand-250: #ebe7df;
-  --sand-300: #d5d0c4;
-  --sand-500: #85817a;
-  --sand-600: #5c615c;
-  --sand-700: #434845;
-  --sand-900: #1a1d1b;
+  /* 役割のテーマ：サロン（藍）・運営（紫）。お客様は青緑 */
+  --indigo-50: #eef3fb;
+  --indigo-100: #dde7f6;
+  --indigo-600: #2c5aa0;
+  --indigo-700: #1f437c;
+  --indigo-800: #17335f;
+  --indigo-900: #0f2242;
+  --violet-50: #f4f0fa;
+  --violet-100: #e9e2f5;
+  --violet-600: #5b3f99;
+  --violet-700: #452f78;
+  --violet-800: #33235a;
 
-  /* サロン・運営の背景（役割の色を薄く混ぜた灰色） */
-  --mist-blue-50: #f7f9fc;
-  --mist-blue-100: #eef2f8;
-  --mist-blue-200: #dfe5ee;
-  --mist-blue-250: #dfe6f1;
-  --mist-blue-300: #cbd4e2;
-  --mist-purple-50: #f9f7fc;
-  --mist-purple-100: #f1eef7;
-  --mist-purple-200: #e5e0ee;
-  --mist-purple-250: #e6e0f0;
-  --mist-purple-300: #d3cbe2;
+  /* 虹（ページの背景だけに使う、ごく淡い7色）。どの段の上でも、補足の文字・操作の色の文字が 4.5:1 以上になる明るさ */
+  --rainbow-red: #fde4e6;
+  --rainbow-orange: #feead6;
+  --rainbow-yellow: #fbf2c9;
+  --rainbow-green: #dcf2df;
+  --rainbow-blue: #d9eafa;
+  --rainbow-indigo: #e1e3f9;
+  --rainbow-violet: #ede1f8;
 
-  /* 状態の色の素（文字は背景に対して 4.5:1 以上。tests は docs/design-references.md） */
-  --red-50: #fbe9e3;
-  --red-100: #f6d3c8;
-  --red-600: #a63a24;
-  --amber-50: #fbf0d9;
-  --amber-100: #f4dfb2;
-  --amber-500: #b7780f;
-  --amber-700: #6f4a06;
-  --slate-50: #e5eaee;
-  --slate-200: #c6d0d7;
-  --slate-700: #3d4a55;
-  --sky-50: #e6eef8;
-  --sky-700: #2d5486;
-  --chart-green: #00876a;
-  --chart-amber: #c27510;
-  --line-app-green: #06c755;
+  /* ---------- 基本の値：文字 ---------- */
+  --size-12: 0.75rem;
+  --size-14: 0.875rem;
+  --size-16: 1rem;
+  --size-20: 1.25rem;
+  --size-28: 1.75rem;
+  --size-40: 2.5rem;
+  --size-56: 3.5rem;
 
-  /* 外部の ID のボタン（各社のガイドラインで決められた色。ここだけは各社の値をそのまま使う） */
-  --provider-google-fill: #ffffff;
-  --provider-google-line: #747775;
-  --provider-google-ink: #1f1f1f;
-  --provider-google-hover: #f2f2f2;
-
-  /* 時間帯のヒーロー（朝・昼・夕方・夜。どれも濃い文字で 4.5:1 以上になる明るさ） */
-  --sky-morning-a: #fbe3d2;
-  --sky-morning-b: #f4eedb;
-  --sky-day-a: #d9efe6;
-  --sky-day-b: #e1edf8;
-  --sky-evening-a: #f6d9c6;
-  --sky-evening-b: #eed6e2;
-  --sky-night-a: #d5dcef;
-  --sky-night-b: #dcd6ee;
-
-  /* 余白（4px の倍数） */
-  --space-0: 0;
-  --space-px: 1px;
-  --space-half: 2px;
+  /* ---------- 基本の値：余白（4px の倍数） ---------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
-  --space-7: 28px;
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
-  --space-14: 56px;
   --space-16: 64px;
-  --space-20: 80px;
 
-  /* 大きさ */
-  --size-tap: 44px;
+  /* =========================================================
+     意味の値（画面の CSS はここから下だけを使う）
+     ========================================================= */
+
+  /* 背景の段：ページ（淡い）→ 面（白）→ 沈んだ面（入れ子の区切り）。白い枠付きの箱は使わない */
+  --color-bg: var(--gray-25);
+  --color-surface: var(--gray-0);
+  --color-surface-sunken: var(--gray-50);
+  --color-surface-strong: var(--gray-900);
+
+  /* ページの背景の虹（base.css で、内容の後ろに画面いっぱいに敷く）。白い面・文字は、この上にそのまま置く
+     お客様：スマートフォンで「今から行ける」を探す。気持ちが軽くなるよう、斜めに流れる虹をそのままの淡さで
+     サロン・運営は、下の役割のテーマで、それぞれの使い方に合わせて抑える */
+  --rainbow: var(--rainbow-red), var(--rainbow-orange), var(--rainbow-yellow), var(--rainbow-green), var(--rainbow-blue),
+    var(--rainbow-indigo), var(--rainbow-violet);
+  --page-wash: linear-gradient(160deg, var(--rainbow));
+  /* デモ用の舞台：3つの端末が、左から右へ別の色の上に並ぶ。沈んだ面を半分重ねて、端末を目立たせる */
+  --stage-wash: linear-gradient(
+      color-mix(in srgb, var(--color-surface-sunken) 50%, transparent),
+      color-mix(in srgb, var(--color-surface-sunken) 50%, transparent)
+    ),
+    linear-gradient(100deg, var(--rainbow));
+  /* 上に残る帯（ヘッダー・タブ）：白を半分重ねてぼかし、後ろの虹が透けて見えるようにする */
+  --color-glass: color-mix(in srgb, var(--color-surface) 55%, transparent);
+
+  /* 文字（補足も 4.5:1 以上） */
+  --color-ink: var(--gray-900);
+  --color-ink-2: var(--gray-700);
+  --color-ink-sub: var(--gray-600);
+  --color-ink-on-strong: var(--gray-0);
+  --color-ink-on-photo: var(--gray-0);
+
+  /* 線：入力欄と条件のラベル、リストの区切りだけに使う */
+  --color-line: var(--gray-100);
+  --color-line-strong: var(--gray-300);
+
+  /* 主要な操作（1つの画面で強く塗る色はこれだけ） */
+  --color-action: var(--teal-600);
+  --color-action-hover: var(--teal-700);
+  --color-action-ink: var(--gray-0);
+  --color-action-soft: var(--teal-50);
+  --color-action-line: var(--teal-200);
+  --color-action-text: var(--teal-700);
+
+  /* 選択中（チップ・時間帯の切り替え）：緑ではなくインクで塗り、「操作」と区別する */
+  --color-selected: var(--gray-900);
+  --color-selected-ink: var(--gray-0);
+
+  /* 時間の色（受付締切が近い・いちばん早い・開始までの残り） */
+  --color-time: var(--amber-600);
+  --color-time-ink: var(--gray-0);
+  --color-time-soft: var(--amber-50);
+  --color-time-line: var(--amber-200);
+  --color-time-text: var(--amber-700);
+  /* ブランドの印の「空いた時間」（役割の色の四角の上。青緑 4.0:1・藍 5.0:1・紫 5.9:1） */
+  --color-mark-accent: var(--amber-200);
+
+  /* 価格：色を付けず、太さと大きさで目立たせる */
+  --color-price: var(--gray-900);
+
+  /* お知らせ */
+  --color-success: var(--green-600);
+  --color-success-soft: var(--green-50);
+  --color-success-text: var(--green-700);
+  --color-danger: var(--red-600);
+  --color-danger-soft: var(--red-50);
+  --color-danger-text: var(--red-700);
+  --color-info-soft: var(--blue-50);
+  --color-info-text: var(--blue-700);
+
+  /* 予約の状態（色だけでなく、アイコン・塗り・枠線・模様でも区別する） */
+  --color-state-open: var(--color-action);
+  --color-state-booked: var(--color-action);
+  --color-state-done: var(--gray-700);
+  --color-state-closed: var(--gray-500);
+
+  /* フォーカスの輪郭（キーボード操作で必ず見える太さ） */
+  --color-focus: var(--teal-700);
+  --focus-width: 3px;
+  /* 役割の色の太い線（ページの上端・予約の知らせの輪郭） */
+  --line-accent: 4px;
+  /* 浮いている帯の後ろをぼかす量 */
+  --blur-glass: 12px;
+  --focus-ring: 0 0 0 2px var(--gray-0), 0 0 0 5px var(--color-focus);
+
+  /* 重ねる層 */
+  --color-overlay: rgb(10 18 16 / 0.5);
+  /* 予約の知らせの背景：役割の色のいちばん濃い段（白い文字で 12:1 以上） */
+  --color-alert-bg: var(--teal-900);
+  --photo-shade: linear-gradient(180deg, rgb(8 14 12 / 0) 35%, rgb(8 14 12 / 0.68) 100%);
+  --shadow-text-on-photo: 0 1px 2px rgb(8 14 12 / 0.4);
+
+  /* 文字の段階（補足 12・本文 14〜16・小見出し 20・見出し 28・数字の主役 40・業務の大きな時刻 56） */
+  --font-sans: var(--font-zen), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  --font-num: var(--font-manrope), var(--font-sans);
+  --text-caption: var(--size-12);
+  --text-small: var(--size-14);
+  --text-body: var(--size-16);
+  --text-title: var(--size-20);
+  --text-heading: var(--size-28);
+  --text-figure: var(--size-40);
+  --text-display: var(--size-56);
+  /* 業務の画面の予約の知らせ（離れた場所からも読める大きさ） */
+  --text-alert-time: clamp(4rem, 14vw, 8rem);
+  --text-alert-name: clamp(2rem, 6vw, 3.5rem);
+  --text-alert-sub: clamp(1.25rem, 3vw, 1.75rem);
+  --leading-tight: 1.25;
+  --leading-snug: 1.45;
+  --leading-body: 1.7;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+  --tracking-body: 0.02em;
+  --tracking-label: 0.04em;
+  --tracking-num: -0.01em;
+
+  /* 余白の役割 */
+  --gap-inline: var(--space-2);
+  --gap-stack: var(--space-3);
+  --gap-section: var(--space-8);
+  --pad-surface: var(--space-4);
+  --pad-page: var(--space-4);
+
+  /* 角丸は4種類：ラベル・操作（ボタンと入力欄）・面（シートとカード）・写真 */
+  --radius-label: 6px;
+  --radius-control: 10px;
+  --radius-surface: 16px;
+  --radius-photo: 12px;
+
+  /* 影は「浮いているもの」（シート・下部のバー・知らせ）だけに使う */
+  --shadow-float: 0 -1px 0 rgb(20 26 24 / 0.04), 0 12px 32px rgb(20 26 24 / 0.14);
+  --shadow-lift: 0 1px 2px rgb(20 26 24 / 0.06), 0 6px 16px rgb(20 26 24 / 0.08);
+
+  /* 動き：短い・標準・長いの3段階（動きを減らす設定では止める） */
+  --motion-short: 120ms;
+  --motion-base: 220ms;
+  --motion-long: 420ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.25, 1);
+
+  /* アイコンは2種類の大きさ */
+  --icon-md: 20px;
+  --icon-lg: 24px;
+
+  /* 押せる部品の最小の大きさ・部品の高さ */
+  --tap-min: 44px;
   --size-control: 48px;
   --size-control-lg: 56px;
-  --size-control-xl: 64px;
-  --size-icon-xs: 16px;
-  --size-icon-sm: 20px;
-  --size-icon-md: 24px;
-  --size-icon-lg: 40px;
-  --size-badge: 22px;
-  --size-check: 20px;
-  --size-dot: 8px;
-  --size-hairline: 1px;
-  --size-stroke: 2px;
-  --size-stroke-bold: 4px;
-  --size-bar: 4px;
-  --size-bar-thick: 6px;
+  --size-label: 28px;
+  --size-tabbar: 64px;
+  --size-actionbar: 120px;
+  --size-thumb: 76px;
+  --size-tile: 136px;
+  /* 線の太さ（1〜2px）と、メディアクエリの境目（720px・960px）だけは、各 CSS に数値で書く */
 
-  /* 時間（短い・標準・長い・呼吸・知らせ） */
-  --duration-instant: 1ms;
-  --duration-short: 120ms;
-  --duration-standard: 240ms;
-  --duration-long: 480ms;
-  --duration-linger: 1200ms;
-  --duration-breath: 4800ms;
-  --duration-alert: 2400ms;
-
-  /* 動き方 */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
-  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
-  --ease-breath: cubic-bezier(0.45, 0, 0.55, 1);
-
-  /* ぼかし（浮いた帯・半透明のパネル） */
-  --blur-bar: 14px;
-  --blur-glass: 16px;
-
-  /* 画面幅の区切り（メディアクエリでは変数を使えないため、各 CSS では同じ値を em で書く） */
-  --bp-xs: 22.5em; /* 360px */
-  --bp-sm: 30em; /* 480px */
-  --bp-md: 37.5em; /* 600px */
-  --bp-tablet: 56.25em; /* 900px */
-  --bp-lg: 60em; /* 960px */
-  --bp-xl: 93.75em; /* 1500px */
-
-  /* 重なりの順 */
-  --z-raised: 2;
-  --z-sticky: 20;
+  /* 画面の幅 */
+  --width-phone: 480px;
+  --width-wide: 1120px;
+  --width-dialog: 720px;
+  --z-backdrop: -1;
+  --z-header: 20;
   --z-bar: 30;
   --z-sheet: 50;
   --z-toast: 60;
   --z-alert: 80;
-  --z-banner: 90;
-  --z-skip: 100;
-
-  /* ---------------------------------------------------------
-     3. 意味のトークン（各画面の CSS はこれだけを使う）
-     --------------------------------------------------------- */
-
-  /* 色：アクセント */
-  --color-accent: var(--brand-green-600);
-  --color-accent-strong: var(--brand-green-700);
-  --color-accent-deep: var(--brand-green-800);
-  --color-accent-soft: var(--brand-green-50);
-  --color-accent-muted: var(--brand-green-100);
-  --color-accent-line: var(--brand-green-300);
-  --color-accent-bright: var(--brand-green-500);
-  --color-on-accent: var(--color-neutral-white);
-
-  /* 色：面と文字 */
-  --color-bg: var(--sand-100);
-  --color-surface: var(--sand-0);
-  --color-surface-sunken: var(--sand-50);
-  --color-surface-muted: var(--sand-150);
-  --color-track: var(--sand-250);
-  --color-ink: var(--sand-900);
-  --color-ink-2: var(--sand-700);
-  --color-ink-muted: var(--sand-600);
-  --color-ink-inverse: var(--color-neutral-white);
-  --color-line: var(--sand-200);
-  --color-line-strong: var(--sand-300);
-  --color-line-input: var(--sand-500);
-  --color-scrim: rgb(20 24 22 / 0.42);
-  --color-veil: rgb(255 255 255 / 0.82);
-  --color-glass: rgb(255 255 255 / 0.62);
-  --color-glass-line: rgb(255 255 255 / 0.7);
-  --color-on-accent-faint: rgb(255 255 255 / 0.16);
-  --color-on-accent-soft: rgb(255 255 255 / 0.85);
-  --color-hatch: rgb(0 0 0 / 0.06);
-
-  /* 色：状態（文字の色・背景・枠） */
-  --color-status-open: var(--color-accent-strong);
-  --color-status-open-bg: var(--color-accent-soft);
-  --color-status-open-line: var(--color-accent);
-  --color-status-booked: var(--color-on-accent);
-  --color-status-booked-bg: var(--color-accent);
-  --color-status-booked-line: var(--color-accent-deep);
-  --color-status-completed: var(--slate-700);
-  --color-status-completed-bg: var(--slate-50);
-  --color-status-completed-line: var(--slate-200);
-  --color-status-cancelled: var(--sand-600);
-  --color-status-cancelled-bg: var(--sand-150);
-  --color-status-cancelled-line: var(--sand-300);
-  --color-warn: var(--red-600);
-  --color-warn-bg: var(--red-50);
-  --color-warn-line: var(--red-100);
-  --color-caution: var(--amber-700);
-  --color-caution-bg: var(--amber-50);
-  --color-caution-line: var(--amber-100);
-  --color-caution-mark: var(--amber-500);
-  --color-info: var(--sky-700);
-  --color-info-bg: var(--sky-50);
-  --color-success: var(--color-accent-strong);
-  --color-success-bg: var(--color-accent-soft);
-  --color-line-app: var(--line-app-green);
-
-  /* 色：候補の役割（いちばん早い／いちばん近い／もうひとつの候補） */
-  --color-role-earliest: var(--brand-green-600);
-  --color-role-earliest-ink: var(--brand-green-700);
-  --color-role-earliest-bg: var(--brand-green-50);
-  --color-role-nearest: var(--brand-blue-500);
-  --color-role-nearest-ink: var(--brand-blue-700);
-  --color-role-nearest-bg: var(--brand-blue-50);
-  --color-role-other: var(--amber-500);
-  --color-role-other-ink: var(--amber-700);
-  --color-role-other-bg: var(--amber-50);
-
-  /* 色：グラフ（検証済みの2色） */
-  --color-chart-1: var(--chart-green);
-  --color-chart-2: var(--chart-amber);
-
-  /* 文字（デジタル庁の文字の段階に合わせる。12px はバッジ・目盛りだけに使うこのサービス独自の段） */
-  --font-family-base: var(--font-noto), var(--font-family-sans);
-  --font-family-mono: ui-monospace, Menlo, Consolas, monospace;
-  --text-display: var(--font-size-64);
-  --text-display-sm: var(--font-size-48);
-  --text-num-xl: var(--font-size-36);
-  --text-num-lg: var(--font-size-28);
-  --text-num-md: var(--font-size-24);
-  /* 区切りの大見出し（はじめの設定など）：本文の 2 倍（参考：Too Good To Go のスマホの見出し÷本文 = 2.0 をデジタル庁の 32px に当てた） */
-  --text-intro: var(--font-size-32);
-  --text-h1: var(--font-size-24);
-  --text-h2: var(--font-size-20);
-  --text-h3: var(--font-size-18);
-  --text-lead: var(--font-size-17);
-  --text-body: var(--font-size-16);
-  --text-sm: var(--font-size-14);
-  --text-xs: 0.75rem;
-  --leading-body: var(--line-height-170);
-  --leading-ui: var(--line-height-150);
-  --leading-heading: var(--line-height-140);
-  --leading-dense: var(--line-height-130);
-  --leading-tight: var(--line-height-120);
-  --leading-num: var(--line-height-100);
-  --weight-regular: var(--font-weight-400);
-  --weight-medium: 500;
-  --weight-bold: var(--font-weight-700);
-  --tracking-body: 0.02em;
-  --tracking-wide: 0.08em;
-  --tracking-num: 0.01em;
-
-  /* 形：角丸は 小・中・大・完全な丸 の4段階 */
-  --radius-sm: var(--border-radius-8);
-  --radius-md: var(--border-radius-12);
-  --radius-lg: var(--border-radius-24);
-  --radius-full: var(--border-radius-full);
-  --radius-control: var(--radius-md);
-  --radius-card: var(--radius-md);
-  --radius-panel: var(--radius-lg);
-  --radius-sheet: var(--radius-lg);
-  --radius-pill: var(--radius-full);
-
-  /* 影：浮き上がりは3段階まで（1：カード／2：浮いた面／3：重なる層） */
-  --shadow-1: 0 1px 2px rgb(26 29 27 / 0.06);
-  --shadow-2: 0 1px 2px rgb(26 29 27 / 0.04), 0 10px 28px rgb(26 29 27 / 0.08);
-  --shadow-3: 0 24px 64px rgb(26 29 27 / 0.2);
-  --shadow-accent: 0 8px 20px color-mix(in srgb, var(--color-accent) 26%, transparent);
-
-  /* 動き（短い・標準・長い。呼吸と知らせは周期を長くして、点滅は1秒に3回を大きく下回る） */
-  --motion-short: var(--duration-short);
-  --motion-standard: var(--duration-standard);
-  --motion-long: var(--duration-long);
-  --motion-linger: var(--duration-linger);
-  --motion-breath: var(--duration-breath);
-  --motion-alert: var(--duration-alert);
-
-  /* フォーカス（デジタル庁のフォーカスリング：黒の外枠と、その内側の黄色の輪） */
-  --focus-outline-color: var(--color-neutral-black);
-  --focus-outline-width: var(--size-stroke-bold);
-  --focus-offset: var(--size-stroke);
-  --focus-halo-color: var(--color-primitive-yellow-300);
-  --focus-halo-width: var(--size-stroke);
-
-  /* レイアウト */
-  --layout-narrow: 480px;
-  --layout-salon: 1120px;
-  --layout-admin: 1040px;
-  --layout-sheet: 720px;
-  --layout-toast: 440px;
-  --layout-gutter: var(--space-4);
-  --sheet-max-height: 92vh;
-  --overdue-max-height: 30vh;
-  --tabbar-height: 64px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-
-  /* 画面ごとの部品の大きさ（コンポーネントのトークン） */
-  --size-hero-button: min(17.5rem, 72vw);
-  --size-radar: 15rem;
-  --size-live-ring: min(17rem, 72vw);
-  --size-ring-width: var(--space-3);
-  --size-notch: var(--space-3);
-  --size-time-col: 5.25rem;
-  --size-split-chip: 4.75rem;
-  --band-name-col: 6rem;
-  --band-col-min: 3rem;
-  --band-row-height: 3.5rem;
-  --text-live: clamp(3.5rem, 16vw, 5rem);
-  --text-alert-time: clamp(4.5rem, 14vw, 7.5rem);
-  --text-alert-name: clamp(2rem, 6vw, 3.75rem);
-  --text-alert-sub: clamp(1.25rem, 3.5vw, 2.25rem);
-
-  /* デモ用の舞台（/demo）の端末の枠 */
-  --stage-phone-width: 390px;
-  --stage-tablet-min: 560px;
-  --stage-desk-min: 480px;
-  --stage-frame-min-height: 720px;
-  --stage-phone-max-height: 844px;
-  --stage-device-frame: var(--sand-900);
-
-  /* 時間帯のヒーロー（画面の時計から data-daypart と --hero-mix を更新する） */
-  --hero-from-a: var(--sky-day-a);
-  --hero-from-b: var(--sky-day-b);
-  --hero-to-a: var(--sky-evening-a);
-  --hero-to-b: var(--sky-evening-b);
 }
 
-/* ---------------------------------------------------------
-   4. 役割ごとのテーマ（画面上部の帯の data-role で切り替える）
-   --------------------------------------------------------- */
-:root:has(.topbar[data-role="salon"]) {
-  --color-accent: var(--brand-blue-600);
-  --color-accent-strong: var(--brand-blue-700);
-  --color-accent-deep: var(--brand-blue-800);
-  --color-accent-soft: var(--brand-blue-50);
-  --color-accent-muted: var(--brand-blue-100);
-  --color-accent-line: var(--brand-blue-300);
-  --color-accent-bright: var(--brand-blue-500);
-  --color-bg: var(--mist-blue-100);
-  --color-surface-sunken: var(--mist-blue-50);
-  --color-line: var(--mist-blue-200);
-  --color-line-strong: var(--mist-blue-300);
-  --color-track: var(--mist-blue-250);
+/* 役割ごとのテーマ：上部の帯（data-role）で、主要な操作の色を切り替える */
+:root:has(header[data-role="salon"]) {
+  --color-alert-bg: var(--indigo-900);
+  --color-action: var(--indigo-600);
+  --color-action-hover: var(--indigo-700);
+  --color-action-soft: var(--indigo-50);
+  --color-action-line: var(--indigo-100);
+  --color-action-text: var(--indigo-700);
+  --color-focus: var(--indigo-700);
+  --color-bg: #f4f6fa;
+  /* タブレットで1日中開いておく業務の画面：タイムラインと同じ向き（左＝朝の赤 → 右＝夜の紫）に横へ流し、背景の色を 30% 重ねて静かに */
+  --page-wash: linear-gradient(
+      color-mix(in srgb, var(--color-bg) 30%, transparent),
+      color-mix(in srgb, var(--color-bg) 30%, transparent)
+    ),
+    linear-gradient(90deg, var(--rainbow));
 }
-:root:has(.topbar[data-role="admin"]) {
-  --color-accent: var(--brand-purple-600);
-  --color-accent-strong: var(--brand-purple-700);
-  --color-accent-deep: var(--brand-purple-800);
-  --color-accent-soft: var(--brand-purple-50);
-  --color-accent-muted: var(--brand-purple-100);
-  --color-accent-line: var(--brand-purple-300);
-  --color-accent-bright: var(--brand-purple-500);
-  --color-bg: var(--mist-purple-100);
-  --color-surface-sunken: var(--mist-purple-50);
-  --color-line: var(--mist-purple-200);
-  --color-line-strong: var(--mist-purple-300);
-  --color-track: var(--mist-purple-250);
+:root:has(header[data-role="admin"]) {
+  --color-action: var(--violet-600);
+  --color-action-hover: var(--violet-700);
+  --color-action-soft: var(--violet-50);
+  --color-action-line: var(--violet-100);
+  --color-action-text: var(--violet-700);
+  --color-focus: var(--violet-700);
+  --color-bg: #f6f4f9;
+  /* 数字とグラフを読む画面：虹は上の端だけにして、画面の半分ほどで無地へ消す（グラフの色と混ざらない） */
+  --page-wash: linear-gradient(180deg, transparent 0, var(--color-bg) 55%),
+    linear-gradient(90deg, var(--rainbow));
 }
 
-/* ---------------------------------------------------------
-   5. 動きを減らす設定：時間をほぼ0にする（色の変化だけが残る）
-   --------------------------------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-short: var(--duration-instant);
-    --motion-standard: var(--duration-instant);
-    --motion-long: var(--duration-instant);
-    --motion-linger: var(--duration-instant);
+/* コントラストを高くする設定・強制カラーのとき、印刷するときは、虹をやめて無地にする */
+@media (prefers-contrast: more), (forced-colors: active), print {
+  :root,
+  :root:has(header[data-role]) {
+    --page-wash: none;
+    --stage-wash: none;
+    --color-glass: var(--color-bg);
   }
 }
 
-/* 残りの割合を滑らかに変えるため、数値として登録する */
-@property --progress {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 0;
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: 0ms;
+    --motion-base: 0ms;
+    --motion-long: 0ms;
+  }
 }

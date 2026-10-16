@@ -4,6 +4,8 @@
 // キーボードや読み上げソフトでは、代わりに「長押しで確定」のボタンを使う（Enter / Space を押し続ける）
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { ArrowRight, HandTap } from '@/components/ui/icons';
+import st from './SlideToConfirm.module.css';
 
 const HOLD_MS = 1200;
 
@@ -85,24 +87,24 @@ export default function SlideToConfirm({
   }
 
   return (
-    <div className="confirm-ctl">
-      <div ref={track} className={`slide ${off ? 'is-off' : ''}`} aria-hidden>
-        <span className="slide-fill" style={{ width: x + 56 }} />
-        <span className="slide-text">{busy ? '予約しています…' : label}</span>
+    <div className={st.wrap}>
+      <div ref={track} className={`${st.track} ${off ? st.off : ''}`} aria-hidden>
+        <span className={st.fill} style={{ width: x + 56 }} />
+        <span className={st.text}>{busy ? '予約しています…' : label}</span>
         <div
-          className="slide-thumb"
+          className={st.thumb}
           style={{ transform: `translateX(${x}px)`, transition: drag ? 'none' : undefined }}
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}
           onPointerCancel={up}
         >
-          →
+          <ArrowRight size={24} weight="bold" />
         </div>
       </div>
       <button
         type="button"
-        className="hold-btn"
+        className={st.hold}
         disabled={off}
         onPointerDown={startHold}
         onPointerUp={() => stopHold()}
@@ -110,10 +112,13 @@ export default function SlideToConfirm({
         onKeyDown={keyDown}
         onKeyUp={() => stopHold()}
         onBlur={() => stopHold()}
+        aria-label={`または、ここを長押しで確定（${label}の代わり）`}
       >
-        <span className="hold-fill" style={{ width: `${hold * 100}%` }} aria-hidden />
-        <span className="hold-text">または、ここを長押しで確定</span>
-        <span className="sr-only">（{label}）</span>
+        <span className={st.holdFill} style={{ width: `${hold * 100}%` }} aria-hidden />
+        <span className={st.holdText}>
+          <HandTap size={20} aria-hidden focusable="false" />
+          または、ここを長押しで確定
+        </span>
       </button>
     </div>
   );

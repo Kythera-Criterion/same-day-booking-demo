@@ -12,10 +12,11 @@ export type NotificationKind =
   | 'account_exists_mail'
   | 'salon_approved_mail'
   | 'salon_rejected_mail'
-  | 'admin_invite_mail';
+  | 'admin_invite_mail'
+  | 'password_reset_mail';
 
 // ログイン用のリンク（第三者に渡ると困るもの）を含むメール。実際に送ったあとは、記録からリンクを消す
-export const SECRET_LINK_KINDS: NotificationKind[] = ['salon_welcome_mail', 'signup_confirm_mail', 'admin_invite_mail'];
+export const SECRET_LINK_KINDS: NotificationKind[] = ['salon_welcome_mail', 'signup_confirm_mail', 'admin_invite_mail', 'password_reset_mail'];
 
 export const KIND_LABEL: Record<NotificationKind, string> = {
   booking_created: '新しい予約（LINE）',
@@ -27,6 +28,7 @@ export const KIND_LABEL: Record<NotificationKind, string> = {
   salon_approved_mail: '掲載開始のお知らせ',
   salon_rejected_mail: '掲載の見送りのご連絡',
   admin_invite_mail: '運営メンバーへの招待',
+  password_reset_mail: 'パスワードの再設定',
 };
 export type NotificationChannel = 'line' | 'email';
 export type NotificationStatus = 'pending' | 'sending' | 'sent' | 'simulated' | 'failed';
@@ -47,12 +49,14 @@ export type NotificationPayload = {
   link_redacted?: boolean;
   resend?: boolean;
   // 登録・招待のメール
-  role?: 'user' | 'salon';
+  role?: 'user' | 'salon' | 'admin';
   display_name?: string;
   login_link?: string;
   reset_link?: string;
   existing?: boolean;
   inviter?: string;
+  // ご利用開始のご案内：新規登録でパスワードを決めてある（リンクは「登録の確認」になる）
+  password_set?: boolean;
 };
 
 export type OutboxRow = {
@@ -100,6 +104,7 @@ export function renderNotification(kind: NotificationKind, p: NotificationPayloa
   if (kind === 'salon_approved_mail') return renderSalonApproved(p);
   if (kind === 'salon_rejected_mail') return renderSalonRejected(p);
   if (kind === 'admin_invite_mail') return renderAdminInvite(p);
+  if (kind === 'password_reset_mail') return renderPasswordReset(p);
   const when = fmtWhen(p.start_at ?? '', p.end_at ?? '');
   const price = `¥${Number(p.price).toLocaleString('ja-JP')}`;
 
@@ -189,7 +194,9 @@ function renderWelcome(p: NotificationPayload): RenderedEmail {
     '以下の手順で、ご利用を開始してください。',
     '',
     '■ ご利用開始の手順（数分で終わります）',
-    '1. 下記のリンクを開き、ログイン用のパスワードを設定してください。',
+    p.password_set
+      ? '1. 下記のリンクを開くと、ご登録の確認が済み、サロンの画面にログインします（パスワードは、お申し込みのときに決めたものです）。'
+      : '1. 下記のリンクを開き、ログイン用のパスワードを設定してください。',
     `   ${link}`,
     '2. 続けて表示される3つの初期設定（メニューと価格・担当・お店の場所など）を行ってください。',
     '3. 設定が終わったら、営業の合間に「＋ 枠を出す」から空き枠を公開できます。',
@@ -213,7 +220,7 @@ function renderWelcome(p: NotificationPayload): RenderedEmail {
   ].join('\n');
 
   const button = p.invite_link && !p.link_redacted
-    ? `<p style="margin:24px 0;text-align:center"><a href="${esc(p.invite_link)}" style="display:inline-block;background:#1f6f5c;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:10px">パスワードを設定して始める</a></p>
+    ? `<p style="margin:24px 0;text-align:center"><a href="${esc(p.invite_link)}" style="display:inline-block;background:#1f6f5c;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:10px">${p.password_set ? '登録を完了して始める' : 'パスワードを設定して始める'}</a></p>
 <p style="font-size:12px;color:#767b77;word-break:break-all">ボタンが開けない場合は、次のリンクをブラウザに貼り付けてください：<br>${esc(p.invite_link)}</p>`
     : `<p style="font-size:13px;color:#767b77">${esc(link)}</p>`;
 
@@ -227,7 +234,7 @@ function renderWelcome(p: NotificationPayload): RenderedEmail {
 <p>お申し込みの内容を確認し、${esc(salon)} 様の掲載を承認いたしました。本日から、空いてしまった時間を「当日の空き枠」として公開し、今から行きたいお客様へ届けることができます。</p>
 <h2 style="font-size:15px;margin:24px 0 8px">ご利用開始の手順（数分で終わります）</h2>
 <ol style="padding-left:20px;margin:0">
-<li>下のボタンから、ログイン用のパスワードを設定してください。</li>
+<li>${p.password_set ? '下のボタンから、ご登録を完了してください（そのままサロンの画面にログインします）。' : '下のボタンから、ログイン用のパスワードを設定してください。'}</li>
 <li>続けて表示される3つの初期設定（メニューと価格・担当・お店の場所など）を行ってください。</li>
 <li>設定が終わったら、営業の合間に「＋ 枠を出す」から空き枠を公開できます。</li>
 </ol>
@@ -416,6 +423,28 @@ function renderAdminInvite(p: NotificationPayload): RenderedEmail {
         '運営の画面では、サロンとお客様の情報を扱います。端末の画面ロックと、パスワードの管理にご注意ください。',
         ...(existing ? [] : ['リンクには有効期限があります。期限が切れた場合は、招待した運営メンバーに再送を依頼してください。']),
         'このメールにお心当たりがない場合は、お手数ですが破棄してください。',
+      ],
+    },
+    !!p.link_redacted,
+  );
+}
+
+function renderPasswordReset(p: NotificationPayload): RenderedEmail {
+  const where = p.role === 'salon' ? 'サロンの画面' : p.role === 'admin' ? '運営の画面' : 'ログイン';
+  return buildMail(
+    {
+      subject: `【${SERVICE_NAME}】パスワードの再設定`,
+      heading: 'パスワードの再設定',
+      to: [honorific(p.display_name)],
+      intro: [
+        `「${SERVICE_NAME}」で、パスワードの再設定のお手続きがありました。`,
+        `下のボタンから、新しいパスワードを決めてください。設定が済むと、そのまま${where}を使えます。`,
+      ],
+      button: { label: '新しいパスワードを決める', href: p.invite_link },
+      table: [['ログイン用メールアドレス', p.email ?? '']],
+      notes: [
+        'リンクには有効期限があり、一度だけ使えます。期限が切れた場合は、もう一度お手続きください。',
+        'このメールにお心当たりがない場合は、破棄してください。パスワードは変わりません。',
       ],
     },
     !!p.link_redacted,

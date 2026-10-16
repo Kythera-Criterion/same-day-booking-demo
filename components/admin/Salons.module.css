@@ -1,0 +1,53 @@
+/* サロンの一覧：1つの白い面に表。新しく加わったお店は、ラベルと成功の淡い面で示す（色だけにしない） */
+
+.head {
+  padding: var(--space-4) var(--pad-surface) 0;
+}
+
+.salonCell {
+  min-inline-size: calc(var(--size-tile) * 2);
+}
+
+.nameRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.fresh td {
+  background: var(--color-success-soft);
+}
+
+/* 住所・場所が未設定（予約の画面に出せない）ことを、文字の色と太さで知らせる */
+td small.warn {
+  color: var(--color-danger-text);
+  font-weight: var(--weight-bold);
+}
+
+/* セルの中の文字のボタン：押せる大きさを保ったまま、行の高さを抑える */
+.cellAction {
+  white-space: nowrap;
+  margin-block: calc(-1 * var(--space-1));
+  margin-inline-start: calc(-1 * var(--space-2));
+}
+
+button.danger {
+  color: var(--color-danger-text);
+}
+
+/* 確認のシート */
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block: 0 var(--space-4);
+  padding-inline-start: var(--space-5);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  line-height: var(--leading-snug);
+}
+
+.removeError {
+  margin-block-end: var(--space-3);
+}

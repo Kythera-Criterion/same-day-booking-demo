@@ -4,8 +4,11 @@
 //   ・Esc キー・背景のタップ・「閉じる」で閉じる
 //   ・開いている間は背景をスクロールさせない
 //   ・開いたらシートの中にフォーカスを移し、Tab キーでシートの外へ出ない。閉じたら元の場所へ戻す
+//   ・media：シートの上端に、端まで広げて置くもの（お店の写真など）
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { buttonClass } from '@/components/ui/Button';
+import s from './Sheet.module.css';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -15,6 +18,7 @@ export default function Sheet({
   onClose,
   narrow = false,
   role = 'dialog',
+  media,
   children,
 }: {
   label: string;
@@ -22,6 +26,7 @@ export default function Sheet({
   onClose: () => void;
   narrow?: boolean;
   role?: 'dialog' | 'alertdialog';
+  media?: ReactNode;
   children: ReactNode;
 }) {
   const panel = useRef<HTMLElement>(null);
@@ -65,21 +70,21 @@ export default function Sheet({
   }, []);
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className={s.backdrop} onClick={onClose}>
       <section
         ref={panel}
-        className={`sheet ${narrow ? 'sheet-narrow' : ''}`}
+        className={`${s.sheet} ${narrow ? s.narrow : ''} ${media ? s.hasMedia : ''}`}
         role={role}
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sheet-grip" aria-hidden />
+        {media ? <div className={s.media}>{media}</div> : <div className={s.grip} aria-hidden />}
         {title !== undefined && (
-          <div className="sheet-head">
-            <h2 className="card-title">{title}</h2>
-            <button type="button" className="btn btn-text" onClick={onClose}>
+          <div className={s.head}>
+            <h2 className={s.title}>{title}</h2>
+            <button type="button" className={buttonClass({ variant: 'text' })} onClick={onClose}>
               閉じる
             </button>
           </div>

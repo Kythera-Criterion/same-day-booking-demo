@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   if (!body?.applicationId) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   const { data: app } = await asCaller
     .from('salon_applications')
-    .select('id,email,contact_name,salon_name,salon_id')
+    .select('id,email,contact_name,salon_name,salon_id,applicant_user_id')
     .eq('id', body.applicationId)
     .maybeSingle();
   if (!app) return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -37,6 +37,18 @@ export async function POST(req: Request) {
       });
     } catch {
       mailStatus = 'failed';
+    }
+  }
+  // 新規登録で作った、確認前（一度もログインしていない）のアカウントは消す（同じメールアドレスで、改めて申し込めるように）
+  if (app.applicant_user_id) {
+    const admin = adminClient();
+    const { data: u } = await admin.auth.admin.getUserById(app.applicant_user_id);
+    if (u.user && !u.user.email_confirmed_at && !u.user.last_sign_in_at && u.user.user_metadata?.signup_role === 'salon') {
+      const [{ data: m }, { data: op }] = await Promise.all([
+        admin.from('salon_members').select('salon_id').eq('user_id', app.applicant_user_id).limit(1),
+        admin.from('admins').select('user_id').eq('user_id', app.applicant_user_id).limit(1),
+      ]);
+      if ((m?.length ?? 0) === 0 && (op?.length ?? 0) === 0) await admin.auth.admin.deleteUser(app.applicant_user_id);
     }
   }
   return NextResponse.json({ ok: true, mailStatus });

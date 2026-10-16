@@ -5,14 +5,20 @@
 //   時刻を選ぶ    ：「○分後」の時刻を選んで出す（以前からのやり方）
 // どちらも、締切や担当の重なりは DB で判定し、作れなかった枠は理由を表示する
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import Sheet from '@/components/Sheet';
+import Button from '@/components/ui/Button';
+import { FieldRow, formClass, LabeledField, Segmented, Select } from '@/components/ui/Form';
+import { Fine } from '@/components/ui/Layout';
+import Notice from '@/components/ui/Notice';
+import { Broadcast, CheckCircle, Clock, DownloadSimple, Hourglass, TrashSimple } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
 import { SPLIT_PROBLEM_LABEL, splitFreeTime } from '@/lib/split';
 import { fmtTime, fmtYen, jstTodayEnd, slotStartProblem, startAfter } from '@/lib/time';
+import { StateIcon, stateClass } from './SlotStateMark';
 import type { Menu, Preset, Stylist } from './useSalonData';
-import styles from './PublishSheet.module.css';
+import ps from './PublishSheet.module.css';
 
 export const OFFSETS = [15, 30, 45, 60, 90, 120, 180];
 const FREE_LENGTHS = [30, 60, 90, 120];
@@ -39,7 +45,7 @@ export async function createMany(client: SupabaseClient, menuId: string, starts:
   const r = data as { created: { start_at: string }[]; failed: { start_at: string; reason: string }[] };
   return {
     ok: r.created.map((c) => fmtTime(c.start_at)),
-    ng: r.failed.map((f) => `${fmtTime(f.start_at)}（${REASON[f.reason] ?? f.reason}）`),
+    ng: r.failed.map((f) => `${fmtTime(f.start_at)}（${REASON[f.reason] ?? toMessage(f.reason).replace(/。$/, '')}）`),
   };
 }
 
@@ -113,9 +119,16 @@ export default function PublishSheet({
   const [length, setLength] = useState<number | 'custom'>(initialStart ? 'custom' : 90);
   const times = useMemo(() => quarterTimes(now), [now]);
   const [customStart, setCustomStart] = useState<string>(() => (initialStart ?? times[0] ?? now).toISOString());
-  const [customEnd, setCustomEnd] = useState<string>(() =>
-    new Date((initialStart ?? times[0] ?? now).getTime() + 60 * 60_000).toISOString(),
+  // 「まで」は、選べる時刻（開始より後の15分刻みと24:00）の中から、開始の1時間後に近いものにする
+  const endFor = useCallback(
+    (startIso: string) => {
+      const start = new Date(startIso).getTime();
+      const opts = times.filter((t) => t.getTime() > start).concat([jstTodayEnd(now)]);
+      return (opts.find((t) => t.getTime() >= start + 60 * 60_000) ?? opts[opts.length - 1]).toISOString();
+    },
+    [times, now],
   );
+  const [customEnd, setCustomEnd] = useState<string>(() => endFor((initialStart ?? times[0] ?? now).toISOString()));
   const [unchecked, setUnchecked] = useState<string[]>([]);
   const [offsets, setOffsets] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
@@ -133,10 +146,6 @@ export default function PublishSheet({
     [menu, freeStart.getTime(), freeEnd.getTime(), now],
   );
   const chosen = plan.filter((p) => !p.problem && !unchecked.includes(p.start.toISOString()));
-  // 目盛りの上の位置（空いた時間の始まりを0、終わりを1とした割合）
-  const totalMin = Math.max(15, (freeEnd.getTime() - freeStart.getTime()) / 60_000);
-  const frac = (d: Date) => Math.max(0, Math.min(1, (d.getTime() - freeStart.getTime()) / 60_000 / totalMin));
-  const fmtEnd = (d: Date) => (fmtTime(d) === '00:00' ? '24:00' : fmtTime(d));
 
   const offsetOptions = useMemo(
     () =>
@@ -146,6 +155,8 @@ export default function PublishSheet({
       }),
     [now, menu],
   );
+  // 選んだ開始のうち、いまのメニューで出せるものだけ（メニューを変えて締切に掛かったものは外す。押せないボタンが選ばれたまま残らないように）
+  const validOffsets = offsets.filter((off) => offsetOptions.some((o) => o.off === off && !o.problem));
 
   async function publish() {
     if (!menu) return;
@@ -154,7 +165,7 @@ export default function PublishSheet({
     const r =
       mode === 'free'
         ? await createMany(client, menu.id, chosen.map((p) => p.start), stylistId)
-        : await publishOffsets(client, menu, stylistId, offsets, new Date());
+        : await publishOffsets(client, menu, stylistId, validOffsets, new Date());
     setBusy(false);
     onPublished(r);
     if (r.ng.length === 0) onClose();
@@ -168,6 +179,11 @@ export default function PublishSheet({
     let error;
     if (mode === 'free') {
       const minutes = Math.round((freeEnd.getTime() - freeStart.getTime()) / 60_000);
+      // 「今からN分空いた」として保存するため、保存できるのは15分〜4時間
+      if (minutes < 15 || minutes > 240) {
+        setMessage('「いつもの空き方」に保存できるのは、15分〜4時間の空き時間です。空き時間を短くしてから保存してください。');
+        return;
+      }
       ({ error } = await client.rpc('salon_save_free_preset', {
         p_salon_id: salonId,
         p_label: `空き${minutes}分・${short}${stylist ? `（${stylist.name}）` : ''}`,
@@ -176,7 +192,7 @@ export default function PublishSheet({
         p_free_minutes: minutes,
       }));
     } else {
-      const sorted = [...offsets].sort((a, b) => a - b);
+      const sorted = [...validOffsets].sort((a, b) => a - b);
       ({ error } = await client.rpc('salon_save_preset', {
         p_salon_id: salonId,
         p_label: `${short} ${sorted.join('・')}分後${stylist ? `（${stylist.name}）` : ''}`,
@@ -195,52 +211,78 @@ export default function PublishSheet({
     else onPresetsChanged();
   }
 
-  const canPublish = !!menu && (mode === 'free' ? chosen.length > 0 : offsets.length > 0);
-  const count = mode === 'free' ? chosen.length : offsets.length;
+  const canPublish = !!menu && (mode === 'free' ? chosen.length > 0 : validOffsets.length > 0);
+  const count = mode === 'free' ? chosen.length : validOffsets.length;
 
   return (
     <Sheet label="今日の空き枠を出す" title="今日の空き枠を出す" onClose={onClose}>
+      <Segmented
+        label="出し方"
+        value={mode}
+        onChange={setMode}
+        options={[
+          {
+            value: 'free',
+            label: (
+              <span className={ps.segLabel}>
+                <Hourglass size={20} weight={mode === 'free' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                空いた時間から
+              </span>
+            ),
+          },
+          {
+            value: 'offsets',
+            label: (
+              <span className={ps.segLabel}>
+                <Clock size={20} weight={mode === 'offsets' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                時刻を選ぶ
+              </span>
+            ),
+          },
+        ]}
+      />
 
-        <div className="segmented" role="group" aria-label="出し方">
-          <button aria-pressed={mode === 'free'} onClick={() => setMode('free')}>
-            空いた時間から
-          </button>
-          <button aria-pressed={mode === 'offsets'} onClick={() => setMode('offsets')}>
-            時刻を選ぶ
-          </button>
-        </div>
-
-        {mode === 'free' && (
-          <>
-            <p className="step-label">
-              <span className="step-no">1</span>空いた時間
-            </p>
-            <div className={styles.lengths} role="group" aria-label="今から何分空いたか">
-              {FREE_LENGTHS.map((m) => (
-                <button key={m} type="button" className={styles.round} aria-pressed={length === m} aria-label={`今から${m}分`} onClick={() => setLength(m)}>
-                  <span className={`${styles.roundNum} num`}>{m}</span>
-                  <span className={styles.roundUnit}>分</span>
-                </button>
-              ))}
-              <button type="button" className={`chip ${styles.custom} ${length === 'custom' ? 'chip-on' : ''}`} onClick={() => setLength('custom')}>
-                時刻を指定
+      {mode === 'free' && (
+        <>
+          <p className={ps.step}>
+            <span className={ps.stepNo}>1</span>空いた時間
+          </p>
+          <div className={ps.lengths}>
+            {FREE_LENGTHS.map((m) => (
+              <button key={m} type="button" className={ps.tile} aria-pressed={length === m} aria-label={`今から${m}分`} onClick={() => setLength(m)}>
+                <span className={ps.tilePre}>今から</span>
+                <span>
+                  <span className={ps.tileNum}>{m}</span>
+                  <span className={ps.tileUnit}>分</span>
+                </span>
               </button>
-            </div>
-            {length === 'custom' && (
-              <div className="field-row" style={{ marginTop: 10 }}>
-                <label className="field">
-                  <span className="field-label">から</span>
-                  <select className="select" value={customStart} onChange={(e) => setCustomStart(e.target.value)}>
+            ))}
+            <button type="button" className={`${ps.tile} ${ps.tileCustom}`} aria-pressed={length === 'custom'} onClick={() => setLength('custom')}>
+              <Clock size={20} weight={length === 'custom' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+              時刻を指定
+            </button>
+          </div>
+          {length === 'custom' && (
+            <div className={ps.custom}>
+              <FieldRow>
+                <LabeledField label="から">
+                  <Select
+                    className="num"
+                    value={customStart}
+                    onChange={(e) => {
+                      setCustomStart(e.target.value);
+                      if (new Date(customEnd).getTime() <= new Date(e.target.value).getTime()) setCustomEnd(endFor(e.target.value));
+                    }}
+                  >
                     {(initialStart && !times.some((t) => t.getTime() === initialStart.getTime()) ? [initialStart, ...times] : times).map((t) => (
                       <option key={t.toISOString()} value={t.toISOString()}>
                         {fmtTime(t)}
                       </option>
                     ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span className="field-label">まで</span>
-                  <select className="select" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}>
+                  </Select>
+                </LabeledField>
+                <LabeledField label="まで">
+                  <Select className="num" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}>
                     {times
                       .filter((t) => t.getTime() > new Date(customStart).getTime())
                       .concat([jstTodayEnd(now)])
@@ -249,149 +291,154 @@ export default function PublishSheet({
                           {fmtTime(t) === '00:00' ? '24:00' : fmtTime(t)}
                         </option>
                       ))}
-                  </select>
-                </label>
-              </div>
-            )}
-          </>
-        )}
-
-        <p className="step-label">
-          <span className="step-no">{mode === 'free' ? 2 : 1}</span>メニュー
-        </p>
-        <div className="chips">
-          {active.map((m) => (
-            <button key={m.id} className={`chip ${menuId === m.id ? 'chip-on' : ''}`} onClick={() => setMenuId(m.id)}>
-              {m.name}
-              <small>
-                {m.duration_min}分・{fmtYen(m.price)}・{m.booking_deadline_min >= 60 ? `${m.booking_deadline_min / 60}時間` : `${m.booking_deadline_min}分`}前締切
-              </small>
-            </button>
-          ))}
-        </div>
-
-        {activeStylists.length > 0 && (
-          <>
-            <p className="step-label">
-              <span className="step-no">{mode === 'free' ? 3 : 2}</span>担当（任意）
-            </p>
-            <div className="chips">
-              <button className={`chip ${stylistId === null ? 'chip-on' : ''}`} onClick={() => setStylistId(null)}>
-                指定しない
-              </button>
-              {activeStylists.map((s) => (
-                <button key={s.id} className={`chip ${stylistId === s.id ? 'chip-on' : ''}`} onClick={() => setStylistId(s.id)}>
-                  {s.name}
-                </button>
-              ))}
+                  </Select>
+                </LabeledField>
+              </FieldRow>
             </div>
-          </>
-        )}
+          )}
+        </>
+      )}
 
-        {mode === 'free' ? (
-          <>
-            <p className="step-label">
-              <span className="step-no">{activeStylists.length > 0 ? 4 : 3}</span>切り分けた案（{fmtTime(freeStart)}〜{fmtTime(freeEnd) === '00:00' ? '24:00' : fmtTime(freeEnd)}）
-            </p>
-            {plan.length === 0 ? (
-              <p className="notice notice-info">この空き時間には、{menu?.name ?? 'メニュー'}（{menu?.duration_min}分）が入りません。</p>
-            ) : (
-              <>
-                <div
-                  className={styles.scale}
-                  style={{ '--tick': `${(15 / totalMin) * 100}%` } as CSSProperties}
-                  role="img"
-                  aria-label={`${fmtTime(freeStart)}から${fmtEnd(freeEnd)}までの空きを、${plan.length}枠に切り分けた案`}
-                >
-                  {plan.map((p, i) => {
-                    const key = p.start.toISOString();
-                    return (
-                      <span
-                        key={key}
-                        className={styles.seg}
-                        data-off={p.problem ? true : undefined}
-                        data-unchecked={!p.problem && unchecked.includes(key) ? true : undefined}
-                        style={{ '--from': frac(p.start), '--to': frac(p.end), '--i': i } as CSSProperties}
+      <p className={ps.step}>
+        <span className={ps.stepNo}>{mode === 'free' ? 2 : 1}</span>メニュー
+      </p>
+      <div className={ps.menus}>
+        {active.map((m) => (
+          <button key={m.id} type="button" className={formClass.choice} aria-pressed={menuId === m.id} onClick={() => setMenuId(m.id)}>
+            <span className={ps.menuName}>{m.name}</span>
+            <small className={formClass.choiceSub}>
+              {m.duration_min}分・{fmtYen(m.price)}・{m.booking_deadline_min >= 60 ? `${m.booking_deadline_min / 60}時間` : `${m.booking_deadline_min}分`}前締切
+            </small>
+          </button>
+        ))}
+      </div>
+
+      {activeStylists.length > 0 && (
+        <>
+          <p className={ps.step}>
+            <span className={ps.stepNo}>{mode === 'free' ? 3 : 2}</span>担当（任意）
+          </p>
+          <div className={formClass.choices}>
+            <button type="button" className={formClass.choice} aria-pressed={stylistId === null} onClick={() => setStylistId(null)}>
+              指定しない
+            </button>
+            {activeStylists.map((s) => (
+              <button key={s.id} type="button" className={formClass.choice} aria-pressed={stylistId === s.id} onClick={() => setStylistId(s.id)}>
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {mode === 'free' ? (
+        <>
+          <p className={ps.step}>
+            <span className={ps.stepNo}>{activeStylists.length > 0 ? 4 : 3}</span>
+            <span>
+              切り分けた案（<span className={ps.range}>{fmtTime(freeStart)}〜{fmtTime(freeEnd) === '00:00' ? '24:00' : fmtTime(freeEnd)}</span>）
+            </span>
+          </p>
+          {plan.length === 0 ? (
+            <Notice tone="info">
+              この空き時間には、{menu?.name ?? 'メニュー'}（{menu?.duration_min}分）が入りません。
+            </Notice>
+          ) : (
+            <ul className={ps.plan}>
+              {plan.map((p) => {
+                const key = p.start.toISOString();
+                const on = !p.problem && !unchecked.includes(key);
+                const look = p.problem ? `${stateClass('closed')} ${ps.planOff}` : on ? stateClass('open') : ps.planIdle;
+                return (
+                  <li key={key} data-off={p.problem ? '' : undefined}>
+                    <label className={`${ps.planRow} ${look}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        disabled={!!p.problem}
+                        onChange={() => setUnchecked((u) => (u.includes(key) ? u.filter((x) => x !== key) : [...u, key]))}
                       />
-                    );
-                  })}
-                </div>
-                <div className={`${styles.scaleLabels} num`} aria-hidden>
-                  <span>{fmtTime(freeStart)}</span>
-                  <span>{fmtEnd(freeEnd)}</span>
-                </div>
-                <ul className={styles.tickets}>
-                  {plan.map((p, i) => {
-                    const key = p.start.toISOString();
-                    const on = !p.problem && !unchecked.includes(key);
-                    return (
-                      <li key={key} className={styles.ticketItem} data-off={p.problem ? true : undefined} style={{ '--i': i } as CSSProperties}>
-                        <label className={styles.ticket}>
-                          <input
-                            type="checkbox"
-                            checked={on}
-                            disabled={!!p.problem}
-                            onChange={() => setUnchecked((u) => (u.includes(key) ? u.filter((x) => x !== key) : [...u, key]))}
-                          />
-                          <span className={`${styles.ticketTime} num`}>
-                            {fmtTime(p.start)}〜{fmtTime(p.end)}
-                          </span>
-                          <span className={styles.ticketNote}>{p.problem ? SPLIT_PROBLEM_LABEL[p.problem] : `受付は${fmtTime(new Date(p.start.getTime() - (menu?.booking_deadline_min ?? 0) * 60_000))}まで`}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}          </>
-        ) : (
-          <>
-            <p className="step-label">
-              <span className="step-no">{activeStylists.length > 0 ? 3 : 2}</span>開始（複数選べます）
-            </p>
-            <div className="offset-grid">
-              {offsetOptions.map((o) => (
+                      <span className={ps.planTime}>
+                        {fmtTime(p.start)}〜{fmtTime(p.end)}
+                      </span>
+                      <span className={ps.planNote}>{p.problem ? SPLIT_PROBLEM_LABEL[p.problem] : `受付は${fmtTime(new Date(p.start.getTime() - (menu?.booking_deadline_min ?? 0) * 60_000))}まで`}</span>
+                      {(on || p.problem) && <StateIcon state={p.problem ? 'closed' : 'open'} />}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      ) : (
+        <>
+          <p className={ps.step}>
+            <span className={ps.stepNo}>{activeStylists.length > 0 ? 3 : 2}</span>開始（複数選べます）
+          </p>
+          <div className={ps.offsets}>
+            {offsetOptions.map((o) => {
+              const pressed = validOffsets.includes(o.off);
+              return (
                 <button
                   key={o.off}
-                  className={`offset ${offsets.includes(o.off) ? 'offset-on' : ''}`}
+                  type="button"
+                  data-offset=""
+                  className={`${ps.offset} ${o.problem ? stateClass('closed') : ''}`}
                   disabled={!!o.problem}
+                  aria-pressed={pressed}
                   onClick={() => setOffsets((l) => (l.includes(o.off) ? l.filter((x) => x !== o.off) : [...l, o.off]))}
                 >
-                  <span className="offset-main">{o.off < 60 ? `${o.off}分後` : `${o.off / 60}時間後`}</span>
-                  <span className="offset-sub num">{o.problem ? o.problem : fmtTime(o.start)}</span>
+                  {pressed && (
+                    <span className={ps.offsetCheck}>
+                      <CheckCircle size={20} weight="fill" aria-hidden focusable="false" />
+                    </span>
+                  )}
+                  <span className={ps.offsetMain}>{o.off < 60 ? `${o.off}分後` : `${o.off / 60}時間後`}</span>
+                  <span className={ps.offsetSub}>{o.problem ? o.problem : fmtTime(o.start)}</span>
                 </button>
-              ))}
-            </div>
-          </>
-        )}
+              );
+            })}
+          </div>
+        </>
+      )}
 
-        {presets.length > 0 && (
-          <details className="preset-edit">
-            <summary>保存したもの（いつもの空き方・いつもの枠）</summary>
-            <ul className="preset-list">
-              {presets.map((p) => (
-                <li key={p.id}>
-                  <span>{p.label}</span>
-                  <button className="btn btn-text btn-sm" onClick={() => removePreset(p.id)}>
-                    削除
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
+      <div className={ps.keep}>
+        <Button variant="secondary" size="md" icon={DownloadSimple} disabled={!canPublish} onClick={savePreset}>
+          {mode === 'free' ? 'いつもの空き方に保存' : 'いつもの枠に保存'}
+        </Button>
+      </div>
 
-        {message && <p className="notice notice-info">{message}</p>}
+      {presets.length > 0 && (
+        <details className={ps.saved}>
+          <summary>保存したもの（いつもの空き方・いつもの枠）</summary>
+          <ul className={ps.savedList}>
+            {presets.map((p) => (
+              <li key={p.id}>
+                <span>{p.label}</span>
+                <Button variant="danger" icon={TrashSimple} onClick={() => removePreset(p.id)}>
+                  削除
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
-        <div className={styles.publish}>
-          <button className="btn btn-primary btn-lg btn-block" disabled={!canPublish || busy} onClick={publish}>
-            {busy ? '公開中…' : count > 1 ? `${count}件の枠を公開する` : 'この枠を公開する'}
-          </button>
-          <button className="btn btn-text" disabled={!canPublish} onClick={savePreset}>
-            {mode === 'free' ? 'この空き方を「いつもの空き方」に保存' : 'この組み合わせを「いつもの枠」に保存'}
-          </button>
-        </div>
-        <p className="fine-print">公開した枠は、すぐに利用者の画面に表示されます。担当の時間の重なりや受付の締切は、公開するときにもう一度確かめます。</p>
+      {message && (
+        <Notice tone="info" className={ps.message}>
+          {message}
+        </Notice>
+      )}
+
+      <div className={ps.fine}>
+        <Fine>公開した枠は、すぐに利用者の画面に表示されます。担当の時間の重なりや受付の締切は、公開するときにもう一度確かめます。</Fine>
+      </div>
+
+      <div className={ps.bar}>
+        <Button variant="primary" size="lg" block icon={busy ? undefined : Broadcast} disabled={!canPublish || busy} onClick={publish}>
+          {busy ? '公開中…' : count > 1 ? `${count}件の枠を公開` : 'この枠を公開'}
+        </Button>
+      </div>
     </Sheet>
   );
 }
