@@ -58,11 +58,15 @@
   inset: 0;
 }
 
+/* 枠：高さは時間に比例。中身は高さ（data-size）と幅（コンテナクエリ）に合わせて出し分け、文字が途中で切れないようにする */
 .block {
   position: absolute;
+  container: slot / inline-size;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   gap: 0;
+  min-inline-size: 0;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-control);
   overflow: hidden;
@@ -73,28 +77,123 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  min-inline-size: 0;
+  white-space: nowrap;
 }
 
+.top > svg {
+  flex: none;
+}
+
+/* 時刻は折り返さない。幅が足りないときは終わりの時刻を省く（開始の時刻は必ず出す） */
 .time {
+  flex: none;
   font-family: var(--font-num);
   font-size: var(--text-small);
   font-weight: var(--weight-heavy);
   font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
 }
 
+.fresh {
+  display: inline-flex;
+  flex: none;
+  margin-inline-start: auto;
+}
+
+/* 名前・状態は1行。入りきらなければ「…」 */
 .title {
+  overflow: hidden;
   font-size: var(--text-small);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* メニュー・担当：1行（md）または2行まで（lg）。入りきらなければ「…」 */
 .sub {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: var(--text-caption);
+  line-height: var(--leading-snug);
   opacity: 0.88;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
-.compact {
+.block[data-size="lg"] .sub {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* とても短い枠（15分ほど）：開始時刻と名前を1行に並べる */
+.block[data-size="xs"] {
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
+  padding-block: 0;
+}
+
+.block[data-size="xs"] .title {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.block[data-size="xs"] .timeEnd {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 省くものは見た目だけ隠し、読み上げでは「開始〜終了・名前」をそのまま伝える（display: none にしない）
+   幅が狭い枠（重なりが多いとき）：終わりの時刻を省き、「新着」は鈴のアイコンだけにする。
+   状態は枠の塗り・枠線・模様でも分かるので、1行の短い枠では状態のアイコンを省き、名前を少しでも多く出す */
+@container slot (max-width: 9.5rem) {
+  .timeEnd {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .block[data-size="xs"] .top > svg {
+    display: none;
+  }
+}
+
+@container slot (max-width: 7rem) {
+  .fresh > span {
+    gap: 0;
+    padding-inline: calc(var(--space-1) / 2);
+    font-size: 0;
+  }
+}
+
+/* とても狭い枠（スマートフォンで4つ以上重なるとき）：開始時刻を必ず出すため、アイコンを省いて文字を小さくする */
+@container slot (max-width: 5.5rem) {
+  .top > svg {
+    display: none;
+  }
+
+  .time,
+  .title {
+    font-size: var(--text-caption);
+  }
+
+  /* 1行の短い枠は、名前の入る幅が残らないので開始時刻だけにする（押すと詳細が開く） */
+  .block[data-size="xs"] .title {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
