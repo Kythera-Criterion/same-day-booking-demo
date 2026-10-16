@@ -195,6 +195,7 @@ npm run build && npm start   # 本番と同じ形で確認
 
 - **Vercel Cron**：`vercel.json` に `{"crons":[{"path":"/api/notifications/dispatch","schedule":"* * * * *"}]}`。環境変数 `CRON_SECRET` を設定すると、Vercel が `Authorization: Bearer <CRON_SECRET>` を付けて GET で呼びます。
 - **外部の cron**：`curl -H "Authorization: Bearer $CRON_SECRET" https://<ドメイン>/api/notifications/dispatch`
+- **Railway**：Railway の cron は最短5分間隔です。毎分送る場合は、Supabase の pg_cron と pg_net から上の URL を呼ぶか、外部の cron を使います（下の「9.」）。
 
 LINE は、公式アカウントの Messaging API チャネルを作り、チャネルアクセストークンを `LINE_CHANNEL_ACCESS_TOKEN` に設定します。サロンの連絡用グループにボットを招待し、そのグループ ID（`C` から始まる）をサロンの「設定」に入れます（LINE Notify は終了しているため使いません）。
 
@@ -222,6 +223,32 @@ LINE は、公式アカウントの Messaging API チャネルを作り、チャ
 - 開発中に `http://localhost:3000` で試す場合は、その URL のリダイレクト URI も登録します（登録できる URL の条件は、各社の案内を確認してください）。
 - Google の OAuth 同意画面は、公開前は「テスト」状態で、登録したテストユーザーだけがログインできます。
 - この方法は Supabase の外部ログインの設定を使いません（サーバーで受け取り、Supabase のアカウントに結びつけます）。Supabase 側の Providers の設定は不要です。
+
+### 9. Railway に公開する（デモ）
+
+上の「1.」〜「4.」（データベース・環境変数・デモ用アカウント）を済ませた Supabase を、そのまま使います。設定ファイルは要りません（Railway が Next.js を判別し、`npm run build` → `npm run start` で動かします。Node は `package.json` の `engines` で 22）。
+
+1. Railway で **New Project → Deploy from GitHub repo** を選び、このリポジトリを選ぶ
+2. サービスの **Variables** に環境変数を入れる。`NEXT_PUBLIC_` で始まるものはビルドのときに画面のコードへ埋め込まれるため、最初のビルドの前に入れる（変えたときは Redeploy で作り直す）
+
+   | 変数 | 値 |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local` と同じ |
+   | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` と同じ（Railway の Variables だけに入れる。コミットしない） |
+   | `DEMO_MODE` | `true`（`/demo` とワンタップのデモログインを使う） |
+   | `DEMO_PASSWORD` | `npm run setup:demo` を流したときと同じ値 |
+   | `APP_URL` | 手順3で作る URL（`https://〜.up.railway.app`） |
+   | `CRON_SECRET` / `AUTH_FLOW_SECRET` | 任意。長いランダムな文字列 |
+
+3. **Settings → Networking → Generate Domain** で URL を作り、`APP_URL` に入れて Redeploy する
+4. Supabase の **Authentication → URL Configuration** で、Site URL と Redirect URLs にその URL（`/login`・`/reset` を含む）を入れる
+5. `https://〜.up.railway.app/demo` を開き、「デモをリセット」で今日の空き枠を作ってから見せる
+
+注意：
+
+- **サーバーの台数は1つのまま**にする（短い時間に何度も送れないようにする制限を、サーバーのメモリで数えているため）。
+- **DEMO_MODE=true の間は、URL を知っている人は誰でも**、利用者・サロン・運営にワンタップでログインでき、データのリセットや運営メンバーの招待もできます。URL は見せる相手にだけ伝え、見せ終わったら `DEMO_MODE=false` にするか、Railway のサービスを止めてください。運用に切り替えるときは、デモ用アカウントのパスワード（`DEMO_PASSWORD`）を新しい値に変えてください。
+- 通知（メール・LINE）は、キーを入れなければシミュレーション送信です（中身は運営の画面の「通知・記録」で見られます）。予約の直後と、サロン・運営の画面を開いている間に送るため、デモでは定期実行がなくても届きます。
 
 ---
 
