@@ -1,9 +1,10 @@
-/* 今日のタイムライン（スマートフォン・縦）：左に時刻、右に枠。今の時刻は時間の色の線 */
+/* 今日のタイムライン（スマートフォン・縦）：左に時刻、右に枠。今の時刻は時間の色の線
+   枠の中は縦にスクロールできる。いちばん上・下に着いたあとも続けてスクロールすると、ページ全体の前後の内容へ進む
+   （overscroll-behavior は既定のまま。contain にすると、枠の端でスクロールが止まり、外へ進めなくなる） */
 
 .scroll {
   max-block-size: 70dvh;
   overflow-y: auto;
-  overscroll-behavior-y: contain;
   padding-inline: var(--space-3);
 }
 
