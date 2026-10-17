@@ -47,6 +47,8 @@ export async function POST(req: Request) {
   if (role === 'salon' && (!salonName || !(data.display_name ?? '').trim())) {
     return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
   }
+  // 店名もアカウントに残す（新規登録の知らせ〔0018〕で、どのお店の登録かを運営に伝える）
+  if (role === 'salon') data.salon_name = salonName;
   if (typeof raw.terms_version === 'string') data.terms_version = raw.terms_version.slice(0, 40);
   if (raw.adult_confirmed === 'true') data.adult_confirmed = 'true';
 

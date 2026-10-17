@@ -17,6 +17,7 @@ import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
 import { ArrowRight, CheckCircle, LinkIcon, Sparkle } from '@/components/ui/icons';
 import type { Session } from '@supabase/supabase-js';
 import { isConfigured, getClient } from '@/lib/supabase';
+import { notifyDesktop } from '@/lib/desktop-notify';
 import { rememberSalon } from '@/components/salon/useSalonData';
 import s from './Welcome.module.css';
 
@@ -48,7 +49,7 @@ export default function Welcome({
   const started = useRef(false);
 
   const proceed = useCallback(
-    async (session: Session) => {
+    async (session: Session, fromLink = false) => {
       setEmail(session.user.email ?? '');
       const client = getClient(role);
       if (!isAdmin) {
@@ -57,7 +58,10 @@ export default function Welcome({
         if (salonId && /^[0-9a-f-]{36}$/i.test(salonId)) query = query.eq('salon_id', salonId);
         const { data: member } = await query.limit(1).maybeSingle();
         const salon = member?.salons as { name: string } | { name: string }[] | null | undefined;
-        setSalonName(Array.isArray(salon) ? (salon[0]?.name ?? null) : (salon?.name ?? null));
+        const name = Array.isArray(salon) ? (salon[0]?.name ?? null) : (salon?.name ?? null);
+        setSalonName(name);
+        // リンクを開いて登録が完了した：パソコンに通知する（申し込みのときに許可されていれば。読み直しでは出さない）
+        if (fromLink) notifyDesktop('サロンの登録が完了しました', `${name ?? 'お店'} の掲載が承認され、サロンの画面で使えるようになりました。`, 'salon-signup');
         if (member?.salon_id) rememberSalon(session.user.id, member.salon_id as string);
       }
       // パスワードがまだないアカウントなら、ここで決めてもらう（ないままだと、あとでログインできないため）
@@ -98,7 +102,7 @@ export default function Welcome({
           return;
         }
       }
-      await proceed(session);
+      await proceed(session, !!tokenHash);
     })();
   }, [tokenHash, type, role, isAdmin, proceed]);
 

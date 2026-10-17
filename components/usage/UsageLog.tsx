@@ -7,6 +7,7 @@
 //   表示は「訪問ごと」と「アカウントごと」（ログインしていない訪問は、ブラウザごとにまとめる）
 //   その場の知らせ：訪問者がページを開いた・機能を使ったら、Realtime で受け取り、上に閉じられる知らせの帯を出して一覧を読み直す
 //   使った機能：押したボタン・リンク・タブなどの名前（usage_events）。訪問ごとは順に、アカウントごとは種類ごとの回数で出す
+//   新規登録の知らせ：お客様・サロンが新規登録したら（signup_notices）、帯と一覧に出し、このパソコンにも通知する（許可したとき）
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from '@/components/AppHeader';
@@ -19,7 +20,8 @@ import { Fine, Lead, Page, ScreenTitle, Stack } from '@/components/ui/Layout';
 import Notice from '@/components/ui/Notice';
 import { Panel } from '@/components/ui/Surface';
 import Toast from '@/components/ui/Toast';
-import { ArrowClockwise, BellRinging, ChartLine, SignOut, Trash, X } from '@/components/ui/icons';
+import { ArrowClockwise, Bell, BellRinging, ChartLine, SignOut, Trash, UserPlus, X } from '@/components/ui/icons';
+import { notifyDesktop, notifyState, requestNotify, type NotifyState } from '@/lib/desktop-notify';
 import { toMessage } from '@/lib/errors';
 import { logout } from '@/lib/logout';
 import { useRoleSession } from '@/lib/supabase';
@@ -42,7 +44,17 @@ type Visit = {
   features: number;
 };
 type UsageEvent = { id: number; visit_id: string; at: string; kind: 'page' | 'feature'; label: string | null; path: string };
-type Alert = { id: number; at: string; text: string };
+type Alert = { id: number; at: string; text: string; signup?: boolean };
+type Signup = {
+  id: number;
+  at: string;
+  kind: 'signup' | 'confirmed';
+  role: 'user' | 'salon';
+  email: string | null;
+  display_name: string | null;
+  salon_name: string | null;
+  via: string | null;
+};
 type Account = {
   key: string;
   email: string | null;
@@ -116,6 +128,14 @@ function eventText(e: UsageEvent): string {
   return e.kind === 'page' ? `${screenOf(e.path)}のページを開いた（${e.path}）` : `「${e.label}」を使った（${screenOf(e.path)} ${e.path}）`;
 }
 
+const VIA: Record<string, string> = { email: 'メールアドレス', google: 'Google', yahoo: 'Yahoo! JAPAN ID' };
+
+// 新規登録の文（知らせの帯・パソコンへの通知で使う）
+function signupText(s: Signup): string {
+  const who = s.role === 'salon' ? `サロン「${s.salon_name ?? '店名なし'}」（${s.email ?? ''}）` : `お客様 ${s.display_name ? `${s.display_name} 様` : ''}（${s.email ?? ''}）`;
+  return s.kind === 'signup' ? `${who} が新規登録しました（${VIA[s.via ?? 'email'] ?? s.via}）` : `${who} が確認のリンクを開き、登録が完了しました`;
+}
+
 function AccountCell({ email, role, visitorId }: { email: string | null; role: Visit['account_role']; visitorId: string }) {
   if (!email) {
     return (
@@ -164,6 +184,10 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
   // その場の知らせ（新しい順。閉じるまで残す。多いときは新しい5件）
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const rowsRef = useRef<Visit[]>([]);
+  const [signups, setSignups] = useState<Signup[]>([]);
+  // このパソコンへの通知の許可（ブラウザの設定。最初は描画のあとに読む）
+  const [notify, setNotify] = useState<NotifyState>('unsupported');
+  useEffect(() => setNotify(notifyState()), []);
 
   useEffect(() => {
     if (!client || !session) {
@@ -190,6 +214,11 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
     if (from) q = q.gte('at', from);
     const ev = await q;
     if (!ev.error) setEvents((ev.data ?? []) as UsageEvent[]);
+    // 新規登録の知らせ（期間の中の新しい50件）
+    let sq = client.from('signup_notices').select('id,at,kind,role,email,display_name,salon_name,via').order('id', { ascending: false }).limit(50);
+    if (from) sq = sq.gte('at', from);
+    const su = await sq;
+    if (!su.error) setSignups((su.data ?? []) as Signup[]);
     // 表示から外れた記録は、選んだものからも外す
     setPicked((prev) => new Set([...prev].filter((id) => list.some((r) => r.id === id))));
   }, [client, range]);
@@ -224,6 +253,14 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
         }, 600);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'usage_visits' }, reloadSoon)
+      // 新規登録：すぐに帯と一覧に出し、このパソコンにも通知する（許可したとき）。帯の番号は出来事と重ならないよう負の数にする
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signup_notices' }, (payload) => {
+        const n = payload.new as Signup;
+        setSignups((list) => (list.some((x) => x.id === n.id) ? list : [n, ...list]));
+        const text = signupText(n);
+        setAlerts((list) => [{ id: -n.id, at: n.at, text, signup: true }, ...list.filter((x) => x.id !== -n.id)].slice(0, 5));
+        notifyDesktop(n.kind === 'signup' ? '新規登録がありました' : '登録が完了しました', text, `usage-signup-${n.id}`);
+      })
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
@@ -345,8 +382,12 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
           {alerts.length > 0 && (
             <section className={s.alerts} aria-label="訪問の知らせ" data-usage-alerts="">
               {alerts.map((a) => (
-                <div key={a.id} className={s.alert} role="status">
-                  <BellRinging size={20} weight="duotone" aria-hidden focusable="false" />
+                <div key={a.id} className={s.alert} role="status" data-signup={a.signup ? 'true' : undefined}>
+                  {a.signup ? (
+                    <UserPlus size={20} weight="duotone" aria-hidden focusable="false" />
+                  ) : (
+                    <BellRinging size={20} weight="duotone" aria-hidden focusable="false" />
+                  )}
                   <p className={s.alertText}>
                     <span className="num">{tm.format(new Date(a.at))}</span> {a.text}
                   </p>
@@ -421,6 +462,42 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
           </dl>
 
           {error && <ErrorState onRetry={load}>{error}</ErrorState>}
+
+          <Panel className={s.signups} aria-labelledby="signups-h">
+            <div className={s.signupsHead}>
+              <h2 id="signups-h" className={s.signupsTitle}>
+                <UserPlus size={20} aria-hidden focusable="false" />
+                新規登録
+              </h2>
+              {notify === 'granted' ? (
+                <span className={s.notifyOn} data-notify="on">
+                  <Bell size={20} weight="fill" aria-hidden focusable="false" />
+                  このパソコンに通知します
+                </span>
+              ) : notify === 'default' ? (
+                <Button variant="secondary" size="sm" icon={Bell} onClick={async () => setNotify(await requestNotify())}>
+                  パソコンへの通知をオンにする
+                </Button>
+              ) : (
+                <span className={s.notifyOff}>
+                  {notify === 'denied' ? 'パソコンへの通知はブラウザの設定で止まっています' : 'このブラウザは通知に対応していません'}
+                </span>
+              )}
+            </div>
+            {signups.length === 0 ? (
+              <p className={s.signupsEmpty}>この期間の新規登録はありません。</p>
+            ) : (
+              <ul className={s.signupList}>
+                {signups.slice(0, 10).map((n) => (
+                  <li key={n.id} data-kind={n.kind}>
+                    <span className={`num ${s.signupTime}`}>{dt.format(new Date(n.at))}</span>
+                    <span className={s.signupKind}>{n.kind === 'signup' ? '新規登録' : '登録完了'}</span>
+                    <span className={s.signupWho}>{signupText(n)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
 
           <Panel flush>
             <div className={s.bar}>

@@ -26,6 +26,7 @@ import { logout } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import type { Providers } from '@/lib/oauth-shared';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/profile-options';
+import { askNotifyPermission, notifyDesktop } from '@/lib/desktop-notify';
 import sg from './SalonSignup.module.css';
 
 type Form = { salon: string; name: string; email: string; password: string; terms: boolean };
@@ -118,6 +119,7 @@ export default function SalonSignup({ providers, authError, demoMode = false }: 
       setSubmitError(toMessage(error));
       return;
     }
+    if (!error) notifyDesktop('掲載の申し込みを受け付けました', `${form.salon.trim()} の申し込みを運営が確認しています。承認されると、サロンの画面で使えるようになります。`, 'salon-signup');
     await loadMine();
   }
 
@@ -138,6 +140,8 @@ export default function SalonSignup({ providers, authError, demoMode = false }: 
       return;
     }
     if (!client) return;
+    // 申し込むボタンを押したこの時に、パソコンへの通知の許可を求める（許可されたら、受付・登録完了を通知する）
+    askNotifyPermission();
     setBusy(true);
     setSubmitError(null);
 
@@ -175,6 +179,7 @@ export default function SalonSignup({ providers, authError, demoMode = false }: 
     }
     setDemoNote(body?.demoNote ?? null);
     setAppliedTo(email);
+    notifyDesktop('掲載の申し込みを受け付けました', `運営が確認したあと、${email} にご案内をお送りします。`, 'salon-signup');
     window.scrollTo({ top: 0 });
   }
 

@@ -1211,4 +1211,35 @@ select t.ok('T54 訪問の記録を削除すると', public.admin_usage_delete(a
 commit;
 select t.ok('T54 その訪問の出来事も消える', (select count(*) from public.usage_events where visit_id = '54000000-0000-4000-8000-000000000001') = 0);
 
+-- ---------------------------------------------------------
+-- T55 新規登録の知らせ：自分で登録したアカウントだけ、作られたとき・確認が済んだときに残す（0018）
+-- ---------------------------------------------------------
+insert into auth.users (id, email, raw_user_meta_data)
+values ('55000000-0000-4000-8000-000000000001', 't55-user@example.com', '{"signup_role":"user","display_name":"登録 テスト"}'),
+       ('55000000-0000-4000-8000-000000000002', 't55-salon@example.com', '{"signup_role":"salon","display_name":"店長 テスト","salon_name":"T55 サロン"}'),
+       ('55000000-0000-4000-8000-000000000003', 't55-invited@example.com', '{"display_name":"招待 テスト"}');
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at)
+values ('55000000-0000-4000-8000-000000000004', 't55-google@example.com', '{"signup_role":"user","signup_via":"google","display_name":"外部 テスト"}', now());
+select t.ok('T55 お客様・サロンの新規登録（メールアドレス）は、作られたときに「signup」が1件ずつ残る',
+  (select count(*) from public.signup_notices where kind = 'signup' and user_id in ('55000000-0000-4000-8000-000000000001', '55000000-0000-4000-8000-000000000002')) = 2);
+select t.ok('T55 店名・お名前・登録の方法も残る',
+  (select salon_name = 'T55 サロン' and display_name = '店長 テスト' and role = 'salon' and via = 'email' from public.signup_notices where user_id = '55000000-0000-4000-8000-000000000002'));
+select t.ok('T55 外部 ID の登録も残る（登録の方法つき）',
+  (select via from public.signup_notices where user_id = '55000000-0000-4000-8000-000000000004') = 'google');
+select t.ok('T55 運営が招待したアカウントは数えない',
+  (select count(*) from public.signup_notices where user_id = '55000000-0000-4000-8000-000000000003') = 0);
+update auth.users set email_confirmed_at = now() where id = '55000000-0000-4000-8000-000000000001';
+update auth.users set last_sign_in_at = now() where id = '55000000-0000-4000-8000-000000000001';
+select t.ok('T55 確認のリンクを開いて登録が完了すると「confirmed」が1件残る（ほかの更新では増えない）',
+  (select count(*) from public.signup_notices where user_id = '55000000-0000-4000-8000-000000000001' and kind = 'confirmed') = 1
+  and (select count(*) from public.signup_notices where user_id = '55000000-0000-4000-8000-000000000001') = 2);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T55 運営でない人には、新規登録の知らせが見えない', (select count(*) from public.signup_notices) = 0);
+select t.raises('T55 知らせは、画面から直接書き込めない',
+  $$insert into public.signup_notices (kind, user_id, role) values ('signup', '55000000-0000-4000-8000-000000000009', 'user')$$, 'permission denied');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T55 運営には、新規登録の知らせが見える', (select count(*) from public.signup_notices where user_id::text like '55000000-%') = 4);
+commit;
+
 -- 結果の一覧は run.sh が出す

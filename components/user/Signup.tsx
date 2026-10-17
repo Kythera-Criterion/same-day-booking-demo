@@ -24,6 +24,7 @@ import SocialButtons, { AuthErrorNotice, OrDivider, hasAnyProvider } from '@/com
 import { useRoleSession } from '@/lib/supabase';
 import type { Providers } from '@/lib/oauth-shared';
 import { TERMS_VERSION } from '@/lib/profile-options';
+import { askNotifyPermission, notifyDesktop } from '@/lib/desktop-notify';
 import { EMPTY_PROFILE, Field, MiniSteps, ProfileFields, checkProfile, type ProfileErrors, type ProfileForm } from './FormParts';
 import s from './Signup.module.css';
 import type { Area } from './useUserState';
@@ -127,6 +128,8 @@ export default function Signup({ providers, authError, next = '/' }: { providers
       document.getElementById(Object.keys(e)[0])?.focus();
       return;
     }
+    // 登録のボタンを押したこの時に、パソコンへの通知の許可を求める（許可されたら、仮登録・登録完了を通知する）
+    askNotifyPermission();
     setBusy(true);
     setSubmitError(null);
     const email = account.email.trim().toLowerCase();
@@ -160,6 +163,7 @@ export default function Signup({ providers, authError, next = '/' }: { providers
     setDemoNote(body?.demoNote ?? null);
     setSentTo(email);
     setCooldown(60);
+    notifyDesktop('仮登録が完了しました', `確認のメールを ${email} にお送りしました。メールのリンクを開くと、登録が完了します。`, 'signup');
     window.scrollTo({ top: 0 });
   }
 

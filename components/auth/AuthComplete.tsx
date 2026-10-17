@@ -18,6 +18,7 @@ import { LinkIcon } from '@/components/ui/icons';
 import s from './AuthComplete.module.css';
 import { getClient, isConfigured, type Role } from '@/lib/supabase';
 import { safePath } from '@/lib/oauth-shared';
+import { notifyDesktop } from '@/lib/desktop-notify';
 
 const ROLE_LABEL: Record<Role, string> = { user: '利用者', salon: 'サロン', admin: '運営' };
 const ROLE_HOME: Record<Role, string> = { user: '/', salon: '/salon', admin: '/admin' };
@@ -62,6 +63,8 @@ export default function AuthComplete({
         session = data.session;
         // トークンを URL に残さない
         window.history.replaceState(null, '', '/auth/complete');
+        // 新規登録の確認が済んだ：パソコンに通知する（登録のときに許可されていれば）
+        if (session && type === 'signup') notifyDesktop('ご登録が完了しました', 'アカウントが使えるようになりました。今日の空きから、すぐに予約できます。', 'signup');
         if (!session) {
           // 期限切れ・使用済みのリンク：この端末でログインしているアカウントがあっても、黙ってそのアカウントで進めない
           setOther((await client.auth.getSession()).data.session?.user.email ?? null);
