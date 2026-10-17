@@ -1083,4 +1083,40 @@ select t.raises('T51 ほかのお店のスタッフは、別のお店の設定�
   $$select public.salon_set_onboarding((select value::uuid from t.ctx where key = 't50_salon'), 3)$$, 'forbidden');
 commit;
 
+-- ---------------------------------------------------------
+-- T52 公開中の枠を取り下げたら、利用者の画面へ「このサロンの掲載が変わった」と知らせる（0015）
+-- ---------------------------------------------------------
+insert into public.slots (salon_id, menu_id, start_at, end_at, price)
+select (select value::uuid from t.ctx where key = 't50_salon'), m.id, public.jst_today_start() + h * interval '1 hour', public.jst_today_start() + h * interval '1 hour' + interval '30 minutes', 4000
+from public.menus m, (values (10), (11)) as v(h)
+where m.salon_id = (select value::uuid from t.ctx where key = 't50_salon');
+select t.ok('T52 （準備）取り下げる前は、このお店の「取り下げ」の知らせはない',
+  (select count(*) from public.listing_events where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and kind = 'closed') = 0);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T52 「今日はここまで」で、今日の公開中の枠をまとめて取り下げられる',
+  public.salon_pause_today((select value::uuid from t.ctx where key = 't50_salon')) = 2);
+commit;
+select t.ok('T52 まとめて取り下げても、知らせはお店ごとに1件（利用者の画面がすぐに読み直す）',
+  (select count(*) from public.listing_events where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and kind = 'closed') = 1);
+insert into public.slots (salon_id, menu_id, start_at, end_at, price)
+select (select value::uuid from t.ctx where key = 't50_salon'), m.id, public.jst_today_start() + interval '13 hours', public.jst_today_start() + interval '13 hours 30 minutes', 4000
+from public.menus m where m.salon_id = (select value::uuid from t.ctx where key = 't50_salon');
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.runs('T52 1枠だけ取り下げることもできる',
+  $$select public.close_slot((select id from public.slots where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and status = 'open' limit 1))$$);
+commit;
+select t.ok('T52 1枠だけ取り下げても、知らせが届く',
+  (select count(*) from public.listing_events where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and kind = 'closed') = 2);
+insert into public.slots (salon_id, menu_id, start_at, end_at, price)
+select (select value::uuid from t.ctx where key = 't50_salon'), m.id, public.jst_today_start() + interval '14 hours', public.jst_today_start() + interval '14 hours 30 minutes', 4000
+from public.menus m where m.salon_id = (select value::uuid from t.ctx where key = 't50_salon');
+update public.slots set status = 'booked'
+where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and status = 'open';
+select t.ok('T52 予約で埋まったとき（取り下げではない）は、この知らせを出さない',
+  (select count(*) from public.listing_events where salon_id = (select value::uuid from t.ctx where key = 't50_salon') and kind = 'closed') = 2);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.raises('T52 知らせは、画面からは直接書き込めない（データベースの決まった処理だけが書く）',
+  $$insert into public.listing_events (salon_id, kind) values ((select value::uuid from t.ctx where key = 't50_salon'), 'closed')$$, 'permission denied');
+commit;
+
 -- 結果の一覧は run.sh が出す
