@@ -43,6 +43,7 @@ export default function CandidateCard({
   gone,
   selected,
   disabled,
+  fresh,
   extra,
   onSelect,
   onBook,
@@ -54,6 +55,8 @@ export default function CandidateCard({
   gone: boolean;
   selected: boolean;
   disabled: boolean;
+  // 開いている間に新しく届いた枠（見た目だけ：時間の色の輪が1回広がる）
+  fresh?: boolean;
   extra?: SalonExtra;
   onSelect: () => void;
   onBook: () => void;
@@ -72,7 +75,7 @@ export default function CandidateCard({
   const staff = stylistLine(slot.stylist_name, extra);
 
   return (
-    <li ref={refFn} className={`${s.card} ${gone ? s.gone : ''}`} data-selected={selected ? 'true' : undefined} onClick={onSelect}>
+    <li ref={refFn} className={`${s.card} ${gone ? s.gone : ''}`} data-selected={selected ? 'true' : undefined} data-fresh={fresh ? 'true' : undefined} onClick={onSelect}>
       <div className={s.head}>
         {no !== undefined && <span className={s.no}>{no}</span>}
         <span className={s.start}>{fmtTime(slot.start_at)}</span>

@@ -228,17 +228,17 @@ export default function BookingDetail({ bookingId, isNew }: { bookingId: string;
                 )}
               </section>
             ) : (
-              <section className={`${s.live} ${changed ? s.changed : ''}`} data-live="">
+              <section className={`${s.live} ${changed ? s.changed : ''}`} data-live="" data-new={isNew ? 'true' : undefined}>
                 <p className={s.liveLabel}>
                   <CheckCircle size={24} weight="fill" aria-hidden focusable="false" />
                   {isNew ? '予約が確定しました' : 'ご予約中'}
                 </p>
-                <RemainRing fraction={fraction} label={`開始まであと${remainMin}分`}>
+                <RemainRing fraction={fraction} label={`開始まであと${remainMin}分`} soon={remainMin > 0 && remainMin <= 10}>
                   <span className={s.liveSub}>開始まで</span>
                   <span className={`${s.liveMain} num`} data-long={remainMin >= 60 ? 'true' : undefined}>
                     {remainMin > 0 ? (
                       <>
-                        あと<strong>{remainMin >= 60 ? `${Math.floor(remainMin / 60)}時間${remainMin % 60}` : remainMin}</strong>分
+                        あと<strong key={remainMin}>{remainMin >= 60 ? `${Math.floor(remainMin / 60)}時間${remainMin % 60}` : remainMin}</strong>分
                       </>
                     ) : (
                       'まもなく'

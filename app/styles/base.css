@@ -33,7 +33,7 @@ body {
   border-block-start: var(--line-accent) solid var(--color-action);
 }
 
-/* ページの背景の虹（役割ごとの --page-wash）。画面に固定して内容の後ろに敷き、スクロールしても動かさない */
+/* ページの背景（お客様は時刻の空、サロン・運営はほぼ無地。役割ごとの --page-wash）。画面に固定して内容の後ろに敷き、スクロールしても動かさない */
 body::before {
   content: "";
   position: fixed;

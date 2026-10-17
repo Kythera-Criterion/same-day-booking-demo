@@ -21,7 +21,22 @@
   fill: none;
   stroke: var(--color-action);
   stroke-linecap: round;
-  transition: stroke-dashoffset var(--motion-long) var(--ease-out);
+  transition:
+    stroke-dashoffset var(--motion-long) var(--ease-out),
+    stroke var(--motion-base) var(--ease-out);
+  /* 表示したとき：空の輪から、今の残りまで満ちていく（終わったあとは、残りに合わせて少しずつ欠ける） */
+  animation: fill calc(var(--motion-long) * 2) var(--ease-out) backwards;
+}
+
+/* 開始が近いとき（残り10分以内）：輪を時間の色に */
+.ring[data-soon="true"] .value {
+  stroke: var(--color-time);
+}
+
+@keyframes fill {
+  from {
+    stroke-dashoffset: var(--ring-c);
+  }
 }
 
 .inner {

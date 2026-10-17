@@ -94,11 +94,36 @@
 }
 
 .liveMain strong {
+  display: inline-block;
   margin-inline: var(--space-1);
   font-family: var(--font-num);
   font-size: var(--text-figure);
   font-weight: var(--weight-heavy);
   line-height: 1;
+  /* 減る：1分進むたびに、新しい数字が下から入る */
+  animation: tick var(--motion-base) var(--ease-out);
+}
+
+@keyframes tick {
+  from {
+    opacity: 0;
+    transform: translateY(35%);
+  }
+}
+
+/* 決まる：予約した直後は、確定の印が弾むように現れる */
+.live[data-new="true"] .liveLabel svg {
+  animation: pop var(--motion-long) var(--ease-out) var(--motion-base) backwards;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.15);
+  }
 }
 
 .depart {

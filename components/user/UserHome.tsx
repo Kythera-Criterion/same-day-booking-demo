@@ -106,6 +106,9 @@ export default function UserHome() {
   const lastWinCount = useRef<number | null>(null);
   const searchSeq = useRef(0);
   const cardRefs = useRef(new Map<string, HTMLLIElement>());
+  // 開いている間に新しく届いた枠（見た目だけ：カードに時間の色の輪を出す）。最初の読み込みとエリアの切り替えでは出さない
+  const seenSlots = useRef<{ area: string | null | undefined; ids: Set<string> } | null>(null);
+  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set());
 
   const currentAreaId = areaId ?? profile?.area_id ?? areas[0]?.id ?? null;
   // 検索のエリア：ログインしている人は登録のエリア（未設定なら、すべてのエリア）。ログインしていない人は、選んだエリア
@@ -158,6 +161,20 @@ export default function UserHome() {
       clearInterval(timer);
     };
   }, [client, search]);
+
+  useEffect(() => {
+    if (!all) return;
+    const ids = all.map((s) => s.slot_id);
+    const seen = seenSlots.current;
+    if (!seen || seen.area !== searchAreaId) {
+      seenSlots.current = { area: searchAreaId, ids: new Set(ids) };
+      setFreshIds(new Set());
+      return;
+    }
+    const arrived = ids.filter((id) => !seen.ids.has(id));
+    for (const id of arrived) seen.ids.add(id);
+    setFreshIds(new Set(arrived));
+  }, [all, searchAreaId]);
 
   const valid = useMemo(
     () =>
@@ -558,6 +575,7 @@ export default function UserHome() {
                         gone={!!frozen?.gone.includes(s.id)}
                         selected={selected === s.id}
                         disabled={!!suspendedUntil}
+                        fresh={freshIds.has(s.id)}
                         extra={extras[s.salon_id]}
                         onSelect={() => setSelected(s.id)}
                         onBook={() => openSheet(s)}
@@ -583,6 +601,7 @@ export default function UserHome() {
                         gone={false}
                         selected={false}
                         disabled={!!suspendedUntil}
+                        fresh={freshIds.has(s.id)}
                         extra={extras[s.salon_id]}
                         onSelect={() => undefined}
                         onBook={() => openSheet(s)}

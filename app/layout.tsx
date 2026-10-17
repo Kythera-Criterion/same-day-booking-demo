@@ -2,17 +2,16 @@ import './styles/tokens.css';
 import './styles/base.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Manrope, Zen_Kaku_Gothic_New } from 'next/font/google';
+import { M_PLUS_2, Manrope } from 'next/font/google';
 import NetworkBanner from '@/components/NetworkBanner';
 
-// 文字：Zen Kaku Gothic New（日本語。細身で端正な形が「澄んだ・確か」に合う）
+// 文字：M PLUS 2（日本語。字面が締まっていて、数字の欧文となじむ。太さを細かく選べる可変フォント）
 // 数字：Manrope（時刻・金額・予約番号。幾何学的で桁が読みやすい。tabular-nums で桁をそろえる）
 // どちらも Google Fonts で公開されている SIL Open Font License のフォント
-const zen = Zen_Kaku_Gothic_New({
+const mplus = M_PLUS_2({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
   display: 'swap',
-  variable: '--font-zen',
+  variable: '--font-jp',
 });
 
 const manrope = Manrope({
@@ -36,9 +35,18 @@ export const viewport: Viewport = {
   themeColor: '#1f6f5c',
 };
 
+// ページの背景の「時刻の空」：日本時間の時刻から時間帯を決め、<html data-sky> に付ける（色は tokens.css）
+//   描画の前に決めて、背景が切り替わってちらつかないようにする。開いたままでも1分ごとに付け直す
+//   表示だけのためのもので、予約・表示の内容には関わらない
+const SKY_SCRIPT = `(function(){function s(){var h=new Date(Date.now()+324e5).getUTCHours();document.documentElement.setAttribute('data-sky',h<5?'night':h<11?'morning':h<16?'noon':h<19?'dusk':'night')}s();setInterval(s,6e4)})()`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ja" className={`${zen.variable} ${manrope.variable}`}>
+    // data-sky は描画の前にスクリプトが付けるので、その差は読み込み時の不一致として扱わない
+    <html lang="ja" className={`${mplus.variable} ${manrope.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SKY_SCRIPT }} />
+      </head>
       <body>
         <a className="skip-link" href="#main">
           本文へ移動

@@ -66,14 +66,16 @@
   --violet-700: #452f78;
   --violet-800: #33235a;
 
-  /* 虹（ページの背景だけに使う、ごく淡い7色）。どの段の上でも、補足の文字・操作の色の文字が 4.5:1 以上になる明るさ */
-  --rainbow-red: #fde4e6;
-  --rainbow-orange: #feead6;
-  --rainbow-yellow: #fbf2c9;
-  --rainbow-green: #dcf2df;
-  --rainbow-blue: #d9eafa;
-  --rainbow-indigo: #e1e3f9;
-  --rainbow-violet: #ede1f8;
+  /* 時刻の空（ページの背景だけに使う、ごく淡い2色×4つの時間帯）。上（a）から下（b）へ流す
+     どの色の上でも、補足の文字（--gray-600）は 5.3:1 以上、操作の色の文字（--teal-700）は 7:1 以上 */
+  --sky-morning-a: #eef6f1;
+  --sky-morning-b: #fbefd8;
+  --sky-noon-a: #dcebf7;
+  --sky-noon-b: #f5f8f7;
+  --sky-dusk-a: #f7e3dc;
+  --sky-dusk-b: #e6e0f3;
+  --sky-night-a: #e1e3f9;
+  --sky-night-b: #e6e0f3;
 
   /* ---------- 基本の値：文字 ---------- */
   --size-12: 0.75rem;
@@ -106,19 +108,20 @@
   --color-surface-sunken: var(--gray-50);
   --color-surface-strong: var(--gray-900);
 
-  /* ページの背景の虹（base.css で、内容の後ろに画面いっぱいに敷く）。白い面・文字は、この上にそのまま置く
-     お客様：スマートフォンで「今から行ける」を探す。気持ちが軽くなるよう、斜めに流れる虹をそのままの淡さで
-     サロン・運営は、下の役割のテーマで、それぞれの使い方に合わせて抑える */
-  --rainbow: var(--rainbow-red), var(--rainbow-orange), var(--rainbow-yellow), var(--rainbow-green), var(--rainbow-blue),
-    var(--rainbow-indigo), var(--rainbow-violet);
-  --page-wash: linear-gradient(160deg, var(--rainbow));
-  /* デモ用の舞台：3つの端末が、左から右へ別の色の上に並ぶ。沈んだ面を半分重ねて、端末を目立たせる */
+  /* ページの背景（base.css で、内容の後ろに画面いっぱいに敷く）。白い面・文字は、この上にそのまま置く
+     お客様：今の時刻（日本時間）の空。朝・昼・夕方・夜で色が変わり、「今日の、今の空き」であることを伝える
+       時間帯は <html data-sky="..."> で決まる（app/layout.tsx の小さなスクリプトが、開いたときと1分ごとに付け直す）
+     サロン・運営は、下の役割のテーマで、ほぼ無地にする */
+  --sky-a: var(--sky-noon-a);
+  --sky-b: var(--sky-noon-b);
+  --page-wash: linear-gradient(170deg, var(--sky-a), var(--sky-b));
+  /* デモ用の舞台：3つの端末が、朝から夜へ移る1日の空の上に並ぶ。沈んだ面を半分重ねて、端末を目立たせる */
   --stage-wash: linear-gradient(
       color-mix(in srgb, var(--color-surface-sunken) 50%, transparent),
       color-mix(in srgb, var(--color-surface-sunken) 50%, transparent)
     ),
-    linear-gradient(100deg, var(--rainbow));
-  /* 上に残る帯（ヘッダー・タブ）：白を半分重ねてぼかし、後ろの虹が透けて見えるようにする */
+    linear-gradient(100deg, var(--sky-morning-b), var(--sky-noon-a), var(--sky-dusk-a), var(--sky-night-a));
+  /* 上に残る帯（ヘッダー・タブ）：白を半分重ねてぼかし、後ろの背景の色が透けて見えるようにする */
   --color-glass: color-mix(in srgb, var(--color-surface) 55%, transparent);
 
   /* 文字（補足も 4.5:1 以上） */
@@ -189,7 +192,7 @@
   --shadow-text-on-photo: 0 1px 2px rgb(8 14 12 / 0.4);
 
   /* 文字の段階（補足 12・本文 14〜16・小見出し 20・見出し 28・数字の主役 40・業務の大きな時刻 56） */
-  --font-sans: var(--font-zen), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  --font-sans: var(--font-jp), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
   --font-num: var(--font-manrope), var(--font-sans);
   --text-caption: var(--size-12);
   --text-small: var(--size-14);
@@ -274,12 +277,8 @@
   --color-action-text: var(--indigo-700);
   --color-focus: var(--indigo-700);
   --color-bg: #f4f6fa;
-  /* タブレットで1日中開いておく業務の画面：タイムラインと同じ向き（左＝朝の赤 → 右＝夜の紫）に横へ流し、背景の色を 30% 重ねて静かに */
-  --page-wash: linear-gradient(
-      color-mix(in srgb, var(--color-bg) 30%, transparent),
-      color-mix(in srgb, var(--color-bg) 30%, transparent)
-    ),
-    linear-gradient(90deg, var(--rainbow));
+  /* タブレットで1日中開いておく業務の画面：目が疲れないよう、ほぼ無地。上の端だけ藍をごく淡く */
+  --page-wash: linear-gradient(180deg, var(--indigo-50), var(--color-bg) 40%);
 }
 :root:has(header[data-role="admin"]) {
   --color-action: var(--violet-600);
@@ -289,12 +288,25 @@
   --color-action-text: var(--violet-700);
   --color-focus: var(--violet-700);
   --color-bg: #f6f4f9;
-  /* 数字とグラフを読む画面：虹は上の端だけにして、画面の半分ほどで無地へ消す（グラフの色と混ざらない） */
-  --page-wash: linear-gradient(180deg, transparent 0, var(--color-bg) 55%),
-    linear-gradient(90deg, var(--rainbow));
+  /* 数字とグラフを読む画面：無地（グラフの色と混ざらない）。上の端だけ紫をごく淡く */
+  --page-wash: linear-gradient(180deg, var(--violet-50), var(--color-bg) 40%);
 }
 
-/* コントラストを高くする設定・強制カラーのとき、印刷するときは、虹をやめて無地にする */
+/* 時刻の空：朝（5〜11時）・昼（11〜16時）・夕方（16〜19時）・夜（19〜5時）。data-sky がないとき（スクリプトが動かない環境）は昼 */
+:root[data-sky="morning"] {
+  --sky-a: var(--sky-morning-a);
+  --sky-b: var(--sky-morning-b);
+}
+:root[data-sky="dusk"] {
+  --sky-a: var(--sky-dusk-a);
+  --sky-b: var(--sky-dusk-b);
+}
+:root[data-sky="night"] {
+  --sky-a: var(--sky-night-a);
+  --sky-b: var(--sky-night-b);
+}
+
+/* コントラストを高くする設定・強制カラーのとき、印刷するときは、背景の色をやめて無地にする */
 @media (prefers-contrast: more), (forced-colors: active), print {
   :root,
   :root:has(header[data-role]) {
