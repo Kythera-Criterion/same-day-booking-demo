@@ -1178,4 +1178,37 @@ commit;
 select t.ok('T53 削除したことは、操作記録に残る',
   (select count(*) from public.audit_logs where action in ('usage_delete', 'usage_delete_all')) = 2);
 
+-- ---------------------------------------------------------
+-- T54 利用の記録：ページを開いたこと・使った機能を1件ずつ残す（0017）
+-- ---------------------------------------------------------
+begin; set local role anon;
+select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f1', 'start', '/');
+select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f1', 'feature', '/', 0, null, '今から行ける');
+select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f1', 'feature', '/', 0, null, '  今日中
+  （3件） ');
+select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f1', 'start', '/bookings');
+select t.raises('T54 名前のない機能は受け付けない',
+  $$select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f1', 'feature', '/', 0, null, '   ')$$, 'invalid');
+select t.raises('T54 別のブラウザの番号では、ほかの人の訪問に機能を足せない',
+  $$select public.usage_track('54000000-0000-4000-8000-000000000001', '54000000-0000-4000-8000-0000000000f2', 'feature', '/', 0, null, 'x')$$, 'forbidden');
+select t.raises('T54 出来事の表は、画面から直接書き込めない',
+  $$insert into public.usage_events (visit_id, kind, label) values ('54000000-0000-4000-8000-000000000001', 'feature', 'x')$$, 'permission denied');
+commit;
+select t.ok('T54 ページを開くたびに page、押した機能ごとに feature が1件ずつ残る（名前の空白はまとめる）',
+  (select string_agg(kind || ':' || coalesce(label, path), ',' order by id) from public.usage_events where visit_id = '54000000-0000-4000-8000-000000000001')
+  = 'page:/,feature:今から行ける,feature:今日中 （3件）,page:/bookings',
+  (select string_agg(kind || ':' || coalesce(label, path), ',' order by id) from public.usage_events where visit_id = '54000000-0000-4000-8000-000000000001'));
+select t.ok('T54 機能を使っても、見たページの数・最後のページは変わらない',
+  (select page_views = 2 and last_path = '/bookings' from public.usage_visits where id = '54000000-0000-4000-8000-000000000001'));
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T54 運営でない人には、出来事が見えない', (select count(*) from public.usage_events) = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T54 運営の一覧に、使った機能の数が出る',
+  (select features from public.admin_usage_visits() where id = '54000000-0000-4000-8000-000000000001') = 2);
+select t.ok('T54 運営は、出来事を読める', (select count(*) from public.usage_events where visit_id = '54000000-0000-4000-8000-000000000001') = 4);
+select t.ok('T54 訪問の記録を削除すると', public.admin_usage_delete(array['54000000-0000-4000-8000-000000000001'::uuid]) = 1);
+commit;
+select t.ok('T54 その訪問の出来事も消える', (select count(*) from public.usage_events where visit_id = '54000000-0000-4000-8000-000000000001') = 0);
+
 -- 結果の一覧は run.sh が出す

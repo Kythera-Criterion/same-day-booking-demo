@@ -5,8 +5,10 @@
 //   記録は components/UsageTracker が app/api/usage 経由で残す。ここでは読んで、選んで削除・すべて削除する
 //   一覧は DB の関数 admin_usage_visits、削除は admin_usage_delete・admin_usage_delete_all（どれも中で運営かどうかを確かめる）
 //   表示は「訪問ごと」と「アカウントごと」（ログインしていない訪問は、ブラウザごとにまとめる）
+//   その場の知らせ：訪問者がページを開いた・機能を使ったら、Realtime で受け取り、上に閉じられる知らせの帯を出して一覧を読み直す
+//   使った機能：押したボタン・リンク・タブなどの名前（usage_events）。訪問ごとは順に、アカウントごとは種類ごとの回数で出す
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from '@/components/AppHeader';
 import LoginBox from '@/components/LoginBox';
 import Sheet from '@/components/Sheet';
@@ -17,7 +19,7 @@ import { Fine, Lead, Page, ScreenTitle, Stack } from '@/components/ui/Layout';
 import Notice from '@/components/ui/Notice';
 import { Panel } from '@/components/ui/Surface';
 import Toast from '@/components/ui/Toast';
-import { ArrowClockwise, ChartLine, SignOut, Trash } from '@/components/ui/icons';
+import { ArrowClockwise, BellRinging, ChartLine, SignOut, Trash, X } from '@/components/ui/icons';
 import { toMessage } from '@/lib/errors';
 import { logout } from '@/lib/logout';
 import { useRoleSession } from '@/lib/supabase';
@@ -37,7 +39,10 @@ type Visit = {
   account_email: string | null;
   account_role: 'user' | 'salon' | 'admin' | null;
   notifications: number;
+  features: number;
 };
+type UsageEvent = { id: number; visit_id: string; at: string; kind: 'page' | 'feature'; label: string | null; path: string };
+type Alert = { id: number; at: string; text: string };
 type Account = {
   key: string;
   email: string | null;
@@ -100,6 +105,17 @@ function byAccount(rows: Visit[]): Account[] {
   return [...map.values()].sort((a, b) => (a.last < b.last ? 1 : -1));
 }
 
+// 訪問者の呼び方（ログインしていればメールアドレス）
+function whoOf(v: Visit | undefined): string {
+  if (!v) return '訪問者';
+  return v.account_email ?? `ログインなしの訪問者（ブラウザ ${v.visitor_id.slice(0, 8)}）`;
+}
+
+// 出来事の文（知らせの帯・訪問ごとの順の一覧で使う）
+function eventText(e: UsageEvent): string {
+  return e.kind === 'page' ? `${screenOf(e.path)}のページを開いた（${e.path}）` : `「${e.label}」を使った（${screenOf(e.path)} ${e.path}）`;
+}
+
 function AccountCell({ email, role, visitorId }: { email: string | null; role: Visit['account_role']; visitorId: string }) {
   if (!email) {
     return (
@@ -117,6 +133,21 @@ function AccountCell({ email, role, visitorId }: { email: string | null; role: V
   );
 }
 
+// アカウントごとの、使った機能（多い順に8種類まで）
+function FeatureChips({ list }: { list: [string, number][] }) {
+  if (list.length === 0) return <span className={s.anon}>なし</span>;
+  return (
+    <ul className={s.chips}>
+      {list.slice(0, 8).map(([label, n]) => (
+        <li key={label}>
+          {label} <span className="num">×{n}</span>
+        </li>
+      ))}
+      {list.length > 8 && <li className={s.more}>ほか {list.length - 8}種類</li>}
+    </ul>
+  );
+}
+
 export default function UsageLog({ demoMode }: { demoMode: boolean }) {
   const { client, session, ready, signedOut } = useRoleSession('admin');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -129,6 +160,10 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
   const [confirm, setConfirm] = useState<'picked' | 'all' | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [events, setEvents] = useState<UsageEvent[]>([]);
+  // その場の知らせ（新しい順。閉じるまで残す。多いときは新しい5件）
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const rowsRef = useRef<Visit[]>([]);
 
   useEffect(() => {
     if (!client || !session) {
@@ -147,18 +182,76 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
     }
     setError(null);
     const list = (data ?? []) as Visit[];
+    rowsRef.current = list;
     setRows(list);
+    // 使った機能・開いたページ（期間の中の新しい3000件まで）
+    let q = client.from('usage_events').select('id,visit_id,at,kind,label,path').order('id', { ascending: false }).limit(3000);
+    const from = rangeStart(range);
+    if (from) q = q.gte('at', from);
+    const ev = await q;
+    if (!ev.error) setEvents((ev.data ?? []) as UsageEvent[]);
     // 表示から外れた記録は、選んだものからも外す
     setPicked((prev) => new Set([...prev].filter((id) => list.some((r) => r.id === id))));
   }, [client, range]);
 
-  // 開いている間は30秒ごとに読み直す（利用中の人の時間が伸びていく）
+  // 開いている間は30秒ごとにも読み直す（Realtime がつながらないときの備え）
   useEffect(() => {
     if (!isAdmin) return;
     load();
     const timer = setInterval(load, 30_000);
     return () => clearInterval(timer);
   }, [isAdmin, load]);
+
+  // その場の知らせ：ページを開いた・機能を使ったら、すぐに知らせて読み直す。訪問の更新（利用時間・アカウント）は読み直すだけ
+  //   アカウントの結びつけは出来事のすぐあとに届くので、知らせの文は読み直したあとの記録で作る
+  useEffect(() => {
+    if (!client || !isAdmin) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const reloadSoon = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => load(), 250);
+    };
+    const channel = client
+      .channel(`usage-live-${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'usage_events' }, (payload) => {
+        const e = payload.new as UsageEvent;
+        setEvents((list) => (list.some((x) => x.id === e.id) ? list : [e, ...list]));
+        reloadSoon();
+        setTimeout(() => {
+          const v = rowsRef.current.find((r) => r.id === e.visit_id);
+          const text = `${whoOf(v)} が${eventText(e)}`;
+          setAlerts((list) => [{ id: e.id, at: e.at, text }, ...list.filter((x) => x.id !== e.id)].slice(0, 5));
+        }, 600);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'usage_visits' }, reloadSoon)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      client.removeChannel(channel);
+    };
+  }, [client, isAdmin, load]);
+
+  // 訪問ごとの出来事（古い順）
+  const eventsByVisit = useMemo(() => {
+    const map = new Map<string, UsageEvent[]>();
+    for (const e of [...events].reverse()) {
+      const list = map.get(e.visit_id);
+      if (list) list.push(e);
+      else map.set(e.visit_id, [e]);
+    }
+    return map;
+  }, [events]);
+
+  // アカウントごとの、使った機能の種類と回数（多い順）
+  function featureCounts(visits: Visit[]): [string, number][] {
+    const count = new Map<string, number>();
+    for (const v of visits) {
+      for (const e of eventsByVisit.get(v.id) ?? []) {
+        if (e.kind === 'feature' && e.label) count.set(e.label, (count.get(e.label) ?? 0) + 1);
+      }
+    }
+    return [...count.entries()].sort((a, b) => b[1] - a[1]);
+  }
 
   const accounts = useMemo(() => byAccount(rows ?? []), [rows]);
 
@@ -245,9 +338,35 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
           <div className={s.head}>
             <ScreenTitle>利用の記録</ScreenTitle>
             <Lead>
-              デモを開いた人ごとの利用時間（ページが前面に出ていた時間）と、ログインしていたアカウントのメールアドレス、そのアカウントに送った通知（メール）の件数です。
+              デモを開いた人ごとの利用時間（ページが前面に出ていた時間）・使った機能と、ログインしていたアカウントのメールアドレス、そのアカウントに送った通知（メール）の件数です。訪問者がページを開いたり機能を使ったりすると、この画面の上にすぐ知らせが出ます。
             </Lead>
           </div>
+
+          {alerts.length > 0 && (
+            <section className={s.alerts} aria-label="訪問の知らせ" data-usage-alerts="">
+              {alerts.map((a) => (
+                <div key={a.id} className={s.alert} role="status">
+                  <BellRinging size={20} weight="duotone" aria-hidden focusable="false" />
+                  <p className={s.alertText}>
+                    <span className="num">{tm.format(new Date(a.at))}</span> {a.text}
+                  </p>
+                  <button
+                    type="button"
+                    className={s.alertClose}
+                    aria-label="この知らせを閉じる"
+                    onClick={() => setAlerts((list) => list.filter((x) => x.id !== a.id))}
+                  >
+                    <X size={20} aria-hidden focusable="false" />
+                  </button>
+                </div>
+              ))}
+              {alerts.length > 1 && (
+                <Button variant="text" size="sm" onClick={() => setAlerts([])}>
+                  知らせをすべて閉じる
+                </Button>
+              )}
+            </section>
+          )}
 
           <div className={s.tools}>
             <div className={s.filters}>
@@ -342,6 +461,7 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
                       <th scope="col">アカウント</th>
                       <th scope="col">利用時間</th>
                       <th scope="col">通知</th>
+                      <th scope="col">使った機能</th>
                       <th scope="col">見たページ</th>
                       <th scope="col">端末</th>
                     </tr>
@@ -366,6 +486,22 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
                         </td>
                         <td className={`num ${t.figure}`}>{fmtDuration(r.active_sec)}</td>
                         <td className={`num ${t.nowrap}`}>{r.account_email ? `${r.notifications}件` : '—'}</td>
+                        <td className={s.features}>
+                          {(eventsByVisit.get(r.id) ?? []).length === 0 ? (
+                            <span className="num">{r.features}件</span>
+                          ) : (
+                            <details>
+                              <summary className="num">{r.features}件・順に見る</summary>
+                              <ol className={s.timeline}>
+                                {(eventsByVisit.get(r.id) ?? []).map((e) => (
+                                  <li key={e.id} data-kind={e.kind}>
+                                    <span className="num">{tm.format(new Date(e.at))}</span> {eventText(e)}
+                                  </li>
+                                ))}
+                              </ol>
+                            </details>
+                          )}
+                        </td>
                         <td>
                           <span className="num">{r.page_views}ページ</span>
                           <small className={`${t.line} ${s.path}`}>
@@ -398,6 +534,7 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
                       <th scope="col">訪問</th>
                       <th scope="col">利用時間の合計</th>
                       <th scope="col">通知</th>
+                      <th scope="col">使った機能（回数）</th>
                       <th scope="col">最後の訪問</th>
                     </tr>
                   </thead>
@@ -421,6 +558,9 @@ export default function UsageLog({ demoMode }: { demoMode: boolean }) {
                           <td className={`num ${t.nowrap}`}>{a.visits.length}回</td>
                           <td className={`num ${t.figure}`}>{fmtDuration(a.sec)}</td>
                           <td className={`num ${t.nowrap}`}>{a.email ? `${a.notifications}件` : '—'}</td>
+                          <td className={s.features}>
+                            <FeatureChips list={featureCounts(a.visits)} />
+                          </td>
                           <td className={`num ${t.nowrap}`}>{dt.format(new Date(a.last))}</td>
                         </tr>
                       );

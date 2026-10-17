@@ -1,10 +1,12 @@
 'use client';
 
-// デモの利用の記録：訪問ごとの利用時間と見たページを記録する（画面には何も出さない。記録することは /legal に記載）
+// デモの利用の記録：訪問ごとの利用時間・開いたページ・使った機能を記録する（画面には何も出さない。記録することは /legal に記載）
 //   ・訪問：このタブで開いている間（sessionStorage）。30分なにもしないで戻ってきたときは、新しい訪問
 //   ・利用時間：ページが前面に出ていた時間だけを数え、15秒ごとと、離れる・隠れるときに送る（sendBeacon）
 //   ・ログインしていれば、そのページの役割（お客様・サロン・運営）のログインのトークンを送り、サーバーが確かめてアカウントを結びつける
-//   ・記録しないもの：デモの舞台の中の画面（舞台そのものを記録する）・自動のテスト（navigator.webdriver）・記録を見るページ（/usage）
+//   ・使った機能：押したボタン・リンク・タブ・切り替えなどの名前（読み上げの名前か表示の文字）と画面。入力した内容は送らない
+//   ・デモの舞台：舞台の訪問として記録し、中の3つの画面で押した機能も、その訪問に加える（同じタブの sessionStorage を共有するため）
+//   ・記録しないもの：自動のテスト（navigator.webdriver）・記録を見るページ（/usage）
 //   送り先は app/api/usage（ログインのトークンはサーバーが確かめてから、アカウントのメールアドレスを記録する）。記録の一覧は /usage
 
 import { useEffect, useRef } from 'react';
@@ -31,13 +33,28 @@ function deviceOf(): 'phone' | 'tablet' | 'pc' {
   return 'pc';
 }
 
-function skipped(path: string): boolean {
+function inFrame(): boolean {
   try {
-    if (window.self !== window.top) return true;
+    return window.self !== window.top;
   } catch {
     return true;
   }
-  return navigator.webdriver === true || path.startsWith('/usage');
+}
+
+function skipped(path: string): boolean {
+  return inFrame() || navigator.webdriver === true || path.startsWith('/usage');
+}
+
+// 押したものの名前（読み上げの名前 → 表示の文字 → title の順）。押せるものでなければ null
+const CLICKABLE = 'button, a[href], summary, select, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="menuitem"], input[type="checkbox"], input[type="radio"], input[type="submit"]';
+function labelOf(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+  const el = target.closest(CLICKABLE);
+  if (!el || el.closest('[data-usage-ignore]')) return null;
+  const own = el.getAttribute('aria-label') || (el instanceof HTMLElement ? el.innerText : el.textContent) || el.getAttribute('title');
+  const text = own?.trim() ? own : (el.closest('label') as HTMLElement | null)?.innerText;
+  const label = (text ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return label || null;
 }
 
 // この訪問の番号（無ければ作る）。保存できない環境では、このページを開いている間だけの番号
@@ -92,8 +109,16 @@ async function tokenOf(path: string): Promise<{ token: string; role: Role } | nu
   }
 }
 
-function send(ids: Ids, kind: 'start' | 'beat', path: string, seconds = 0, leaving = false, account: { token: string; role: Role } | null = null) {
-  const body = JSON.stringify({ visit: ids.visit, visitor: ids.visitor, kind, path, seconds, device: deviceOf(), ...(account ?? {}) });
+function send(
+  ids: Ids,
+  kind: 'start' | 'beat' | 'feature',
+  path: string,
+  seconds = 0,
+  leaving = false,
+  account: { token: string; role: Role } | null = null,
+  label: string | null = null,
+) {
+  const body = JSON.stringify({ visit: ids.visit, visitor: ids.visitor, kind, path, seconds, device: deviceOf(), ...(account ?? {}), ...(label ? { label } : {}) });
   try {
     sessionStorage.setItem('usage-last', String(Date.now()));
   } catch {
@@ -147,13 +172,41 @@ export default function UsageTracker() {
     tokenOf(path).then((account) => send(current, 'start', path, 0, false, account));
   }, [path]);
 
-  // 開いている間にログイン・ログアウトしたときも、アカウントを結びつけ直す
+  // 使った機能：押したボタン・リンクなどの名前を送る（同じものを続けて押したときは 0.4 秒あけて1回）
+  //   デモの舞台の中の画面では、舞台の訪問（同じタブの番号）に加える。舞台の訪問がまだなければ送らない
+  useEffect(() => {
+    if (navigator.webdriver === true) return;
+    let last = { label: '', at: 0 };
+    const onClick = (e: MouseEvent) => {
+      const where = window.location.pathname;
+      if (where.startsWith('/usage')) return;
+      const label = labelOf(e.target);
+      if (!label) return;
+      if (label === last.label && Date.now() - last.at < 400) return;
+      last = { label, at: Date.now() };
+      let current = ids.current;
+      if (!current && inFrame()) {
+        try {
+          const visit = sessionStorage.getItem('usage-visit');
+          const visitor = localStorage.getItem('usage-visitor');
+          if (visit && visitor) current = { visit, visitor };
+        } catch {
+          // 読めなければ送らない
+        }
+      }
+      if (current) send(current, 'feature', where, 0, false, null, label);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, []);
+
+  // 開いている間にログインしたときも、アカウントを結びつけ直す（ページを開いたことにはしないので、秒数 0 の beat で送る）
   useEffect(() => {
     if (!isConfigured || skipped(window.location.pathname)) return;
     const subs = (['user', 'salon', 'admin'] as Role[]).map((role) =>
       getClient(role).auth.onAuthStateChange((event, session) => {
         if (event !== 'SIGNED_IN' || !session || !ids.current || roleOf(pathRef.current) !== role) return;
-        send(ids.current, 'start', pathRef.current, 0, false, { token: session.access_token, role });
+        send(ids.current, 'beat', pathRef.current, 0, false, { token: session.access_token, role });
       }),
     );
     return () => subs.forEach(({ data }) => data.subscription.unsubscribe());

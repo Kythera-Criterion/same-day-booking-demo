@@ -126,7 +126,9 @@ $$;
 
 -- ---------------------------------------------------------
 -- 運営：記録の一覧（そのアカウントのメールアドレスに宛てた通知の件数つき。新しい順に500件まで）
+--   0017 で列を足すので、流し直すときは作り直す（そのあと 0017 を流すと、0017 の版に戻る）
 -- ---------------------------------------------------------
+drop function if exists public.admin_usage_visits(timestamptz);
 create or replace function public.admin_usage_visits(p_from timestamptz default null)
 returns table (
   id uuid, visitor_id uuid, started_at timestamptz, last_seen_at timestamptz, active_sec int, page_views int,
