@@ -1,0 +1,143 @@
+/* 利用の記録：上に期間と合計、下に記録の表。表の上の帯に、選んだ件数と削除の操作 */
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+@media (min-width: 720px) {
+  .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+}
+
+.kpi dt {
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-label);
+}
+
+.kpi dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--text-title);
+  font-weight: var(--weight-heavy);
+  line-height: var(--leading-tight);
+}
+
+.kpi small {
+  margin-inline-start: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+/* 表の上の帯：選んだ件数と削除の操作 */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--pad-surface);
+  border-block-end: 1px solid var(--color-line);
+}
+
+.count {
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.barActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pad {
+  padding: var(--pad-surface);
+}
+
+.row {
+  transition: background var(--motion-short) var(--ease-out);
+}
+
+/* 選ぶ欄：押しやすい大きさのチェックボックス */
+.pick {
+  inline-size: var(--space-10);
+}
+
+.pick input {
+  inline-size: var(--icon-md);
+  block-size: var(--icon-md);
+  margin: 0;
+  accent-color: var(--color-action);
+  cursor: pointer;
+}
+
+.row[data-picked="true"] td {
+  background: var(--color-action-soft);
+}
+
+.path {
+  overflow-wrap: anywhere;
+}
+
+.id {
+  color: var(--color-ink-2);
+  white-space: nowrap;
+}
+
+.confirmText {
+  color: var(--color-ink);
+  line-height: var(--leading-body);
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+}
+
+/* 期間と表示の切り替えを横に並べる（狭いときは折り返す） */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.email {
+  font-weight: var(--weight-bold);
+}
+
+.anon {
+  color: var(--color-ink-sub);
+}

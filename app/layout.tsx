@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { M_PLUS_2, Manrope } from 'next/font/google';
 import NetworkBanner from '@/components/NetworkBanner';
+import UsageTracker from '@/components/UsageTracker';
 
 // 文字：M PLUS 2（日本語。字面が締まっていて、数字の欧文となじむ。太さを細かく選べる可変フォント）
 // 数字：Manrope（時刻・金額・予約番号。幾何学的で桁が読みやすい。tabular-nums で桁をそろえる）
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           本文へ移動
         </a>
         <NetworkBanner />
+        <UsageTracker />
         <div id="main">{children}</div>
       </body>
     </html>

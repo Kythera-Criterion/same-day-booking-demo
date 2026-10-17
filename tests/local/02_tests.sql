@@ -1119,4 +1119,63 @@ select t.raises('T52 知らせは、画面からは直接書き込めない（�
   $$insert into public.listing_events (salon_id, kind) values ((select value::uuid from t.ctx where key = 't50_salon'), 'closed')$$, 'permission denied');
 commit;
 
+-- ---------------------------------------------------------
+-- T53 デモの利用の記録：訪問ごとの利用時間・アカウント・通知の件数。運営だけが読めて、選んで削除・すべて削除できる（0016）
+-- ---------------------------------------------------------
+begin; set local role anon;
+select t.runs('T53 ログインしていない人の画面からも、訪問の始まりを記録できる（Route Handler 経由）',
+  $$select public.usage_track('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', 'start', '/demo', 0, 'phone')$$);
+select public.usage_track('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', 'beat', '/demo', 15);
+select public.usage_track('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', 'beat', '/demo', 9999);
+select public.usage_track('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', 'start', '/salon');
+select t.raises('T53 別のブラウザの番号では、ほかの人の訪問を書き換えられない',
+  $$select public.usage_track('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f2', 'beat', '/', 60)$$, 'forbidden');
+select t.raises('T53 知らない種類の記録は受け付けない',
+  $$select public.usage_track('53000000-0000-4000-8000-000000000002', '53000000-0000-4000-8000-0000000000f1', 'hack', '/')$$, 'invalid');
+select t.raises('T53 記録の表は、画面から直接書き込めない',
+  $$insert into public.usage_visits (id, visitor_id) values ('53000000-0000-4000-8000-000000000009', '53000000-0000-4000-8000-0000000000f1')$$, 'permission denied');
+select t.raises('T53 アカウントの結びつけは、画面からは呼べない（サーバーがログインを確かめてから呼ぶ）',
+  $$select public.usage_set_account('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', null, 'fake@example.com', 'user')$$, 'permission denied');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.raises('T53 ログインしていても、アカウントの結びつけは呼べない',
+  $$select public.usage_set_account('53000000-0000-4000-8000-000000000001', '53000000-0000-4000-8000-0000000000f1', null, 'fake@example.com', 'user')$$, 'permission denied');
+commit;
+select t.ok('T53 利用時間は前面に出ていた秒数の合計（1回に足せるのは120秒まで）',
+  (select active_sec from public.usage_visits where id = '53000000-0000-4000-8000-000000000001') = 135,
+  (select active_sec::text from public.usage_visits where id = '53000000-0000-4000-8000-000000000001'));
+select t.ok('T53 見たページの数・最初と最後のページ・端末が残る',
+  (select page_views = 2 and first_path = '/demo' and last_path = '/salon' and device = 'phone' and account_email is null
+   from public.usage_visits where id = '53000000-0000-4000-8000-000000000001'));
+-- サーバー側（Route Handler）からの結びつけ
+select public.usage_track('53000000-0000-4000-8000-000000000002', '53000000-0000-4000-8000-0000000000f2', 'start', '/');
+select public.usage_set_account('53000000-0000-4000-8000-000000000002', '53000000-0000-4000-8000-0000000000f2', null, 'T53-User@example.com', 'user');
+select public.usage_set_account('53000000-0000-4000-8000-000000000002', '53000000-0000-4000-8000-0000000000ff', null, 'other@example.com', 'user');
+select t.ok('T53 サーバーからは、訪問にアカウント（メールアドレス・役割）を結びつけられる。別のブラウザの番号では書き換わらない',
+  (select account_email = 'T53-User@example.com' and account_role = 'user' from public.usage_visits where id = '53000000-0000-4000-8000-000000000002'));
+insert into public.notification_outbox (dedupe_key, kind, channel, recipient, payload, status)
+select 't53-' || g, 'salon_cancel_mail', 'email', 't53-user@example.com', '{}'::jsonb, 'simulated' from generate_series(1, 2) g;
+select public.usage_track('53000000-0000-4000-8000-000000000003', '53000000-0000-4000-8000-0000000000f3', 'start', '/');
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T53 運営でない人には、記録が見えない', (select count(*) from public.usage_visits) = 0);
+select t.raises('T53 運営でない人は、記録の一覧を読めない', $$select * from public.admin_usage_visits()$$, 'forbidden');
+select t.raises('T53 運営でない人は、記録を削除できない', $$select public.admin_usage_delete_all()$$, 'forbidden');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T53 運営には、すべての記録が見える', (select count(*) from public.admin_usage_visits()) = 3);
+select t.ok('T53 そのメールアドレスに宛てた通知の件数が出る（大文字・小文字は区別しない）。ログインなしは0件',
+  (select notifications from public.admin_usage_visits() where id = '53000000-0000-4000-8000-000000000002') = 2
+  and (select notifications from public.admin_usage_visits() where id = '53000000-0000-4000-8000-000000000003') = 0);
+-- 削除の関数と件数の数え直しは、別の文にする（同じ文の中では、削除の前の状態が見えるため）
+select t.ok('T53 運営は、選んだ記録だけを削除できる（消した件数を返す）',
+  public.admin_usage_delete(array['53000000-0000-4000-8000-000000000002'::uuid]) = 1);
+select t.ok('T53 選んだ記録を削除したあと、残りの記録はそのまま', (select count(*) from public.usage_visits) = 2);
+select t.ok('T53 記録を削除しても、送った通知そのものは消えない',
+  (select count(*) from public.notification_outbox where recipient = 't53-user@example.com') = 2);
+select t.ok('T53 運営は、すべての記録を削除できる（消した件数を返す）', public.admin_usage_delete_all() = 2);
+select t.ok('T53 すべて削除したあと、記録は残らない', (select count(*) from public.usage_visits) = 0);
+commit;
+select t.ok('T53 削除したことは、操作記録に残る',
+  (select count(*) from public.audit_logs where action in ('usage_delete', 'usage_delete_all')) = 2);
+
 -- 結果の一覧は run.sh が出す

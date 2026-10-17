@@ -134,6 +134,13 @@ try {
     await a.getByRole('navigation', { name: '運営のメニュー' }).getByRole('button', { name: new RegExp(`^${tab}`) }).click();
     await check(a, `運営：${tab}（1280px）`);
   }
+  // 利用の記録（独立したページ。運営のログインを共有する）：訪問ごと・アカウントごと
+  await a.goto(`${BASE}/usage`);
+  await a.getByRole('heading', { name: '利用の記録', level: 1 }).waitFor();
+  await a.getByText(/件を選択中|削除する記録を選んでください/).waitFor();
+  await check(a, '利用の記録：訪問ごと（1280px）');
+  await a.getByText('アカウントごと', { exact: true }).click();
+  await check(a, '利用の記録：アカウントごと（1280px）');
   await ctxA.close();
 } finally {
   await browser.close();

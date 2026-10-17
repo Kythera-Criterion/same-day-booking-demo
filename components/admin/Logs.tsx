@@ -40,6 +40,8 @@ const ACTION_LABEL: Record<string, string> = {
   salon_joined: '新しいサロンが加わった（初期設定を完了）',
   resend_invite: 'ご利用開始のご案内を再送',
   resend_approved_mail: '掲載開始のお知らせを再送',
+  usage_delete: '利用の記録を選んで削除',
+  usage_delete_all: '利用の記録をすべて削除',
 };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });

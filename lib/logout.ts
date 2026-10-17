@@ -10,7 +10,8 @@ export const AFTER_LOGOUT: Record<Role, string> = {
   admin: '/admin?logged_out=1',
 };
 
-export async function logout(role: Role): Promise<void> {
+// to：ログアウトしたあとに開く画面（省略すると、その役割のログインの画面）
+export async function logout(role: Role, to?: string): Promise<void> {
   const client = getClient(role);
   try {
     await client.auth.signOut({ scope: 'local' });
@@ -25,5 +26,5 @@ export async function logout(role: Role): Promise<void> {
   } catch {
     // 保存先を使えない環境では、何もしない
   }
-  window.location.replace(AFTER_LOGOUT[role]);
+  window.location.replace(to ?? AFTER_LOGOUT[role]);
 }
