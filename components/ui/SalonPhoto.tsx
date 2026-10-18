@@ -42,7 +42,7 @@ export default function SalonPhoto({
   className?: string;
 }) {
   const set = salonPhotos(salonId);
-  const file = src ?? (set ? (variant === 'hero' ? set.hero : set.card) : null);
+  const file = src ?? set?.main ?? null;
   const text = alt ?? (set ? `${salonName}：${set.alt}` : '');
   const cls = [s.frame, s[variant], rounded ? s.rounded : '', caption ? s.shade : '', className ?? ''].join(' ');
   if (!file) {

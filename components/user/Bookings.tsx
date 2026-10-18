@@ -102,7 +102,7 @@ export default function Bookings() {
             ) : (
               <Panel className={s.emptyPanel}>
                 <Empty>いまご予約はありません。</Empty>
-                <ButtonLink href="/" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
+                <ButtonLink href="/?step=pick" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
                   今から行けるお店を探す
                 </ButtonLink>
               </Panel>

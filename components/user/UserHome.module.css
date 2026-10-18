@@ -10,12 +10,12 @@
   padding-block-end: var(--space-2);
 }
 
-/* 上部：右に人物の写真（左と下へ地の色に溶かす）、左に明朝の大見出し */
+/* 上部：右に人物の写真（左と下へ地の色に溶かす）、左に明朝の大見出し。写真は元の画像がほぼ全部見える高さ（384px）にする */
 .hero {
   position: relative;
   display: flex;
   align-items: center;
-  min-block-size: calc(var(--space-16) * 4);
+  min-block-size: calc(var(--space-16) * 6);
   margin-inline: calc(-1 * var(--pad-page));
   padding-inline: var(--pad-page);
   isolation: isolate;
@@ -26,16 +26,16 @@
   inset-block: 0;
   inset-inline-end: 0;
   z-index: -1;
-  inline-size: 70%;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 42%), linear-gradient(0deg, transparent, #000 28%);
+  inline-size: 80%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%), linear-gradient(0deg, transparent, #000 16%);
   -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(90deg, transparent, #000 42%), linear-gradient(0deg, transparent, #000 28%);
+  mask-image: linear-gradient(90deg, transparent, #000 30%), linear-gradient(0deg, transparent, #000 16%);
   mask-composite: intersect;
 }
 
 .heroPhoto img {
   object-fit: cover;
-  object-position: 62% 18%;
+  object-position: 50% 30%;
 }
 
 .heroCopy {

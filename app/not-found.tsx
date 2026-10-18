@@ -14,7 +14,7 @@ export default function NotFound() {
       <Panel as="section" className={s.panel}>
         <SectionHead icon={MagnifyingGlass} title="ページが見つかりません" as="p" />
         <SubText>URL が変わったか、受付を終えた予約・枠のページかもしれません。</SubText>
-        <ButtonLink href="/" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
+        <ButtonLink href="/?step=pick" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
           今から行けるお店を探す
         </ButtonLink>
       </Panel>

@@ -43,7 +43,6 @@ import { AFTER_LOGOUT } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import { saveOrigin } from '@/lib/origin';
-import { salonPhotos } from '@/lib/salon-photos';
 import { walkMinutes } from '@/lib/walk';
 import { pickThree, restByStart, type PickRole } from '@/lib/picks';
 import { UI_OPTIONS } from '@/lib/ui-options';
@@ -108,6 +107,13 @@ export default function UserHome() {
   }, [signedOut, session, router]);
 
   const [step, setStep] = useState<'start' | 'pick' | 'results'>('start');
+
+  // ほかの画面の「今から行けるお店を探す」（/?step=pick）からは、ホームの同じボタンを押したときと同じく、時間帯を選ぶ画面を開く
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('step') !== 'pick') return;
+    setStep('pick');
+    router.replace('/', { scroll: false });
+  }, [router]);
   const [win, setWin] = useState<WindowKey>('1h');
   const [menuWord, setMenuWord] = useState<string | null>(null);
   const [areaId, setAreaId] = useState<string | null>(null);
@@ -428,7 +434,7 @@ export default function UserHome() {
             <div className={st.start}>
               <section className={st.hero} aria-labelledby="home-title">
                 <div className={st.heroPhoto} aria-hidden="true">
-                  <Image src="/images/home/hero.webp" alt="" fill priority sizes="(min-width: 480px) 330px, 70vw" />
+                  <Image src="/images/home/hero.webp" alt="" fill priority sizes="(min-width: 480px) 384px, 80vw" />
                 </div>
                 <div className={st.heroCopy}>
                   <h1 className={st.headline} id="home-title">
@@ -541,7 +547,6 @@ export default function UserHome() {
                           salonId={sh.salon_id}
                           salonName={sh.salon_name}
                           variant="square"
-                          src={salonPhotos(sh.salon_id)?.list}
                           alt=""
                           className={st.shopPhoto}
                         />
