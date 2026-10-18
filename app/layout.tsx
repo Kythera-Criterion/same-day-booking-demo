@@ -15,12 +15,11 @@ const mplus = M_PLUS_2({
   variable: '--font-jp',
 });
 
-// 見出し：Shippori Mincho（お客様の画面の見出しだけ。温かく落ち着いた明朝。SIL Open Font License）
+// 見出し：Shippori Mincho（お客様のホームの大きな見出し・店名。やわらかく上品な明朝）
 const mincho = Shippori_Mincho({
   subsets: ['latin'],
-  weight: ['600', '700'],
+  weight: ['500', '600'],
   display: 'swap',
-  preload: false,
   variable: '--font-mincho',
 });
 
@@ -53,7 +52,7 @@ const SKY_SCRIPT = `(function(){function s(){var h=new Date(Date.now()+324e5).ge
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // data-sky は描画の前にスクリプトが付けるので、その差は読み込み時の不一致として扱わない
-    <html lang="ja" className={`${mplus.variable} ${mincho.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang="ja" className={`${mplus.variable} ${manrope.variable} ${mincho.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: SKY_SCRIPT }} />
       </head>

@@ -1,8 +1,10 @@
 'use client';
 
-// 利用者のホーム：今の空きの数と探すボタン → 時間帯 → 候補3件（距離レーダーつき）→ 写真つきのシートで確認してスライドで確定
+// 利用者のホーム：写真の見出し・エリア・4つの入口（なりたい気分 → メニューで絞った今日の候補）・今の空きの数と探すボタン・
+//   今すぐ行けるサロン（お店ごとの本日の空き枠）→ 時間帯 → 候補3件（距離レーダーつき）→ 写真つきのシートで確認してスライドで確定
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
@@ -19,16 +21,20 @@ import {
   ArrowRight,
   BellRinging,
   CalendarCheck,
+  CaretDown,
   CaretRight,
   Clock,
   Crosshair,
+  HandPalm,
+  Heart,
   Info,
   Lightning,
   ListBullets,
   MapPin,
   Phone,
   Prohibit,
-  Storefront,
+  Scissors,
+  Sparkle,
   Timer,
   Wallet,
 } from '@/components/ui/icons';
@@ -37,10 +43,11 @@ import { AFTER_LOGOUT } from '@/lib/logout';
 import { toMessage } from '@/lib/errors';
 import { bearingDeg, distanceKm, fmtDistance, type LatLng } from '@/lib/geo';
 import { saveOrigin } from '@/lib/origin';
+import { salonPhotos } from '@/lib/salon-photos';
 import { walkMinutes } from '@/lib/walk';
 import { pickThree, restByStart, type PickRole } from '@/lib/picks';
 import { UI_OPTIONS } from '@/lib/ui-options';
-import { WINDOWS, fmtDate, fmtRemaining, fmtTime, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
+import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
 import BookingForm from './BookingForm';
 import CandidateCard from './CandidateCard';
 import FirstSteps from './FirstSteps';
@@ -77,6 +84,18 @@ const WINDOW_SUB: Record<WindowKey, string> = {
 const WINDOW_ICON: Record<WindowKey, PhosphorIcon> = { now: Lightning, '1h': Timer, '3h': Clock, today: CalendarCheck };
 const WIDER: Record<WindowKey, WindowKey | null> = { now: '1h', '1h': '3h', '3h': 'today', today: null };
 const MORE = 3;
+
+// 4つの入口：なりたい気分 → そのメニューの今日の候補（メニュー名で絞る。今のデモのお店は髪のメニューだけ）
+const MOODS: { label: string; word: string; icon: PhosphorIcon; img: string }[] = [
+  { label: '髪を整えたい', word: 'カット', icon: Scissors, img: '/images/home/hair.webp' },
+  { label: '気分を変えたい', word: 'カラー', icon: Sparkle, img: '/images/home/mood.webp' },
+  { label: 'ネイルをしたい', word: 'ネイル', icon: HandPalm, img: '/images/home/nail.webp' },
+  { label: '自分をケアしたい', word: 'ケア', icon: Heart, img: '/images/home/care.webp' },
+];
+
+// お店の一覧に出すメニューの種類（今日の空き枠のメニュー名に含まれる言葉。2つまで）
+const MENU_TAGS = ['カット', 'カラー', 'パーマ', 'トリートメント', 'スパ', 'ネイル', 'ケア', 'フェイシャル'];
+const SHOP_SLOTS = 3;
 
 export default function UserHome() {
   const router = useRouter();
@@ -284,22 +303,63 @@ export default function UserHome() {
     cardRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  // 今日、空きのあるお店（写真を主役に横に並べる）。いちばん早い枠の時刻と件数
+  // 今すぐ行けるサロン：お店ごとに、本日の空き枠（早い順に3つ）・いちばん安い価格とその所要時間・距離・メニューの種類
   const shops = useMemo(() => {
-    const map = new Map<string, { salon_id: string; salon_name: string; first: string; firstId: string; count: number }>();
+    type Shop = {
+      salon_id: string;
+      salon_name: string;
+      slots: { id: string; start: string }[];
+      price: number;
+      duration: number;
+      km: number | null;
+      menus: Set<string>;
+    };
+    const map = new Map<string, Shop>();
     for (const s of valid) {
-      const cur = map.get(s.salon_id);
-      if (!cur) map.set(s.salon_id, { salon_id: s.salon_id, salon_name: s.salon_name, first: s.start_at, firstId: s.slot_id, count: 1 });
-      else {
-        cur.count += 1;
-        if (s.start_at < cur.first) {
-          cur.first = s.start_at;
-          cur.firstId = s.slot_id;
-        }
+      let cur = map.get(s.salon_id);
+      if (!cur) {
+        cur = {
+          salon_id: s.salon_id,
+          salon_name: s.salon_name,
+          slots: [],
+          price: s.price,
+          duration: s.duration_min,
+          km: origin ? distanceKm(origin, { lat: s.lat, lng: s.lng }) : null,
+          menus: new Set(),
+        };
+        map.set(s.salon_id, cur);
+      }
+      cur.slots.push({ id: s.slot_id, start: s.start_at });
+      cur.menus.add(s.menu_name);
+      if (s.price < cur.price) {
+        cur.price = s.price;
+        cur.duration = s.duration_min;
       }
     }
-    return [...map.values()].sort((a, b) => a.first.localeCompare(b.first)).slice(0, 6);
-  }, [valid]);
+    return [...map.values()]
+      .map((sh) => {
+        const slots = [...sh.slots].sort((a, b) => a.start.localeCompare(b.start));
+        const names = [...sh.menus];
+        const tag = MENU_TAGS.filter((w) => names.some((n) => n.includes(w))).slice(0, 2).join('・');
+        return { ...sh, slots: slots.slice(0, SHOP_SLOTS), first: slots[0].start, firstId: slots[0].id, tag };
+      })
+      .sort((a, b) => a.first.localeCompare(b.first))
+      .slice(0, 6);
+  }, [valid, origin]);
+
+  // お店の一覧の時刻（またはお店）を押したとき：今日の候補を開き、その枠を選んだ状態にする
+  function openSlot(id: string) {
+    choose('today');
+    setSelected(id);
+  }
+
+  // エリアを切り替える（ログインしていない人だけ）。表示中の候補の記憶を消してから読み直す
+  function changeArea(id: string) {
+    lastShown.current = [];
+    lastWinCount.current = null;
+    setFrozen(null);
+    setAreaId(id);
+  }
 
   const extras = useSalonExtras(client, [...picks, ...rest].map((p) => p.salon_id));
 
@@ -363,17 +423,67 @@ export default function UserHome() {
       ) : (
         <>
           {step === 'start' && (
-            <section className={st.hero}>
-              {/* 飾り：窓から光の入る店内の写真（人物なし）を、見出しの後ろに淡く敷く */}
-              <div className={st.heroArt} aria-hidden="true" />
-              <p className={st.kicker}>
-                <Lightning size={20} weight="duotone" aria-hidden focusable="false" />
-                今日だけ・今から行ける空き枠
-              </p>
-              <h1 className={st.headline}>
-                <span>空いた時間だけが、</span>
-                <span>今から届く。</span>
-              </h1>
+            <div className={st.start}>
+              <section className={st.hero} aria-labelledby="home-title">
+                <div className={st.heroPhoto} aria-hidden="true">
+                  <Image src="/images/home/hero.webp" alt="" fill priority sizes="(min-width: 480px) 330px, 70vw" />
+                </div>
+                <div className={st.heroCopy}>
+                  <h1 className={st.headline} id="home-title">
+                    <span>今日は、</span>
+                    <span>どうなりたい？</span>
+                  </h1>
+                  <p className={st.lead}>
+                    <span>今の気分に合う、</span>
+                    <span>すぐ行けるサロンを。</span>
+                  </p>
+                </div>
+              </section>
+
+              {/* エリア：ログインしていない人は選べる（ログイン中は登録のエリア）。現在地は距離の計算だけに使う */}
+              <div className={st.area}>
+                <MapPin size={24} className={st.areaPin} aria-hidden focusable="false" />
+                {!session && areas.length > 1 ? (
+                  <label className={st.areaPick}>
+                    <span className={st.areaLabel}>エリア</span>
+                    <span className={st.areaName}>{currentArea?.name ?? 'すべてのエリア'}</span>
+                    <CaretDown size={20} className={st.areaCaret} aria-hidden focusable="false" />
+                    <select className={st.areaSelect} aria-label="エリア" value={currentAreaId ?? ''} onChange={(e) => changeArea(e.target.value)}>
+                      {areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span className={st.areaPick}>
+                    <span className={st.areaLabel}>{session ? '登録のエリア' : 'エリア'}</span>
+                    <span className={st.areaName}>{currentArea?.name ?? 'すべてのエリア'}</span>
+                  </span>
+                )}
+                <button type="button" className={st.areaGps} aria-pressed={!!gps} onClick={gps ? () => setGps(null) : applyLocation}>
+                  <Crosshair size={20} aria-hidden focusable="false" />
+                  現在地
+                </button>
+              </div>
+              {gpsError && <Notice tone="info">{gpsError}</Notice>}
+
+              <ul className={st.moods} aria-label="なりたい気分から探す">
+                {MOODS.map((m) => (
+                  <li key={m.word}>
+                    <button type="button" className={st.mood} onClick={() => choose('today', m.word)}>
+                      <span className={st.moodPhoto} aria-hidden="true">
+                        <Image src={m.img} alt="" fill sizes="(min-width: 480px) 140px, 32vw" />
+                      </span>
+                      <m.icon size={24} className={st.moodIcon} aria-hidden focusable="false" />
+                      <span className={st.moodLabel}>{m.label}</span>
+                      <ArrowRight size={20} className={st.moodGo} aria-hidden focusable="false" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
               <div className={st.live} aria-live="polite">
                 <span className={st.liveNum}>{all === null ? '…' : total}</span>
                 <span className={st.liveText}>
@@ -409,43 +519,76 @@ export default function UserHome() {
               </div>
               {searchError && <ErrorState onRetry={search}>{searchError}</ErrorState>}
               <VoiceSearch onResult={(key, word) => choose(key, word)} />
-              <NoticeBand icon={Info}>
-                <strong>実証実験中</strong>：手数料・キャンセル料はかかりません
-              </NoticeBand>
-              <FirstSteps />
 
               {shops.length > 0 && (
                 <section className={st.shops} aria-labelledby="today-shops">
-                  <h2 className={st.shopsTitle} id="today-shops">
-                    <Storefront size={20} aria-hidden focusable="false" />
-                    今日、空きのあるお店
-                  </h2>
-                  <ul className={st.shopRow}>
+                  <div className={st.shopsHead}>
+                    <h2 className={st.shopsTitle} id="today-shops">
+                      今すぐ行けるサロン
+                    </h2>
+                    <button type="button" className={st.shopsMore} onClick={() => choose('today')}>
+                      もっと見る
+                      <span className="sr-only">（今日の候補をすべて見る）</span>
+                      <CaretRight size={20} aria-hidden focusable="false" />
+                    </button>
+                  </div>
+                  <ul className={st.shopList}>
                     {shops.map((sh) => (
-                      <li key={sh.salon_id}>
-                        <button
-                          type="button"
-                          className={st.shop}
-                          onClick={() => {
-                            choose('today');
-                            setSelected(sh.firstId);
-                          }}
-                        >
-                          <SalonPhoto salonId={sh.salon_id} salonName={sh.salon_name} variant="square" alt="" />
-                          <span className={st.shopName}>{sh.salon_name}</span>
-                          <span className={`${st.shopTime} num`}>
-                            <Clock size={20} aria-hidden focusable="false" />
-                            {fmtTime(sh.first)}から・{sh.count}枠
-                          </span>
-                          <span className="sr-only">（今日の候補を見る）</span>
-                          <CaretRight size={20} className={st.shopGo} aria-hidden focusable="false" />
-                        </button>
+                      <li key={sh.salon_id} className={st.shop}>
+                        <SalonPhoto
+                          salonId={sh.salon_id}
+                          salonName={sh.salon_name}
+                          variant="square"
+                          src={salonPhotos(sh.salon_id)?.list}
+                          alt=""
+                          className={st.shopPhoto}
+                        />
+                        <div className={st.shopBody}>
+                          {sh.tag && <span className={st.shopTag}>{sh.tag}</span>}
+                          {/* お店を押す：いちばん早い枠を選んだ状態で、今日の候補を開く（カード全体を押せる） */}
+                          <button type="button" className={st.shopMain} onClick={() => openSlot(sh.firstId)}>
+                            <span className={st.shopName}>{sh.salon_name}</span>
+                            <span className="sr-only">（今日の候補を見る）</span>
+                          </button>
+                          {sh.km !== null && (
+                            <p className={`${st.shopMeta} num`}>
+                              <MapPin size={20} className={st.shopPin} aria-hidden focusable="false" />
+                              <span>
+                                {gps ? '' : '基準地点から'}徒歩{walkMinutes(sh.km)}分（約{fmtDistance(sh.km)}）
+                              </span>
+                            </p>
+                          )}
+                          <p className={`${st.shopMeta} num`}>
+                            <span className={st.shopPrice}>{fmtYen(sh.price)}〜</span>
+                            <span className={st.shopSep} aria-hidden="true" />
+                            約{sh.duration}分
+                          </p>
+                          <p className={st.slotsLabel} id={`slots-${sh.salon_id}`}>
+                            本日の空き枠
+                          </p>
+                          <ul className={st.slots} aria-labelledby={`slots-${sh.salon_id}`}>
+                            {sh.slots.map((x) => (
+                              <li key={x.id}>
+                                <button type="button" className={`${st.slot} num`} onClick={() => openSlot(x.id)}>
+                                  {fmtTime(x.start)}
+                                  <span className="sr-only">（{sh.salon_name}のこの枠を見る）</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <CaretRight size={20} className={st.shopGo} aria-hidden focusable="false" />
                       </li>
                     ))}
                   </ul>
                 </section>
               )}
-            </section>
+
+              <NoticeBand icon={Info}>
+                <strong>実証実験中</strong>：手数料・キャンセル料はかかりません
+              </NoticeBand>
+              <FirstSteps />
+            </div>
           )}
 
           {step === 'pick' && (
@@ -512,12 +655,7 @@ export default function UserHome() {
                   <Select
                     id="home-area"
                     value={currentAreaId ?? ''}
-                    onChange={(e) => {
-                      lastShown.current = [];
-                      lastWinCount.current = null;
-                      setFrozen(null);
-                      setAreaId(e.target.value);
-                    }}
+                    onChange={(e) => changeArea(e.target.value)}
                   >
                     {areas.map((a) => (
                       <option key={a.id} value={a.id}>

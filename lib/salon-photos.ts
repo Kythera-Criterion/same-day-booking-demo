@@ -1,10 +1,12 @@
 // デモ用の3店の写真（public/images/salons。出典とライセンスは public/images/CREDITS.md）。
 // 写真は画面の表示だけに使い、データベースには持たない。写真のないお店は、店の印（アイコンと頭文字）を出す
 //   card：一覧の正方形（1:1）／hero：予約の確認と予約確定の画面の上部（16:9）／subs：詳細で添える2枚（1:1）
+//   list：ホームの「今すぐ行けるサロン」の写真（public/images/home。たて長の写真を正方形に近い枠で見せる）
 // alt には写っている内容を書く（店名は表示する側で前に付ける）
 
 export type SalonPhotoSet = {
   card: string;
+  list: string;
   hero: string;
   alt: string;
   subs: { src: string; alt: string }[];
@@ -12,6 +14,7 @@ export type SalonPhotoSet = {
 
 const SET = (key: string, alt: string, sub1: string, sub2: string): SalonPhotoSet => ({
   card: `/images/salons/${key}-main-square.webp`,
+  list: `/images/home/salon-${key}.webp`,
   hero: `/images/salons/${key}-main-wide.webp`,
   alt,
   subs: [

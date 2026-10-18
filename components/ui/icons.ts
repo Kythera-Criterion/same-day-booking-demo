@@ -24,6 +24,8 @@ export { BellRinging } from '@phosphor-icons/react/dist/ssr/BellRinging';
 export { Microphone } from '@phosphor-icons/react/dist/ssr/Microphone';
 export { Crosshair } from '@phosphor-icons/react/dist/ssr/Crosshair';
 export { House } from '@phosphor-icons/react/dist/ssr/House';
+export { HandPalm } from '@phosphor-icons/react/dist/ssr/HandPalm';
+export { Heart } from '@phosphor-icons/react/dist/ssr/Heart';
 export { CalendarCheck } from '@phosphor-icons/react/dist/ssr/CalendarCheck';
 export { UserCircle } from '@phosphor-icons/react/dist/ssr/UserCircle';
 // 補助（説明・状態・移動）

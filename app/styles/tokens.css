@@ -66,6 +66,17 @@
   --violet-700: #452f78;
   --violet-800: #33235a;
 
+  /* 珊瑚（お客様の画面の主要な操作。600 に白い文字で 5.18:1、700 は淡い段の上で 5.9:1 以上） */
+  --coral-50: #fcf1ec;
+  --coral-100: #f8e2d9;
+  --coral-200: #efc6b6;
+  --coral-600: #b0503a;
+  --coral-700: #8e3c2a;
+  --coral-900: #3a1a12;
+  /* 生成り（お客様の画面の背景） */
+  --ivory-50: #fbf8f4;
+  --ivory-100: #f7f3ee;
+
   /* 時刻の空（ページの背景だけに使う、ごく淡い2色×4つの時間帯）。上（a）から下（b）へ流す
      どの色の上でも、補足の文字（--gray-600）は 5.3:1 以上、操作の色の文字（--teal-700）は 7:1 以上 */
   --sky-morning-a: #eef6f1;
@@ -76,25 +87,6 @@
   --sky-dusk-b: #e6e0f3;
   --sky-night-a: #e1e3f9;
   --sky-night-b: #e6e0f3;
-
-  /* お客様の画面の温かい色（象牙色の地・砂の灰色・素焼きの赤）。デザイン案（温かい光・明朝の見出し）に合わせて加えた
-     素焼きの赤 600 に白い文字で 5.45:1、700 の文字は象牙色の地の上で 7.3:1 */
-  --ivory-0: #fffdfa;
-  --ivory-50: #f7f2ec;
-  --ivory-100: #f3ece4;
-  --ivory-200: #ebe3da;
-  --ivory-300: #cfc4b8;
-  --sand-500: #6b645e;
-  --sand-600: #5f5a55;
-  --sand-700: #4a443f;
-  --sand-900: #2a2522;
-  --clay-50: #fdf1eb;
-  --clay-100: #fbe6dc;
-  --clay-200: #f2c9b8;
-  --clay-600: #b04a27;
-  --clay-700: #8a3418;
-  --clay-800: #6e2810;
-  --clay-900: #3d1608;
 
   /* ---------- 基本の値：文字 ---------- */
   --size-12: 0.75rem;
@@ -166,6 +158,10 @@
   --color-selected: var(--gray-900);
   --color-selected-ink: var(--gray-0);
 
+  /* 時刻のチップ（お店の一覧の「本日の空き枠」） */
+  --color-chip: var(--color-action-soft);
+  --color-chip-ink: var(--color-action-text);
+
   /* 時間の色（受付締切が近い・いちばん早い・開始までの残り） */
   --color-time: var(--amber-600);
   --color-time-ink: var(--gray-0);
@@ -213,9 +209,8 @@
   /* 文字の段階（補足 12・本文 14〜16・小見出し 20・見出し 28・数字の主役 40・業務の大きな時刻 56） */
   --font-sans: var(--font-jp), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
   --font-num: var(--font-manrope), var(--font-sans);
-  /* 明朝（お客様の画面の見出し）。--font-heading は見出し（h1・h2）の字。お客様の画面だけ明朝にする */
-  --font-display: var(--font-mincho), "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
-  --font-heading: var(--font-sans);
+  /* 見出し・店名に使う明朝（お客様のホームの大きな見出し） */
+  --font-display: var(--font-mincho), "Hiragino Mincho ProN", "Yu Mincho", serif;
   --text-caption: var(--size-12);
   --text-small: var(--size-14);
   --text-body: var(--size-16);
@@ -223,8 +218,6 @@
   --text-heading: var(--size-28);
   --text-figure: var(--size-40);
   --text-display: var(--size-56);
-  /* お客様のホームの明朝の大見出し（画面の幅に合わせて 32〜44px） */
-  --text-display-serif: clamp(2rem, 9vw, 2.75rem);
   /* 業務の画面の予約の知らせ（離れた場所からも読める大きさ） */
   --text-alert-time: clamp(4rem, 14vw, 8rem);
   --text-alert-name: clamp(2rem, 6vw, 3.5rem);
@@ -256,8 +249,6 @@
   /* 影は「浮いているもの」（シート・下部のバー・知らせ）だけに使う */
   --shadow-float: 0 -1px 0 rgb(20 26 24 / 0.04), 0 12px 32px rgb(20 26 24 / 0.14);
   --shadow-lift: 0 1px 2px rgb(20 26 24 / 0.06), 0 6px 16px rgb(20 26 24 / 0.08);
-  /* 面の影：ふだんはなし。お客様の画面だけ、カードをやわらかく浮かせる */
-  --shadow-card: none;
 
   /* 動き：短い・標準・長いの3段階（動きを減らす設定では止める） */
   --motion-short: 120ms;
@@ -294,34 +285,20 @@
 }
 
 /* 役割ごとのテーマ：上部の帯（data-role）で、主要な操作の色を切り替える */
-/* お客様：温かい象牙色の地に、素焼きの赤の操作。見出しは明朝、カードはやわらかい影で浮かせる（デザイン案に合わせた） */
+/* お客様：生成りの背景に珊瑚の操作。やわらかく、写真が映える落ち着いた色に（ホームのデザイン案に合わせる） */
 :root:has(header[data-role="user"]) {
-  --color-bg: var(--ivory-50);
-  --color-surface: var(--ivory-0);
-  --color-surface-sunken: var(--ivory-100);
-  --color-ink: var(--sand-900);
-  --color-ink-2: var(--sand-700);
-  --color-ink-sub: var(--sand-600);
-  --color-line: var(--ivory-200);
-  --color-line-strong: var(--ivory-300);
-  --color-action: var(--clay-600);
-  --color-action-hover: var(--clay-700);
-  --color-action-soft: var(--clay-50);
-  --color-action-line: var(--clay-200);
-  --color-action-text: var(--clay-700);
-  --color-focus: var(--clay-700);
-  --color-selected: var(--sand-900);
-  --color-alert-bg: var(--clay-900);
-  --color-state-done: var(--sand-700);
-  --font-heading: var(--font-display);
-  --radius-surface: 20px;
-  --radius-control: 14px;
-  --shadow-card: 0 1px 2px rgb(61 22 8 / 0.04), 0 10px 28px rgb(61 22 8 / 0.07);
-  /* 窓から差しこむ朝の光：右上から淡い光、下へ象牙色に */
-  --page-wash: radial-gradient(120% 60% at 100% 0%, var(--clay-50), transparent 60%),
-    linear-gradient(180deg, var(--ivory-0), var(--ivory-50) 45%);
+  --color-alert-bg: var(--coral-900);
+  --color-action: var(--coral-600);
+  --color-action-hover: var(--coral-700);
+  --color-action-soft: var(--coral-50);
+  --color-action-line: var(--coral-200);
+  --color-action-text: var(--coral-700);
+  --color-focus: var(--coral-700);
+  --color-chip: var(--coral-100);
+  --color-chip-ink: var(--coral-700);
+  --color-bg: var(--ivory-100);
+  --page-wash: linear-gradient(180deg, var(--ivory-50), var(--ivory-100));
 }
-
 :root:has(header[data-role="salon"]) {
   --color-alert-bg: var(--indigo-900);
   --color-action: var(--indigo-600);

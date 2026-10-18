@@ -1,51 +1,217 @@
-/* お客様のホーム：はじめの画面（今の空きの数・探すボタン・話しかけて探す・お店の写真）→ 時間帯 → 候補 */
+/* お客様のホーム：はじめの画面（写真の見出し・エリア・4つの入口・空きの数と探すボタン・今すぐ行けるサロン）→ 時間帯 → 候補 */
 
-/* ---------- はじめの画面 ----------
-   デザイン案に寄せて：明朝の大きな見出しの後ろに、光の入る店内の写真を淡く敷き、数・探すボタン・お店をやわらかいカードで重ねる */
-.hero {
-  position: relative;
-  isolation: isolate;
+/* ---------- はじめの画面 ---------- */
+.start {
+  /* カードをやわらかく浮かせる影（このホームのカードだけ。デザイン案に合わせた） */
+  --home-shadow: 0 1px 2px rgb(58 26 18 / 0.04), 0 8px 24px rgb(58 26 18 / 0.07);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-block: var(--space-6) var(--space-2);
+  padding-block-end: var(--space-2);
 }
 
-/* 見出しの後ろの写真：右側だけに置き、左端と下端を地の色へ溶かす。文字がのる部分は地の色に近いので、読みやすさは変わらない */
-.heroArt {
-  position: absolute;
-  z-index: -1;
-  inset-block-start: calc(-1 * var(--space-4));
-  inset-inline-start: 38%;
-  inset-inline-end: calc(-1 * var(--pad-page));
-  block-size: calc(var(--space-16) * 4);
-  background: url("/images/salons/aoi-main-wide.webp") 70% center / cover;
-  opacity: 0.45;
-  /* マスクは不透明な色なら何でもよい（形だけに使う） */
-  mask-image: linear-gradient(90deg, transparent, var(--color-ink) 50%, var(--color-ink) 80%, transparent), linear-gradient(0deg, transparent, var(--color-ink) 45%);
-  mask-composite: intersect;
-  pointer-events: none;
-}
-
-.kicker {
-  display: inline-flex;
+/* 上部：右に人物の写真（左と下へ地の色に溶かす）、左に明朝の大見出し */
+.hero {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: var(--space-1);
-  color: var(--color-action-text);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-label);
+  min-block-size: calc(var(--space-16) * 4);
+  margin-inline: calc(-1 * var(--pad-page));
+  padding-inline: var(--pad-page);
+  isolation: isolate;
+}
+
+.heroPhoto {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: -1;
+  inline-size: 70%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 42%), linear-gradient(0deg, transparent, #000 28%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 42%), linear-gradient(0deg, transparent, #000 28%);
+  mask-composite: intersect;
+}
+
+.heroPhoto img {
+  object-fit: cover;
+  object-position: 62% 18%;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-inline-size: 64%;
+  padding-block: var(--space-8) var(--space-12);
 }
 
 .headline {
-  font-size: var(--text-display-serif);
-  font-weight: var(--weight-bold);
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: 600;
   line-height: var(--leading-snug);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
-.headline span {
+.headline span,
+.lead span {
   display: inline-block;
+}
+
+.lead {
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+/* エリア：見出しの写真の下端に少し重ねる */
+.area {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: calc(-1 * var(--space-10));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--home-shadow);
+}
+
+.areaPin {
+  color: var(--color-ink-2);
+}
+
+.areaPick {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--space-2);
+  min-block-size: var(--tap-min);
+  border-radius: var(--radius-control);
+}
+
+.areaLabel {
+  grid-column: 1;
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+.areaName {
+  grid-column: 1;
+  overflow: hidden;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.areaCaret {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  color: var(--color-ink-2);
+}
+
+/* 本物の選択欄を、見た目の上に透明に重ねる（押すと端末のいつもの選択が開く） */
+.areaSelect {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.areaPick:has(.areaSelect:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.areaGps {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-line-strong);
+  border-radius: calc(var(--tap-min) / 2);
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.areaGps[aria-pressed="true"] {
+  border-color: var(--color-action-line);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+/* 4つの入口（2×2）：右に写真を淡く溶かし、左にアイコンと言葉 */
+.moods {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.mood {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: calc(var(--space-16) + var(--space-12));
+  padding: var(--space-3);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--home-shadow);
+  color: var(--color-ink);
+  text-align: start;
+  isolation: isolate;
+  transition: box-shadow var(--motion-short) var(--ease-out);
+}
+
+.mood:hover {
+  box-shadow: var(--shadow-lift);
+}
+
+.moodPhoto {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: -1;
+  inline-size: 64%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 60%);
+  mask-image: linear-gradient(90deg, transparent, #000 60%);
+}
+
+.moodPhoto img {
+  object-fit: cover;
+}
+
+.moodLabel {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-label);
+  /* 写真に重なっても読めるよう、文字の周りを地の色でぼかす */
+  text-shadow: 0 0 6px var(--color-surface), 0 0 12px var(--color-surface);
+}
+
+.moodGo {
+  margin-block-start: auto;
+  color: var(--color-ink-2);
 }
 
 /* 今の空きの数：大きな数字（数字のフォント）と、何時時点か */
@@ -55,25 +221,17 @@
   align-items: end;
   gap: var(--space-1) var(--space-3);
   margin-block-start: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-surface);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--color-line);
 }
 
 .liveNum {
-  color: var(--color-action-text);
   font-family: var(--font-num);
   font-size: var(--text-display);
   font-weight: var(--weight-heavy);
   font-variant-numeric: tabular-nums;
   line-height: 0.9;
   letter-spacing: -0.02em;
-}
-
-.liveUnit {
-  font-size: var(--text-title);
-  font-weight: var(--weight-bold);
 }
 
 .liveText {
@@ -113,24 +271,43 @@
   gap: var(--space-1);
 }
 
-/* 今日、空きのあるお店（写真を主役に、横に並べる） */
+/* 今すぐ行けるサロン：左に写真、右に種類・店名・距離・価格・本日の空き枠（3つまで） */
 .shops {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-block-start: var(--space-6);
+  margin-block-start: var(--space-4);
+}
+
+.shopsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .shopsTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-title);
-  font-weight: var(--weight-bold);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
 }
 
-/* お店：写真を左に、名前と最初の時刻を右に置いた横長のカードを縦に並べる */
-.shopRow {
+.shopsMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-block-size: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+}
+
+.shopList {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -138,64 +315,159 @@
 }
 
 .shop {
+  position: relative;
   display: grid;
-  grid-template-columns: var(--size-tile) 1fr auto;
-  grid-template-rows: 1fr auto auto 1fr;
-  align-items: center;
-  gap: var(--space-1) var(--space-4);
-  inline-size: 100%;
+  grid-template-columns: 36% 1fr auto;
+  gap: var(--space-3);
   padding: var(--space-2);
-  border: 0;
   border-radius: var(--radius-surface);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-  color: var(--color-ink);
-  text-align: start;
-  transition:
-    transform var(--motion-short) var(--ease-out),
-    box-shadow var(--motion-short) var(--ease-out);
+  box-shadow: var(--home-shadow);
+  transition: box-shadow var(--motion-short) var(--ease-out);
 }
 
 .shop:hover {
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
 }
 
-.shop > :first-child {
-  grid-row: 1 / -1;
-  border-radius: var(--radius-photo);
+/* 写真は縦長の素材を、カードの高さに合わせて切り抜く */
+.shop .shopPhoto {
+  aspect-ratio: auto;
+  block-size: 100%;
+  min-block-size: var(--size-tile);
 }
 
-.shopGo {
-  grid-column: 3;
-  grid-row: 1 / -1;
-  color: var(--color-ink-sub);
+.shopBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  padding-block: var(--space-1);
+}
+
+.shopTag {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-label);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-body);
+}
+
+/* 店名のボタン：見えない面をカード全体に広げ、どこを押しても開けるようにする */
+.shopMain {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  text-align: start;
+}
+
+.shopMain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-surface);
+}
+
+.shopMain:focus-visible {
+  outline: none;
+}
+
+.shopMain:focus-visible::after {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .shopName {
-  grid-column: 2;
-  grid-row: 2;
-  overflow: hidden;
-  font-size: var(--text-body);
-  font-weight: var(--weight-bold);
-  line-height: var(--leading-snug);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
 }
 
-/* 最初の時刻：淡い素焼きの色の丸い札（デザイン案の「本日の空き枠」の札） */
-.shopTime {
-  grid-column: 2;
-  grid-row: 3;
-  justify-self: start;
-  display: inline-flex;
+.shopMeta {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-control);
-  background: var(--color-action-soft);
-  color: var(--color-action-text);
+  gap: 0 var(--space-1);
+  color: var(--color-ink-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+
+/* 距離の行：アイコンは1行目の横に置き、文字だけを折り返す */
+.shopMeta:has(.shopPin) {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.shopPin {
+  flex: none;
+}
+
+.shopPrice {
+  color: var(--color-price);
+  font-family: var(--font-num);
   font-size: var(--text-small);
   font-weight: var(--weight-bold);
+}
+
+.shopSep {
+  inline-size: 1px;
+  block-size: 1em;
+  margin-inline: var(--space-1);
+  background: var(--color-line-strong);
+}
+
+.slotsLabel {
+  margin-block-start: var(--space-1);
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  inline-size: 100%;
+  list-style: none;
+}
+
+/* 時刻のチップ：見た目は 32px、押せる範囲は上下に広げて 44px */
+.slot {
+  position: relative;
+  z-index: 1;
+  inline-size: 100%;
+  min-block-size: var(--space-8);
+  padding-inline: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-label);
+  background: var(--color-chip);
+  color: var(--color-chip-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.slot::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--space-8) - var(--tap-min)) / 2) 0;
+}
+
+.slot:hover {
+  background: var(--color-action-line);
+}
+
+.shopGo {
+  align-self: center;
+  color: var(--color-ink-sub);
 }
 
 /* ---------- 時間帯を選ぶ ---------- */
@@ -217,7 +489,6 @@
   border: 0;
   border-radius: var(--radius-surface);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
   color: var(--color-ink);
   text-align: start;
   transition: background-color var(--motion-short) var(--ease-out);
@@ -233,8 +504,8 @@
   inline-size: var(--space-10);
   block-size: var(--space-10);
   border-radius: var(--radius-control);
-  background: var(--color-action-soft);
-  color: var(--color-action-text);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
 }
 
 .windowText {
@@ -323,7 +594,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-block: var(--space-8) var(--space-3);
-  font-size: var(--text-title);
+  font-size: var(--text-body);
   font-weight: var(--weight-bold);
 }
 
@@ -334,7 +605,6 @@
   padding: var(--space-6) var(--space-4);
   border-radius: var(--radius-surface);
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
   text-align: center;
 }
 

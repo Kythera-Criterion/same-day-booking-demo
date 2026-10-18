@@ -1,0 +1,686 @@
+[
+ {
+  "id": "99ae4ccb-24c6-4582-86fb-a70e800108db",
+  "title": "Sun Sunlight",
+  "indexed_on": "2021-11-01T23:12:09.897557Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/sun-sunlight-0B4LRPC8QF",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/0B4LRPC8QF.jpg",
+  "creator": "Mel Elías",
+  "creator_url": "https://stocksnap.io/author/50238",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 49389,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "baby",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "lady",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "mother",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "people",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "pregnant",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sun",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Sun Sunlight\" by Mel Elías is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "title",
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 1680,
+  "width": 2520,
+  "thumbnail": "https://api.openverse.org/v1/images/99ae4ccb-24c6-4582-86fb-a70e800108db/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/99ae4ccb-24c6-4582-86fb-a70e800108db/",
+  "related_url": "https://api.openverse.org/v1/images/99ae4ccb-24c6-4582-86fb-a70e800108db/related/",
+  "unstable__sensitivity": []
+ },
+ {
+  "id": "8b47e1a3-c13a-4771-8d1b-65b83c378753",
+  "title": "Woman Reading",
+  "indexed_on": "2022-08-01T10:15:10.143332Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/woman-reading-XRJEVMSPZJ",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/XRJEVMSPZJ.jpg",
+  "creator": "Kristin Hardwick",
+  "creator_url": "https://www.kristinhardwick.com",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 563843,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "book",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "business",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "education",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "fashion",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "female",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "girl",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "indoors",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "leisure",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "literature",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "office",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "person",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "reading",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "studying",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "style",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Woman Reading\" by Kristin Hardwick is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "title",
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 3840,
+  "width": 5760,
+  "thumbnail": "https://api.openverse.org/v1/images/8b47e1a3-c13a-4771-8d1b-65b83c378753/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/8b47e1a3-c13a-4771-8d1b-65b83c378753/",
+  "related_url": "https://api.openverse.org/v1/images/8b47e1a3-c13a-4771-8d1b-65b83c378753/related/",
+  "unstable__sensitivity": []
+ },
+ {
+  "id": "5cb5201b-28b9-483b-b1c6-031506bb32a2",
+  "title": "Bokeh Blur",
+  "indexed_on": "2021-11-01T23:12:09.897557Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/bokeh-blur-B1HT2TDCVD",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/B1HT2TDCVD.jpg",
+  "creator": "Caleb George",
+  "creator_url": "https://stocksnap.io/author/193",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 101741,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "blur",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "bokeh",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "eyeglasses",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "fashion",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "girl",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "lady",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "pane",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "people",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "reflection",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Bokeh Blur\" by Caleb George is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 4032,
+  "width": 3024,
+  "thumbnail": "https://api.openverse.org/v1/images/5cb5201b-28b9-483b-b1c6-031506bb32a2/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/5cb5201b-28b9-483b-b1c6-031506bb32a2/",
+  "related_url": "https://api.openverse.org/v1/images/5cb5201b-28b9-483b-b1c6-031506bb32a2/related/",
+  "unstable__sensitivity": []
+ },
+ {
+  "id": "00e4fd71-a531-4662-8588-f833ea1de377",
+  "title": "Thinking Woman",
+  "indexed_on": "2021-11-01T23:12:09.897557Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/thinking-woman-SW6EAAU4R5",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/SW6EAAU4R5.jpg",
+  "creator": "Kristin Hardwick",
+  "creator_url": "https://www.kristinhardwick.com",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 787337,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "beauty",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "brunette",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "calm",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "closeup",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "concept",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "face",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "female",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "looking",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "people",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "person",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "portrait",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "serious",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "stylish",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "thinking",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Thinking Woman\" by Kristin Hardwick is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "title",
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 5760,
+  "width": 3840,
+  "thumbnail": "https://api.openverse.org/v1/images/00e4fd71-a531-4662-8588-f833ea1de377/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/00e4fd71-a531-4662-8588-f833ea1de377/",
+  "related_url": "https://api.openverse.org/v1/images/00e4fd71-a531-4662-8588-f833ea1de377/related/",
+  "unstable__sensitivity": []
+ },
+ {
+  "id": "6f91a1d3-0192-4c60-b9d8-ea12867f0f62",
+  "title": "Woman Portrait",
+  "indexed_on": "2023-03-01T10:38:51.282619Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/woman-portrait-TIOSANGZN9",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/TIOSANGZN9.jpg",
+  "creator": "Joseph L. Etchingham",
+  "creator_url": "https://josephetchingham.wixsite.com/photography",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 192108,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "beauty",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "blackandwhite",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "brunette",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "close",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "face",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "fashion",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "female",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "girl",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "lady",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "model",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "monochrome",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "natural",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "people",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "portrait",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "pretty",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Woman Portrait\" by Joseph L. Etchingham is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "title",
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 1432,
+  "width": 2550,
+  "thumbnail": "https://api.openverse.org/v1/images/6f91a1d3-0192-4c60-b9d8-ea12867f0f62/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/6f91a1d3-0192-4c60-b9d8-ea12867f0f62/",
+  "related_url": "https://api.openverse.org/v1/images/6f91a1d3-0192-4c60-b9d8-ea12867f0f62/related/",
+  "unstable__sensitivity": []
+ },
+ {
+  "id": "edc20fe5-eb29-40d1-9982-187e95a0dc0d",
+  "title": "Fresh Orange",
+  "indexed_on": "2022-11-01T10:26:32.924484Z",
+  "foreign_landing_url": "https://stocksnap.io/photo/fresh-orange-BZCDFHLKZR",
+  "url": "https://cdn.stocksnap.io/img-thumbs/960w/BZCDFHLKZR.jpg",
+  "creator": "Candace McDaniel",
+  "creator_url": "https://stocksnap.io/author/133875",
+  "license": "cc0",
+  "license_version": "1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "provider": "stocksnap",
+  "source": "stocksnap",
+  "category": "photograph",
+  "filesize": 472499,
+  "filetype": "jpg",
+  "tags": [
+   {
+    "name": "beverage",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "brunch",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "citus",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "closeup",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "drink",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "female",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "food",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "fresh",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "freshness",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "fruit",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "hand",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "hands",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "health",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "home",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "indoors",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "juicer",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "kitchen",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "lifestyle",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "morning",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "nutrition",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "orange",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "people",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "person",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "squeezing",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "sunlight",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "window",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   },
+   {
+    "name": "woman",
+    "accuracy": null,
+    "unstable__provider": "stocksnap"
+   }
+  ],
+  "attribution": "\"Fresh Orange\" by Candace McDaniel is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/.",
+  "fields_matched": [
+   "tags.name"
+  ],
+  "mature": false,
+  "height": 1365,
+  "width": 2048,
+  "thumbnail": "https://api.openverse.org/v1/images/edc20fe5-eb29-40d1-9982-187e95a0dc0d/thumb/",
+  "detail_url": "https://api.openverse.org/v1/images/edc20fe5-eb29-40d1-9982-187e95a0dc0d/",
+  "related_url": "https://api.openverse.org/v1/images/edc20fe5-eb29-40d1-9982-187e95a0dc0d/related/",
+  "unstable__sensitivity": []
+ }
+]
