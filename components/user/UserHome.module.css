@@ -26,7 +26,7 @@
   inset-block: 0;
   inset-inline-end: 0;
   z-index: -1;
-  inline-size: 80%;
+  inline-size: 72%;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 30%), linear-gradient(0deg, transparent, #000 16%);
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(90deg, transparent, #000 30%), linear-gradient(0deg, transparent, #000 16%);
@@ -35,20 +35,23 @@
 
 .heroPhoto img {
   object-fit: cover;
-  object-position: 50% 30%;
+  /* 左端に寄せて切り抜き、顔を右へ（左の見出しと重ならないように） */
+  object-position: 0% 30%;
 }
 
 .heroCopy {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-inline-size: 64%;
+  /* 見出しは顔より左に収める（写真の顔は画面の左から約半分より右） */
+  max-inline-size: 50%;
   padding-block: var(--space-8) var(--space-12);
 }
 
 .headline {
   font-family: var(--font-display);
-  font-size: var(--text-heading);
+  /* 24px（小見出し 20 と見出し 28 の間）。幅の狭い画面では少し小さくし、「どうなりたい？」を1行のまま顔にかからない幅に収める */
+  font-size: min(calc((var(--size-20) + var(--size-28)) / 2), 6.2vw);
   font-weight: 600;
   line-height: var(--leading-snug);
   letter-spacing: 0.02em;
@@ -57,6 +60,10 @@
 .headline span,
 .lead span {
   display: inline-block;
+}
+
+.headline span {
+  white-space: nowrap;
 }
 
 .lead {

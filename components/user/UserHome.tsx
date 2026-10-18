@@ -434,7 +434,7 @@ export default function UserHome() {
             <div className={st.start}>
               <section className={st.hero} aria-labelledby="home-title">
                 <div className={st.heroPhoto} aria-hidden="true">
-                  <Image src="/images/home/hero.webp" alt="" fill priority sizes="(min-width: 480px) 384px, 80vw" />
+                  <Image src="/images/home/hero.webp" alt="" fill priority sizes="(min-width: 480px) 346px, 72vw" />
                 </div>
                 <div className={st.heroCopy}>
                   <h1 className={st.headline} id="home-title">
