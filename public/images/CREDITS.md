@@ -27,11 +27,11 @@
 
 | ファイル | 使う場所 | 写っているもの | 写真のページ | 撮影者 | ライセンス |
 |---|---|---|---|---|---|
-| `home/hero.webp` | ホームの上部 | 窓辺の光の中で上を見上げる女性 | ご提供の写真（元の画像は `docs/design/hero-original.png`） | — | ご提供（権利をご確認ください） |
+| `home/hero.webp` | ホームの上部 | 窓辺の光の中で上を見上げる女性 | ご提供の写真（元の画像は `docs/design/hero-original.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
 | `home/hair.webp` | 髪を整えたい | 薄いピンクの背景と、まとめ髪の頭の上 | https://stocksnap.io/photo/bun-hair-I9AW11TY89 | Kasia Serbin | CC0 1.0 |
 | `home/mood.webp` | 気分を変えたい | 白い背景で目を閉じてほほえむ女性 | https://stocksnap.io/photo/smiling-woman-FRDOUEB81I | Authentic Stock | CC0 1.0 |
-| `home/nail.webp` | ネイルをしたい | タオルの上の手に、淡いピンクのマニキュアを塗る手元 | ご提供の写真（元の画像は `home/nail-polish.png`） | — | ご提供（権利をご確認ください） |
-| `home/care.webp` | 自分をケアしたい | 白いタオルの上で目を閉じ、頭のマッサージを受ける女性 | ご提供の写真（元の画像は `home/massage.png`） | — | ご提供（権利をご確認ください） |
-| `home/salon-aoi.webp` | 今すぐ行けるサロン（HAIR ROOM AOI） | 大きな窓と縦長の鏡が並ぶ明るい店内と、ベージュのスタイリングチェア | ご提供の写真（元の画像は `home/salon-chairs.png`） | — | ご提供（権利をご確認ください） |
-| `home/salon-nagi.webp` | 今すぐ行けるサロン（atelier nagi） | 観葉植物と、小枝を生けた花瓶とボトルが並ぶ木の台、籐の椅子 | ご提供の写真（元の画像は `home/vanity-plant.png`） | — | ご提供（権利をご確認ください） |
-| `home/salon-komorebi.webp` | 今すぐ行けるサロン（Salon Komorebi） | 日差しの落ちる白い壁に、金の縁の鏡と花・ボトルを並べた台 | ご提供の写真（元の画像は `home/vanity-mirror.png`） | — | ご提供（権利をご確認ください） |
+| `home/nail.webp` | ネイルをしたい | タオルの上の手に、淡いピンクのマニキュアを塗る手元 | ご提供の写真（元の画像は `home/nail-polish.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
+| `home/care.webp` | 自分をケアしたい | 白いタオルの上で目を閉じ、頭のマッサージを受ける女性 | ご提供の写真（元の画像は `home/massage.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
+| `home/salon-aoi.webp` | 今すぐ行けるサロン（HAIR ROOM AOI） | 大きな窓と縦長の鏡が並ぶ明るい店内と、ベージュのスタイリングチェア | ご提供の写真（元の画像は `home/salon-chairs.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
+| `home/salon-nagi.webp` | 今すぐ行けるサロン（atelier nagi） | 観葉植物と、小枝を生けた花瓶とボトルが並ぶ木の台、籐の椅子 | ご提供の写真（元の画像は `home/vanity-plant.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
+| `home/salon-komorebi.webp` | 今すぐ行けるサロン（Salon Komorebi） | 日差しの落ちる白い壁に、金の縁の鏡と花・ボトルを並べた台 | ご提供の写真（元の画像は `home/vanity-mirror.png`） | — | ご提供（使用の権利は確認済み・2026-10-18） |
