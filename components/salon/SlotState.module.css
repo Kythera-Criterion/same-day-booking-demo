@@ -1,21 +1,22 @@
-/* 枠の状態の見分け方（色だけに頼らない）
-   ・公開中（予約待ち）：白地・役割の色の点線の枠・時計のアイコン
-   ・予約あり：役割の色で塗る・人のアイコン
+/* 枠の状態の見分け方（色だけに頼らない）。色はサロンの画面のデザイン案に合わせ、予約は淡い珊瑚、空き枠は淡い緑
+   ・公開中（予約待ち）：淡い緑の面・緑の点線の枠・時計のアイコン
+   ・予約あり：淡い役割の色の面・左に太い線・人のアイコン
    ・来店済み：インクで塗る・確認済みの印
    ・取り下げ・受付終了：斜線の模様・灰色の文字・×のアイコン
    ・無断キャンセル：危険の色の枠と淡い面・禁止のアイコン */
 
 .open {
-  border: 2px dashed var(--color-action);
-  background: var(--color-surface);
-  color: var(--color-action-text);
+  border: 1px dashed var(--color-success);
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
 }
 
 .confirmed,
 .booked {
-  border: 2px solid var(--color-action);
-  background: var(--color-action);
-  color: var(--color-action-ink);
+  border: 1px solid var(--color-action-line);
+  border-inline-start: var(--space-1) solid var(--color-action);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
 }
 
 .completed {

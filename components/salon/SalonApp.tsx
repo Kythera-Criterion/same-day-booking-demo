@@ -2,8 +2,10 @@
 
 // サロンの画面
 //   営業の始めに「通知音をオンにして始める」→ 予約が入ると画面全体を覆う知らせ（点滅なし）と音で知らせ、どこを押しても確認・詳細が開く
-//   今日の成果・来店の記録漏れ・「今日はここまで」・担当ごとの帯（タブレット横向き）／縦のタイムライン（スマートフォン）
+//   今日の成果・来店の記録漏れ・「今日はここまで」・担当ごとの列（タブレット横向き）／縦のタイムライン（スマートフォン）
 //   空いた時間を伝えると枠に切り分けて出せる。初めてのときは3ステップの初期設定
+//   見た目はサロンの画面のデザイン案に合わせる：広い画面（960px〜）は左にお店とメニュー、中央に今日の数字と予定、右に次の予約と「枠を出す」。
+//   狭い画面は縦に並べ、下に固定の操作のバー
 
 import { useCallback, useEffect, useState } from 'react';
 import AppHeader, { RoleIntro } from '@/components/AppHeader';
@@ -19,22 +21,30 @@ import { Check, Field, Segmented, Select } from '@/components/ui/Form';
 import Label from '@/components/ui/Label';
 import { Fine, Page, Pair, ScreenTitle, Stack } from '@/components/ui/Layout';
 import Notice from '@/components/ui/Notice';
+import SalonPhoto from '@/components/ui/SalonPhoto';
 import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
 import ToastBar from '@/components/ui/Toast';
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
 import {
   ArrowCounterClockwise,
   BellRinging,
   CalendarCheck,
+  CaretRight,
   Clock,
   Gear,
+  House,
   HourglassMedium,
+  Info,
+  ListBullets,
   PauseCircle,
   Plus,
   Prohibit,
+  Scissors,
   SealCheck,
   SignOut,
-  Sparkle,
   Storefront,
+  Users,
+  Wallet,
 } from '@/components/ui/icons';
 import { one, useRoleSession } from '@/lib/supabase';
 import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
@@ -68,6 +78,35 @@ function hm(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}時間${m > 0 ? `${m}分` : ''}` : `${m}分`;
+}
+
+// 日本時間の時刻に合わせたあいさつ（〜11時：おはようございます／〜17時：こんにちは／それ以降：こんばんは）
+function greeting(now: Date) {
+  const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Tokyo', hour: 'numeric', hourCycle: 'h23' }).format(now));
+  return h < 11 ? 'おはようございます' : h < 17 ? 'こんにちは' : 'こんばんは';
+}
+
+const longDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+const LISTING_LABEL: Record<string, string> = { listed: '掲載中', reviewing: '審査中', rejected: '掲載見送り', suspended: '掲載停止中' };
+
+// 今日の数字のカード（アイコン・名前・数字と単位・補足）
+function Tile({ icon: Glyph, label, value, unit, sub }: { icon: PhosphorIcon; label: string; value: string | number; unit?: string; sub: string }) {
+  return (
+    <div className={sa.tile}>
+      <span className={sa.tileIcon}>
+        <Glyph size={24} aria-hidden focusable="false" />
+      </span>
+      <span className={sa.tileBody}>
+        <span className={sa.tileLabel}>{label}</span>
+        <span className={sa.tileValue}>
+          {value}
+          {unit && <small>{unit}</small>}
+        </span>
+        <span className={sa.tileSub}>{sub}</span>
+      </span>
+    </div>
+  );
 }
 
 export default function SalonApp({
@@ -107,8 +146,30 @@ export default function SalonApp({
   const [presetBusy, setPresetBusy] = useState<string | null>(null);
   // お店がまだないアカウントの、いちばん新しい掲載の申し込み（運営の確認待ちかどうか）
   const [myApp, setMyApp] = useState<{ status: string; salon_name: string } | null>(null);
+  // 左のメニューから開く設定の章（メニュー・美容師・お店の情報）。設定の画面に切り替えてから、その章までスクロールする
+  const [jump, setJump] = useState<string | null>(null);
+  // 広い画面（960px〜）かどうか。広い画面は左のメニュー、狭い画面は下のバーが「主な操作」（同じボタンを2つ置かない）
+  const [wide, setWide] = useState(false);
 
   useDispatchTicker(client, !!salon);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 960px)');
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'settings' || !jump) return;
+    const id = jump;
+    const t = setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setJump(null);
+    }, 50);
+    return () => clearTimeout(t);
+  }, [tab, jump]);
 
   // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、前のスタッフの画面の状態を残さない
   useEffect(() => {
@@ -330,9 +391,33 @@ export default function SalonApp({
       </Notice>
     ) : null;
 
+  // 「枠を出す」（広い画面は右の列、狭い画面は下のバー。どちらか一方だけが見える）
+  const publishButton = (
+    <Button
+      variant="primary"
+      size="lg"
+      icon={canPublish ? Plus : undefined}
+      disabled={!canPublish}
+      title={canPublish ? undefined : '掲載中になると、枠を出せます'}
+      onClick={() => setSheet({ start: null, stylistId: null })}
+    >
+      {canPublish ? '枠を出す' : listing === 'reviewing' ? '審査中（承認後に枠を出せます）' : '枠は出せません'}
+    </Button>
+  );
+  const presetButtons = canPublish && usablePresets.length > 0 && (
+    <div className={sa.presets}>
+      {usablePresets.slice(0, 4).map((p) => (
+        <button key={p.id} className={sa.preset} disabled={presetBusy !== null} onClick={() => quickPreset(p)}>
+          <small>{presetBusy === p.id ? '公開しています…' : p.kind === 'free' ? 'いつもの空き方' : 'いつもの枠'}</small>
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     // ログイン・登録の案内は、利用者の画面と同じスマートフォンの幅にそろえる（営業中の画面だけ広く使う）
-    <Page width={!session || salon === null ? 'phone' : 'wide'} bar={!!salon && !onboarding}>
+    <Page width={!session || salon === null ? 'phone' : 'wide'} bar={!!salon && !onboarding} className={salon && !onboarding ? sa.dashboard : undefined}>
       <AppHeader role="サロン" home="/salon">
         {session && (
           <button onClick={() => logout('salon')} aria-label="ログアウト">
@@ -434,26 +519,68 @@ export default function SalonApp({
       )}
 
       {salon && !onboarding && (
-        <>
+        <div className={sa.shell}>
+          {/* 左：お店とメニュー（広い画面だけ。狭い画面は下の操作のバー） */}
+          {wide && (
+          <aside className={sa.side} aria-label="お店とメニュー">
+            <div className={sa.shop}>
+              <SalonPhoto salonId={salon.id} salonName={salon.name} variant="thumb" alt="" className={sa.shopPhoto} />
+              <span className={sa.shopBody}>
+                <span className={sa.shopName}>{salon.name}</span>
+                <Label kind={listing === 'listed' ? 'success' : 'state'}>{LISTING_LABEL[listing ?? ''] ?? '確認中'}</Label>
+              </span>
+            </div>
+            <nav aria-label="主な操作">
+              <ul className={sa.sideNav}>
+                {(
+                  [
+                    { key: 'chart', label: 'ダッシュボード', icon: House, on: tab === 'today' && view === 'chart', go: () => (setTab('today'), setView('chart')) },
+                    { key: 'list', label: '予約の一覧', icon: ListBullets, on: tab === 'today' && view === 'list', go: () => (setTab('today'), setView('list')) },
+                    { key: 'menus', label: 'メニュー', icon: Scissors, on: false, go: () => (setTab('settings'), setJump('salon-menus')) },
+                    { key: 'staff', label: '美容師', icon: Users, on: false, go: () => (setTab('settings'), setJump('salon-staff')) },
+                    { key: 'place', label: 'お店の情報', icon: Storefront, on: false, go: () => (setTab('settings'), setJump('salon-place')) },
+                    { key: 'settings', label: '設定', icon: Gear, on: tab === 'settings', go: () => (setTab('settings'), window.scrollTo({ top: 0 })) },
+                  ] as { key: string; label: string; icon: PhosphorIcon; on: boolean; go: () => void }[]
+                ).map((item) => (
+                  <li key={item.key}>
+                    <button className={sa.sideItem} aria-current={item.on ? 'page' : undefined} onClick={item.go}>
+                      <item.icon size={24} weight={item.on ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+          )}
+
+          <div className={sa.main}>
           <div className={sa.head} data-salon-head="">
-            <h1 className={sa.title}>
-              <Storefront size={24} weight="duotone" aria-hidden focusable="false" />
-              {salon.name}
-            </h1>
-            {tab === 'today' && canPublish && (openCount > 0 || pausedFuture > 0) && (
-              <div className={sa.pause}>
-                {openCount > 0 && (
-                  <Button variant="secondary" icon={PauseCircle} onClick={() => setConfirmPause(true)}>
-                    今日はここまで
-                  </Button>
-                )}
-                {pausedFuture > 0 && (
-                  <Button variant="quiet" icon={ArrowCounterClockwise} onClick={resumeToday}>
-                    元に戻す（{pausedFuture}枠）
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className={sa.greet}>
+              <p className={sa.headShop}>
+                <Storefront size={20} weight="duotone" aria-hidden focusable="false" />
+                {salon.name}
+              </p>
+              <h1 className={sa.title}>{greeting(now)}</h1>
+              <p className={sa.lead}>本日の営業状況を確認できます。</p>
+            </div>
+            <div className={sa.headAside}>
+              <p className={`${sa.date} num`}>{longDate.format(now)}</p>
+              {tab === 'today' && canPublish && (openCount > 0 || pausedFuture > 0) && (
+                <div className={sa.pause}>
+                  {openCount > 0 && (
+                    <Button variant="secondary" icon={PauseCircle} onClick={() => setConfirmPause(true)}>
+                      今日はここまで
+                    </Button>
+                  )}
+                  {pausedFuture > 0 && (
+                    <Button variant="quiet" icon={ArrowCounterClockwise} onClick={resumeToday}>
+                      元に戻す（{pausedFuture}枠）
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <Stack gap={3}>
@@ -465,26 +592,13 @@ export default function SalonApp({
           </Stack>
 
           {tab === 'today' && (
-            <div className={sa.grid}>
-              <Stack gap={3}>
+            <>
                 {UI_OPTIONS.salonAchievement && (
-                  <section className={sa.metrics} aria-label="今日の成果">
-                    <p className={sa.metricsTitle}>
-                      <Sparkle size={20} weight="duotone" aria-hidden focusable="false" />
-                      今日、空き時間から生まれた予約
-                    </p>
-                    <p className={sa.metric}>
-                      <span className={sa.metricValue}>{achievement.count}件</span>
-                      <span className={sa.metricLabel}>予約</span>
-                    </p>
-                    <p className={sa.metric}>
-                      <span className={sa.metricValue}>{hm(achievement.minutes)}</span>
-                      <span className={sa.metricLabel}>埋まった時間</span>
-                    </p>
-                    <p className={sa.metric}>
-                      <span className={sa.metricValue}>{fmtYen(achievement.yen)}</span>
-                      <span className={sa.metricLabel}>来店済みの合計</span>
-                    </p>
+                  <section className={sa.tiles} aria-label="今日の成果">
+                    <Tile icon={CalendarCheck} label="本日の予約" value={achievement.count} unit="件" sub="空き時間から生まれた予約" />
+                    <Tile icon={Clock} label="公開中の空き枠" value={openCount} unit="件" sub="予約を待っている枠" />
+                    <Tile icon={HourglassMedium} label="埋まった時間" value={hm(achievement.minutes)} sub="予約で埋まった施術の時間" />
+                    <Tile icon={Wallet} label="来店済みの合計" value={fmtYen(achievement.yen)} sub="来店を記録した予約の合計" />
                   </section>
                 )}
 
@@ -518,14 +632,85 @@ export default function SalonApp({
                   </section>
                 )}
 
-                {started && permission === 'default' && (
-                  <Button variant="quiet" size="md" block icon={BellRinging} onClick={async () => setPermission(await askNotificationPermission())}>
-                    ほかのタブを見ているときも、ブラウザの通知で知らせる
-                  </Button>
+            <div className={sa.grid}>
+              <Panel flush className={sa.plan}>
+                <div className={sa.planHead}>
+                  <SectionHead icon={Clock} title="今日の予定" />
+                  <span className={`${sa.planDate} num`}>{longDate.format(now).replace(/^\d+年/, '')}</span>
+                  <Segmented
+                    label="表示の切り替え"
+                    className={sa.planView}
+                    value={view}
+                    onChange={setView}
+                    options={[
+                      {
+                        value: 'chart',
+                        label: (
+                          <>
+                            <span className={sa.onlyWide}>担当ごと</span>
+                            <span className={sa.onlyNarrow}>タイムライン</span>
+                          </>
+                        ),
+                      },
+                      { value: 'list', label: '時刻の順の一覧' },
+                    ]}
+                  />
+                </div>
+                {endedCount > 0 && (
+                  <div className={sa.planSub}>
+                    <Check checked={showEnded} onChange={setShowEnded}>
+                      受付終了・取り下げの枠も表示（{endedCount}件）
+                    </Check>
+                  </div>
                 )}
+                {slots === null ? (
+                  <div className={sa.planPad}>
+                    <Loading rows={2} />
+                  </div>
+                ) : visibleSlots.length === 0 ? (
+                  <Empty icon={Clock}>{slots.length === 0 ? '今日はまだ枠を出していません。「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
+                ) : view === 'list' ? (
+                  <SlotList slots={visibleSlots} now={now} freshIds={freshIds} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
+                ) : (
+                  <>
+                    <div className={sa.onlyWide}>
+                      <StaffBands
+                        slots={visibleSlots}
+                        stylists={stylists}
+                        now={now}
+                        freshIds={freshIds}
+                        showNo={UI_OPTIONS.showBookingNo}
+                        onSelect={setSelected}
+                        onEmpty={(startAt, stylistId) => {
+                          const usable = stylistId && stylists.some((x) => x.id === stylistId && x.is_active) ? stylistId : null;
+                          if (canPublish) setSheet({ start: startAt, stylistId: usable });
+                        }}
+                      />
+                      <div className={sa.planPad}>
+                        <Fine>枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。</Fine>
+                      </div>
+                    </div>
+                    <div className={sa.onlyNarrow}>
+                      <Timeline slots={visibleSlots} now={now} freshIds={freshIds} onSelect={setSelected} />
+                    </div>
+                  </>
+                )}
+              </Panel>
 
-                <Panel>
-                  <SectionHead icon={CalendarCheck} title="これからの予約" />
+              <div className={sa.aside}>
+                <Panel className={sa.next}>
+                  <SectionHead
+                    icon={CalendarCheck}
+                    title="次の予約"
+                    aside={
+                      upcoming.length > 0 && (
+                        <button className={sa.seeAll} onClick={() => setView('list')}>
+                          すべて見る
+                          <CaretRight size={20} aria-hidden focusable="false" />
+                        </button>
+                      )
+                    }
+                  />
                   {slots === null ? (
                     <Loading rows={1} />
                   ) : upcoming.length === 0 ? (
@@ -559,72 +744,47 @@ export default function SalonApp({
                     </ul>
                   )}
                 </Panel>
-              </Stack>
 
-              <Panel flush>
-                <div className={sa.planHead}>
-                  <SectionHead icon={Clock} title="今日の予定" />
-                  <Segmented
-                    label="表示の切り替え"
-                    className={sa.planView}
-                    value={view}
-                    onChange={setView}
-                    options={[
-                      {
-                        value: 'chart',
-                        label: (
-                          <>
-                            <span className={sa.onlyWide}>担当ごとの帯</span>
-                            <span className={sa.onlyNarrow}>タイムライン</span>
-                          </>
-                        ),
-                      },
-                      { value: 'list', label: '時刻の順の一覧' },
-                    ]}
-                  />
+                {/* 枠を出す・いつもの枠（広い画面だけ。狭い画面は下の操作のバー） */}
+                <div className={sa.publish}>
+                  {publishButton}
+                  {presetButtons}
                 </div>
-                <div className={sa.planSub}>
+
+                <Panel className={sa.legendPanel}>
                   <StateLegend />
-                  {endedCount > 0 && (
-                    <Check checked={showEnded} onChange={setShowEnded}>
-                      受付終了・取り下げの枠も表示（{endedCount}件）
-                    </Check>
-                  )}
-                </div>
-                {slots === null ? (
-                  <div className={sa.planPad}>
-                    <Loading rows={2} />
-                  </div>
-                ) : visibleSlots.length === 0 ? (
-                  <Empty icon={Clock}>{slots.length === 0 ? '今日はまだ枠を出していません。下の「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
-                ) : view === 'list' ? (
-                  <SlotList slots={visibleSlots} now={now} freshIds={freshIds} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
-                ) : (
-                  <>
-                    <div className={sa.onlyWide}>
-                      <StaffBands
-                        slots={visibleSlots}
-                        stylists={stylists}
-                        now={now}
-                        freshIds={freshIds}
-                        showNo={UI_OPTIONS.showBookingNo}
-                        onSelect={setSelected}
-                        onEmpty={(startAt, stylistId) => {
-                          const usable = stylistId && stylists.some((x) => x.id === stylistId && x.is_active) ? stylistId : null;
-                          if (canPublish) setSheet({ start: startAt, stylistId: usable });
-                        }}
-                      />
-                      <div className={sa.planPad}>
-                        <Fine>横にスクロールできます。枠を押すと詳細が開き、空いているところを押すと、その時刻から枠を出せます。斜線は受付の締切を過ぎた時間です。</Fine>
-                      </div>
+                </Panel>
+
+                <Panel className={sa.info}>
+                  <SectionHead icon={Info} title="今日の営業情報" as="h2" />
+                  <dl className={sa.infoList}>
+                    <div>
+                      <dt>掲載</dt>
+                      <dd>{LISTING_LABEL[listing ?? ''] ?? '確認中'}</dd>
                     </div>
-                    <div className={sa.onlyNarrow}>
-                      <Timeline slots={visibleSlots} now={now} freshIds={freshIds} onSelect={setSelected} />
+                    <div>
+                      <dt>美容師</dt>
+                      <dd className="num">{stylists.filter((x) => x.is_active).length}名</dd>
                     </div>
-                  </>
+                    <div>
+                      <dt>メニュー</dt>
+                      <dd className="num">{menus.filter((m) => m.is_active).length}件</dd>
+                    </div>
+                  </dl>
+                  <button className={sa.seeAll} onClick={() => setTab('settings')}>
+                    詳しく見る
+                    <CaretRight size={20} aria-hidden focusable="false" />
+                  </button>
+                </Panel>
+
+                {started && permission === 'default' && (
+                  <Button variant="quiet" size="md" block icon={BellRinging} onClick={async () => setPermission(await askNotificationPermission())}>
+                    ほかのタブを見ているときも、ブラウザの通知で知らせる
+                  </Button>
                 )}
-              </Panel>
+              </div>
             </div>
+            </>
           )}
 
           {tab === 'settings' && (
@@ -661,38 +821,26 @@ export default function SalonApp({
               </Button>
             </Stack>
           )}
+          </div>
 
-          <nav className={sa.bar} aria-label="主な操作">
+          {/* 下に固定の操作のバー。狭い画面は「主な操作」（今日・枠を出す・設定）、960〜1279px は「枠を出す」といつもの枠だけ、1280px〜は使わない */}
+          <nav className={sa.bar} aria-label={wide ? "画面下の操作" : "主な操作"}>
             <div className={sa.barInner}>
-              {tab === 'today' && canPublish && usablePresets.length > 0 && (
-                <div className={sa.presets}>
-                  {usablePresets.slice(0, 4).map((p) => (
-                    <button key={p.id} className={sa.preset} disabled={presetBusy !== null} onClick={() => quickPreset(p)}>
-                      <small>{presetBusy === p.id ? '公開しています…' : p.kind === 'free' ? 'いつもの空き方' : 'いつもの枠'}</small>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {tab === 'today' && presetButtons}
               <div className={sa.barMain}>
-                <button className={sa.tab} aria-current={tab === 'today' ? 'page' : undefined} onClick={() => setTab('today')}>
-                  <CalendarCheck size={24} weight={tab === 'today' ? 'fill' : 'regular'} aria-hidden focusable="false" />
-                  今日
-                </button>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  icon={canPublish ? Plus : undefined}
-                  disabled={!canPublish}
-                  title={canPublish ? undefined : '掲載中になると、枠を出せます'}
-                  onClick={() => setSheet({ start: null, stylistId: null })}
-                >
-                  {canPublish ? '枠を出す' : listing === 'reviewing' ? '審査中（承認後に枠を出せます）' : '枠は出せません'}
-                </Button>
-                <button className={sa.tab} aria-current={tab === 'settings' ? 'page' : undefined} onClick={() => setTab('settings')}>
-                  <Gear size={24} weight={tab === 'settings' ? 'fill' : 'regular'} aria-hidden focusable="false" />
-                  設定
-                </button>
+                {!wide && (
+                  <button className={sa.tab} aria-current={tab === 'today' ? 'page' : undefined} onClick={() => setTab('today')}>
+                    <CalendarCheck size={24} weight={tab === 'today' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                    今日
+                  </button>
+                )}
+                {publishButton}
+                {!wide && (
+                  <button className={sa.tab} aria-current={tab === 'settings' ? 'page' : undefined} onClick={() => setTab('settings')}>
+                    <Gear size={24} weight={tab === 'settings' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                    設定
+                  </button>
+                )}
               </div>
             </div>
           </nav>
@@ -739,7 +887,7 @@ export default function SalonApp({
             </Sheet>
           )}
           <NewBookingAlert items={incoming} soundOn={started} showNo={UI_OPTIONS.showBookingNo} onAcknowledge={acknowledge} />
-        </>
+        </div>
       )}
 
       {toast && (

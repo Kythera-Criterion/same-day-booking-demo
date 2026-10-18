@@ -105,3 +105,10 @@
 .save {
   margin-block-start: var(--space-2);
 }
+
+/* 左のメニューから章へ移ったとき、章の見出しが画面の端にくっつかないように */
+#salon-place,
+#salon-menus,
+#salon-staff {
+  scroll-margin-block-start: var(--space-6);
+}

@@ -281,6 +281,9 @@
   /* 画面の幅 */
   --width-phone: 480px;
   --width-wide: 1120px;
+  /* サロンの画面（左のメニュー・中央の予定・右の列）。大きな画面で広く使う */
+  --width-dashboard: 1440px;
+  --width-sidebar: 232px;
   --width-dialog: 720px;
   --z-backdrop: -1;
   --z-header: 20;
@@ -305,17 +308,20 @@
   --color-bg: var(--ivory-100);
   --page-wash: linear-gradient(180deg, var(--ivory-50), var(--ivory-100));
 }
+/* サロン：お客様の画面と同じ生成りの地と珊瑚の操作（サロンの画面のデザイン案に合わせる）。
+   1日中開いておく業務の画面なので、背景は無地に近く、面は白で区切る */
 :root:has(header[data-role="salon"]) {
-  --color-alert-bg: var(--indigo-900);
-  --color-action: var(--indigo-600);
-  --color-action-hover: var(--indigo-700);
-  --color-action-soft: var(--indigo-50);
-  --color-action-line: var(--indigo-100);
-  --color-action-text: var(--indigo-700);
-  --color-focus: var(--indigo-700);
-  --color-bg: #f4f6fa;
-  /* タブレットで1日中開いておく業務の画面：目が疲れないよう、ほぼ無地。上の端だけ藍をごく淡く */
-  --page-wash: linear-gradient(180deg, var(--indigo-50), var(--color-bg) 40%);
+  --color-alert-bg: var(--coral-900);
+  --color-action: var(--coral-600);
+  --color-action-hover: var(--coral-700);
+  --color-action-soft: var(--coral-50);
+  --color-action-line: var(--coral-200);
+  --color-action-text: var(--coral-700);
+  --color-focus: var(--coral-700);
+  --color-chip: var(--coral-100);
+  --color-chip-ink: var(--coral-700);
+  --color-bg: var(--ivory-100);
+  --page-wash: linear-gradient(180deg, var(--ivory-50), var(--ivory-100));
 }
 :root:has(header[data-role="admin"]) {
   --color-action: var(--violet-600);

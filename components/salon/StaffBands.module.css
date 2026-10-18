@@ -1,118 +1,144 @@
-/* 担当ごとの帯（タブレットの横向き）。業務用：時刻を大きく、線は控えめ、今の時刻は時間の色の線。
-   担当の名前は、横にスクロールしても左に残す */
+/* 担当ごとの今日の予定（担当が列・時刻が縦）。業務用：時刻をはっきり、線は控えめ、今の時刻は時間の色の線。
+   担当の名前（上）と時刻（左）は、スクロールしても残す */
 
 .scroll {
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  padding-block-end: var(--space-2);
+  /* 左の時刻の列の幅と、担当の列のいちばん狭い幅 */
+  --day-time-w: var(--space-16);
+  --day-col-min: calc(var(--size-tile) + var(--space-3));
+  max-block-size: calc(var(--space-16) * 9);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-block-start: 1px solid var(--color-line);
 }
 
 .grid {
-  position: relative;
-}
-
-.head,
-.row {
   display: grid;
+  grid-template-rows: auto auto;
 }
 
+/* 上の行：担当の名前 */
+.corner,
 .head {
   position: sticky;
   inset-block-start: 0;
-  z-index: 2;
-  block-size: var(--space-10);
-  background: var(--color-surface);
-  border-block-end: 1px solid var(--color-line-strong);
-}
-
-.corner,
-.name {
-  position: sticky;
-  inset-inline-start: 0;
   z-index: 3;
-  background: var(--color-surface);
-}
-
-.scale {
-  position: relative;
-}
-
-.scale span {
-  position: absolute;
-  inset-block-end: var(--space-2);
-  transform: translateX(-50%);
-  font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.hour {
-  color: var(--color-ink);
-  font-size: var(--text-small);
-  font-weight: var(--weight-heavy);
-}
-
-.half {
-  color: var(--color-ink-sub);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-medium);
-}
-
-.row {
-  border-block-end: 1px solid var(--color-line);
-}
-
-.name {
   display: flex;
   align-items: center;
-  padding-inline: var(--space-4) var(--space-2);
+  min-block-size: var(--space-16);
+  border-block-end: 1px solid var(--color-line-strong);
+  background: var(--color-surface);
+}
+
+.corner {
+  inset-inline-start: 0;
+  z-index: 4;
+  justify-content: center;
   border-inline-end: 1px solid var(--color-line);
-  color: var(--color-ink);
+  color: var(--color-ink-2);
   font-size: var(--text-small);
   font-weight: var(--weight-bold);
 }
 
-.track {
+.head {
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border-inline-end: 1px solid var(--color-line);
+}
+
+/* 担当の印：写真の代わりに、名前の最初の1文字 */
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-10);
+  border-radius: 50%;
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+}
+
+.avatarNone {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-sub);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+  white-space: nowrap;
+}
+
+/* 左の列：時刻（横にスクロールしても残す） */
+.axis {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 2;
+  border-inline-end: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.hour {
+  position: absolute;
+  inset-inline: 0;
+  transform: translateY(-50%);
+  color: var(--color-ink-2);
+  font-family: var(--font-num);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  text-align: center;
+}
+
+.hour:first-child {
+  transform: none;
+}
+
+/* 担当の列：30分ごとの細い線（1時間ごとに少し濃く） */
+.col {
   position: relative;
+  border-inline-end: 1px solid var(--color-line);
+  background-image:
+    repeating-linear-gradient(180deg, var(--color-line-strong) 0 1px, transparent 1px calc(var(--space-16) + var(--space-2))),
+    repeating-linear-gradient(180deg, var(--color-line) 0 1px, transparent 1px calc((var(--space-16) + var(--space-2)) / 2));
   cursor: copy;
 }
 
-.track:hover {
-  background: color-mix(in srgb, var(--color-action-soft) 55%, transparent);
+.col:hover {
+  background-color: color-mix(in srgb, var(--color-action-soft) 55%, transparent);
 }
 
 /* 受付の締切を過ぎた時間（今から10分後まで）：斜線 */
 .past {
   position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
+  inset-block-start: 0;
+  inset-inline: 0;
   background: repeating-linear-gradient(135deg, transparent 0 var(--space-2), var(--color-line) var(--space-2) calc(var(--space-2) + 2px));
   pointer-events: none;
 }
 
-.tick {
-  position: absolute;
-  inset-block: 0;
-  inline-size: 1px;
-  background: var(--color-line);
-  pointer-events: none;
-}
-
-.tickHalf {
-  background: var(--color-line-strong);
-  opacity: 0.5;
-}
-
-.tickHour {
-  background: var(--color-line-strong);
-}
-
 .now {
   position: absolute;
-  inset-block: 0;
+  inset-inline: 0;
   z-index: 1;
-  inline-size: 2px;
-  margin-inline-start: -1px;
+  block-size: 2px;
+  margin-block-start: -1px;
   background: var(--color-time);
   pointer-events: none;
 }
@@ -120,46 +146,55 @@
 .now::before {
   content: "";
   position: absolute;
-  inset-block-start: calc(-1 * var(--space-1));
-  inset-inline-start: calc(-1 * var(--space-1) + 1px);
+  inset-block-start: calc(-1 * var(--space-1) + 1px);
+  inset-inline-start: calc(-1 * var(--space-1));
   inline-size: var(--space-2);
   block-size: var(--space-2);
   border-radius: 50%;
   background: var(--color-time);
 }
 
+/* 枠：色は SlotState.module.css（予約は淡い珊瑚・空き枠は淡い緑）。上から時刻・名前・メニュー */
 .block {
   position: absolute;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0;
+  align-items: flex-start;
+  gap: 2px;
   min-inline-size: 0;
-  padding-inline: var(--space-2);
-  border-radius: var(--radius-control);
+  padding: var(--space-1) var(--space-2);
   overflow: hidden;
+  border-radius: var(--radius-control);
   font-size: var(--text-caption);
   line-height: var(--leading-tight);
   text-align: start;
 }
 
 .block:hover {
-  filter: brightness(0.96);
+  filter: brightness(0.97);
+}
+
+.sm {
+  justify-content: center;
+  padding-block: 0;
 }
 
 .blockTop {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.blockTop svg {
+  flex: none;
 }
 
 .time {
-  font-family: var(--font-num);
-  font-size: var(--text-small);
-  font-weight: var(--weight-heavy);
-  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  font-weight: var(--weight-bold);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -167,8 +202,9 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-inline-size: 0;
+  max-inline-size: 100%;
   overflow: hidden;
+  font-size: var(--text-small);
   font-weight: var(--weight-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -177,16 +213,16 @@
 .no {
   padding-inline: var(--space-1);
   border-radius: var(--radius-label);
-  background: color-mix(in srgb, currentColor 18%, transparent);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-on-strong);
   font-family: var(--font-num);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--text-caption);
 }
 
-.narrow {
-  align-items: center;
-  padding-inline: var(--space-1);
-}
-
-.narrow svg {
-  display: none;
+.menu {
+  max-inline-size: 100%;
+  overflow: hidden;
+  opacity: 0.88;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -1,5 +1,5 @@
-/* サロンの画面（業務用の表示）：時刻と予約番号を大きく、背景と文字のコントラストを高く。
-   今日の成果・記録漏れ・これからの予約（左）と、今日の予定（右）。下に固定の操作のバー */
+/* サロンの画面（業務用の表示）：時刻と予約番号をはっきり、背景と文字のコントラストを高く。デザイン案に合わせ、
+   広い画面（960px〜）は左にお店とメニュー・中央に今日の数字と予定・右に次の予約と「枠を出す」。狭い画面は縦に並べ、下に固定の操作のバー */
 
 .signupCta {
   display: flex;
@@ -27,22 +27,185 @@
   margin: 0;
 }
 
+/* 画面の幅：営業中の画面だけ、大きな画面で広く使う */
+main.dashboard {
+  max-inline-size: var(--width-dashboard);
+}
+
+/* 骨組み：広い画面は「左のメニュー｜中央と右」 */
+.shell {
+  display: block;
+}
+
+.side {
+  display: none;
+}
+
+.main {
+  min-inline-size: 0;
+}
+
+@media (min-width: 960px) {
+  .shell {
+    display: grid;
+    grid-template-columns: var(--width-sidebar) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+
+  .side {
+    position: sticky;
+    inset-block-start: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-block-start: var(--space-4);
+  }
+
+  /* 左のメニューと同じ「今日・設定」は、下のバーから外す（「枠を出す」といつもの枠は残す） */
+  .bar .tab {
+    display: none;
+  }
+
+  .bar .barMain {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* とても広い画面（1280px〜）：「枠を出す」は右の列に置き、下のバーは使わない */
+@media (min-width: 1280px) {
+  main.dashboard {
+    padding-block-end: var(--space-16);
+  }
+
+  .bar {
+    display: none;
+  }
+}
+
+/* 左：お店（写真・店名・掲載の状況） */
+.shop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.shop .shopPhoto {
+  border-radius: 50%;
+}
+
+.shopBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.shopName {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+/* 左：メニュー（選んでいる項目は、淡い役割の色の面・役割の色の文字・塗りのアイコン） */
+.sideNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.sideItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--size-control);
+  padding-inline: var(--space-4);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-align: start;
+  transition: background-color var(--motion-short) var(--ease-out);
+}
+
+.sideItem:hover {
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+}
+
+.sideItem[aria-current="page"] {
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  font-weight: var(--weight-bold);
+}
+
+/* 見出し：あいさつと日付・「今日はここまで」 */
 .head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-  margin-block: var(--space-4) var(--space-3);
+  gap: var(--space-3) var(--space-4);
+  margin-block: var(--space-6) var(--space-4);
+}
+
+.greet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 店名（狭い画面だけ。広い画面は左のお店に出す） */
+.headShop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+@media (min-width: 960px) {
+  .headShop {
+    display: none;
+  }
 }
 
 .title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-heading);
-  font-weight: var(--weight-bold);
+  font-weight: 600;
   line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
+}
+
+.lead {
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+.headAside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.date {
+  color: var(--color-ink-2);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
 }
 
 .pause {
@@ -51,62 +214,167 @@
   gap: var(--space-2);
 }
 
-.grid {
+/* 今日の数字：4つのカード（狭い画面は2つずつ） */
+.tiles {
   display: grid;
-  gap: var(--space-4);
-  margin-block-start: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-4);
 }
 
-@media (min-width: 960px) {
-  .grid {
-    grid-template-columns: minmax(20rem, 24rem) 1fr;
-    align-items: start;
+@media (min-width: 1280px) {
+  .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-/* 今日の成果：3つの数字を並べる */
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border-radius: var(--radius-surface);
-  background: var(--color-surface-strong);
-  color: var(--color-ink-on-strong);
-}
-
-.metricsTitle {
-  grid-column: 1 / -1;
+.tile {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) 0;
-  font-size: var(--text-caption);
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--tracking-label);
-  opacity: 0.9;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
 }
 
-.metric {
+.tileIcon {
+  flex: none;
+  color: var(--color-action);
+}
+
+.tileBody {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: var(--space-2) var(--space-4) var(--space-4);
+  min-inline-size: 0;
 }
 
-.metric + .metric {
-  border-inline-start: 1px solid color-mix(in srgb, var(--color-ink-on-strong) 18%, transparent);
+.tileLabel {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
 }
 
-.metricValue {
+.tileValue {
   font-family: var(--font-num);
   font-size: var(--text-heading);
   font-weight: var(--weight-heavy);
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
-.metricLabel {
+.tileValue small {
+  margin-inline-start: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.tileSub {
+  color: var(--color-ink-sub);
   font-size: var(--text-caption);
-  opacity: 0.88;
+}
+
+/* 中央と右：今日の予定｜次の予約・枠を出す・凡例・今日の営業情報 */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-4);
+}
+
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 19rem);
+    align-items: start;
+  }
+}
+
+.plan {
+  min-inline-size: 0;
+}
+
+.aside {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+}
+
+@media (min-width: 1280px) {
+  .aside {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 右の列の「枠を出す」は広い画面だけ（狭い画面は下のバー） */
+.publish {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .publish {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .publish .presets {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .publish .preset {
+    white-space: normal;
+  }
+}
+
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-block-size: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.seeAll:hover {
+  color: var(--color-ink);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.infoList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  font-size: var(--text-small);
+}
+
+.infoList div {
+  display: grid;
+  grid-template-columns: var(--space-16) 1fr;
+  gap: var(--space-2);
+}
+
+.infoList dt {
+  color: var(--color-ink-sub);
+}
+
+.infoList dd {
+  margin: 0;
+  font-weight: var(--weight-bold);
 }
 
 /* 来店の記録がまだの予約（時間の色で知らせる） */
@@ -158,7 +426,7 @@
   gap: var(--space-2);
 }
 
-/* これからの予約 */
+/* 次の予約 */
 .upcoming {
   display: flex;
   flex-direction: column;
@@ -208,7 +476,7 @@
 
 .upTime {
   font-family: var(--font-num);
-  font-size: var(--text-title);
+  font-size: var(--text-body);
   font-weight: var(--weight-heavy);
   font-variant-numeric: tabular-nums;
 }
@@ -223,7 +491,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-body);
+  font-size: var(--text-small);
   font-weight: var(--weight-bold);
 }
 
