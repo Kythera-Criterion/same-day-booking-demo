@@ -22,6 +22,8 @@ const MESSAGES: Record<string, string> = {
   not_open: 'この枠は取り下げられません。',
   menu_not_found: 'メニューが見つかりません。',
   stylist_not_found: '担当の美容師が見つかりません。',
+  stylist_has_slots: '今日、この美容師の公開中の枠か、まだ来店していない予約があります。枠を取り下げるか担当を変えてから、削除してください。',
+  menu_has_slots: '今日、このメニューの公開中の枠か、まだ来店していない予約があります。枠を取り下げてから、削除してください。',
   invalid_action: 'この操作は行えません。',
   invalid_input: '入力内容をご確認ください。',
   salon_not_listed: '掲載中になると枠を出せます（審査中・掲載停止中は出せません）。',

@@ -167,7 +167,7 @@ export default function SalonApp({
   loggedOut?: boolean;
 }) {
   const { client, session, ready, signedOut } = useRoleSession('salon');
-  const { salon, salons, selectSalon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
+  const { salon, salons, selectSalon, menus, stylists, deletable, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
   // today：今日／settings：設定（すべて）／menus・staff・place：左のメニューから開く、設定の1つの章だけの画面
   const [tab, setTab] = useState<'today' | 'settings' | 'menus' | 'staff' | 'place'>(initialTab);
   const [sheet, setSheetState] = useState<{ start: Date | null; stylistId: string | null; openedAt: Date } | null>(null);
@@ -1008,6 +1008,11 @@ export default function SalonApp({
           {/* 左のメニューから開く、設定の1つの章だけの画面（設定の画面には、これまでどおりすべてが並ぶ） */}
           {(tab === 'menus' || tab === 'staff' || tab === 'place') && (
             <section className={sa.section} aria-labelledby="salon-section-title">
+              {!wide && (
+                <Button variant="text" icon={CaretLeft} onClick={() => openTab('settings')}>
+                  設定に戻る
+                </Button>
+              )}
               <ScreenTitle as="h2" tight id="salon-section-title">
                 {SECTION[tab].title}
               </ScreenTitle>
@@ -1021,13 +1026,33 @@ export default function SalonApp({
                 lineGroup={lineGroup}
                 onSaved={loadSalon}
                 only={SECTION[tab].only}
+                deletable={deletable}
               />
             </section>
           )}
 
+          {/* 設定：メニュー・美容師・お店の情報は、それぞれの画面に分ける（ここには出さない）。
+              狭い画面は左のメニューがないので、その3つの画面への入口を置く */}
           {tab === 'settings' && (
             <Stack gap={4}>
-              <SalonSettings key={salon.id} client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} />
+              {!wide && (
+                <nav className={sa.sectionLinks} aria-label="お店の設定">
+                  {(['menus', 'staff', 'place'] as const).map((key) => {
+                    const Glyph = key === 'menus' ? Scissors : key === 'staff' ? Users : Storefront;
+                    return (
+                      <button key={key} type="button" className={sa.sectionLink} onClick={() => openTab(key)}>
+                        <Glyph size={24} aria-hidden focusable="false" />
+                        <span className={sa.sectionLinkBody}>
+                          <strong>{SECTION[key].title}</strong>
+                          <small>{SECTION[key].desc}</small>
+                        </span>
+                        <CaretRight size={20} aria-hidden focusable="false" />
+                      </button>
+                    );
+                  })}
+                </nav>
+              )}
+              <SalonSettings key={salon.id} client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} only="log" deletable={deletable} />
               <ScreenTitle as="h2" tight>
                 スタッフのアカウント
               </ScreenTitle>
@@ -1074,8 +1099,8 @@ export default function SalonApp({
                 )}
                 {publishButton}
                 {!wide && (
-                  <button className={sa.tab} aria-current={tab === 'settings' ? 'page' : undefined} onClick={() => setTab('settings')}>
-                    <Gear size={24} weight={tab === 'settings' ? 'fill' : 'regular'} aria-hidden focusable="false" />
+                  <button className={sa.tab} aria-current={tab !== 'today' ? 'page' : undefined} onClick={() => setTab('settings')}>
+                    <Gear size={24} weight={tab !== 'today' ? 'fill' : 'regular'} aria-hidden focusable="false" />
                     設定
                   </button>
                 )}

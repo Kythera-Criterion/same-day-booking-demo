@@ -6,12 +6,13 @@
 import { useState, type ChangeEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import NotificationLog from '@/components/NotificationLog';
+import Sheet from '@/components/Sheet';
 import Button from '@/components/ui/Button';
 import { Check, FieldRow, formClass, Input, LabeledField } from '@/components/ui/Form';
 import { Pair } from '@/components/ui/Layout';
 import Notice from '@/components/ui/Notice';
 import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
-import { Bell, Camera, Check as CheckMark, PauseCircle, PencilSimple, Phone, Scissors, UserPlus, Users } from '@/components/ui/icons';
+import { Bell, Camera, Check as CheckMark, PauseCircle, PencilSimple, Phone, Scissors, Trash, UserPlus, Users } from '@/components/ui/icons';
 import PlaceSettings from './PlaceSettings';
 import { StylistAvatar } from './StaffBands';
 import { avatarDataUrl } from '@/lib/image';
@@ -38,6 +39,7 @@ export default function SalonSettings({
   lineGroup,
   onSaved,
   only,
+  deletable = false,
 }: {
   client: SupabaseClient;
   salon: SalonInfo;
@@ -45,7 +47,9 @@ export default function SalonSettings({
   stylists: Stylist[];
   lineGroup: string | null;
   onSaved: () => void;
-  only?: 'menus' | 'stylists' | 'contact';
+  only?: 'menus' | 'stylists' | 'contact' | 'log';
+  // 美容師・メニューを削除できるか（0021 を流したデータベースだけ）
+  deletable?: boolean;
 }) {
   const [menuDraft, setMenuDraft] = useState<MenuDraft | null>(null);
   const [stylistName, setStylistName] = useState('');
@@ -54,6 +58,8 @@ export default function SalonSettings({
   const [group, setGroup] = useState(lineGroup ?? '');
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // 削除の確認（美容師・メニュー）
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'menu' | 'stylist'; id: string; name: string } | null>(null);
 
   function done(error: unknown, okText: string) {
     setBusy(false);
@@ -109,6 +115,23 @@ export default function SalonSettings({
       setBusy(false);
       setMessage({ kind: 'error', text: 'この写真は読み込めませんでした。JPEG・PNG の写真を選んでください。' });
     }
+  }
+
+  // 削除：メニューは、過去の枠に使っていれば「削除済み」にして記録を残す（データベースが決める）
+  async function remove() {
+    if (!confirmDelete) return;
+    const target = confirmDelete;
+    setConfirmDelete(null);
+    setBusy(true);
+    const { data, error } = await client.rpc(target.kind === 'menu' ? 'salon_delete_menu' : 'salon_delete_stylist', {
+      p_salon_id: salon.id,
+      p_id: target.id,
+    });
+    if (target.kind === 'menu' && menuDraft?.id === target.id) setMenuDraft(null);
+    done(
+      error,
+      data === 'archived' ? `「${target.name}」を削除しました（過去の予約の記録は残ります）。` : `「${target.name}」を削除しました。`,
+    );
   }
 
   async function saveSettings() {
@@ -176,6 +199,11 @@ export default function SalonSettings({
                   >
                     編集
                   </Button>
+                  {deletable && (
+                    <Button variant="quiet" icon={Trash} disabled={busy} aria-label={`${m.name}を削除`} onClick={() => setConfirmDelete({ kind: 'menu', id: m.id, name: m.name })}>
+                      削除
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -264,6 +292,11 @@ export default function SalonSettings({
                   <Button variant="secondary" disabled={busy} onClick={() => saveStylist(s.id, s.name, !s.is_active)}>
                     {s.is_active ? 'お休みにする' : '戻す'}
                   </Button>
+                  {deletable && (
+                    <Button variant="quiet" icon={Trash} disabled={busy} aria-label={`${s.name}を削除`} onClick={() => setConfirmDelete({ kind: 'stylist', id: s.id, name: s.name })}>
+                      削除
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -314,7 +347,7 @@ export default function SalonSettings({
           </Panel>
         )}
 
-        {!only && (
+        {(!only || only === 'log') && (
           <Panel className={ss.full}>
             <SectionHead icon={Bell} title="通知ログ" />
             <SubText>LINE のキーがないときは「シミュレーション送信」として記録し、中身をここで確認できます。</SubText>
@@ -322,6 +355,26 @@ export default function SalonSettings({
           </Panel>
         )}
       </div>
+
+      {confirmDelete && (
+        <Sheet label={`${confirmDelete.name}を削除しますか`} role="alertdialog" narrow onClose={() => setConfirmDelete(null)}>
+          <SectionHead icon={Trash} title={`「${confirmDelete.name}」を削除しますか？`} as="p" />
+          <SubText>
+            {confirmDelete.kind === 'menu'
+              ? '削除すると、枠を出すときに選べなくなり、このメニューのいつもの枠も消えます。過去の予約の記録は残ります。今日、このメニューの公開中の枠や予約があるあいだは削除できません。'
+              : '削除すると、枠の担当に選べなくなり、いつもの枠の担当も外れます。過去の枠は「担当なし」になります。今日、この美容師の公開中の枠や予約があるあいだは削除できません。'}
+            {confirmDelete.kind === 'stylist' && ' しばらく休むだけなら「お休みにする」をお使いください。'}
+          </SubText>
+          <Pair>
+            <Button variant="quiet" size="md" onClick={() => setConfirmDelete(null)}>
+              やめる
+            </Button>
+            <Button variant="dangerSolid" size="md" icon={Trash} onClick={remove}>
+              削除する
+            </Button>
+          </Pair>
+        </Sheet>
+      )}
     </div>
   );
 }

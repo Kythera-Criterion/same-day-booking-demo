@@ -43,6 +43,7 @@
   font-size: var(--text-caption);
   font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-label);
+  white-space: nowrap;
 }
 
 .nav {
@@ -66,6 +67,7 @@
   font-size: var(--text-small);
   font-weight: var(--weight-bold);
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--motion-short) var(--ease-out),
@@ -131,5 +133,27 @@
 @media (max-width: 360px) {
   .name {
     display: none;
+  }
+}
+
+/* 幅の狭いスマートフォン：ブランド・役割・ボタンを1行に収める（文字を折り返さない） */
+@media (max-width: 400px) {
+  .bar {
+    gap: var(--space-2);
+  }
+
+  .brand {
+    letter-spacing: 0.02em;
+  }
+
+  .nav a,
+  .nav button {
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 380px) {
+  .brand {
+    font-size: var(--text-small);
   }
 }

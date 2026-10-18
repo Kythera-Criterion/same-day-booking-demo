@@ -126,6 +126,8 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
   const [lineGroup, setLineGroup] = useState<string | null>(null);
   const [onboardingStep, setOnboardingStep] = useState<number | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
+  // 美容師・メニューを削除できるか（0021 を流したデータベースか）
+  const [deletable, setDeletable] = useState(false);
   const [slots, setSlots] = useState<SalonSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,7 +164,14 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     }
     currentId.current = s.id;
     const [m, st, p, priv, status] = await Promise.all([
-      client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price'),
+      // 削除済みのメニュー（0021）は出さない。0021 を流していないデータベースでは、これまでどおりすべて読む
+      client
+        .from('menus')
+        .select('id,name,duration_min,price,booking_deadline_min,is_active')
+        .eq('salon_id', s.id)
+        .is('deleted_at', null)
+        .order('price')
+        .then((r) => (r.error ? client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price').then((x) => ({ ...x, legacy: true })) : { ...r, legacy: false })),
       // 写真（0020）を流していないデータベースでは、写真なしで読み直す
       client
         .from('stylists')
@@ -181,6 +190,7 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     setSalon((prev) => (prev && JSON.stringify(prev) === JSON.stringify(s) ? prev : s));
     setListing(((status.data as Listing | null) ?? (s.is_approved ? 'listed' : 'suspended')) as Listing);
     setMenus((m.data ?? []) as Menu[]);
+    setDeletable(!m.legacy);
     setStylists((st.data ?? []) as Stylist[]);
     setPresets((p.data ?? []) as Preset[]);
     setLineGroup((priv.data?.line_group_id as string | null | undefined) ?? null);
@@ -230,5 +240,5 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     [userId, loadSalon],
   );
 
-  return { salon, salons, selectSalon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots };
+  return { salon, salons, selectSalon, menus, stylists, deletable, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots };
 }

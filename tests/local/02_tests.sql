@@ -1295,4 +1295,49 @@ select t.raises('T56 ほかのお店の担当の写真は変えられない',
   $$select public.salon_set_stylist_photo('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111', null)$$, 'forbidden');
 commit;
 
+-- ---------------------------------------------------------
+-- T57 美容師・メニューの削除（0021）
+-- ---------------------------------------------------------
+-- 準備：AOI の佐藤に、今日このあとの公開中の枠
+insert into public.slots (salon_id, menu_id, stylist_id, start_at, end_at, price)
+values ('11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111',
+        public.jst_today_start() + interval '23 hours', public.jst_today_start() + interval '23 hours 50 minutes', 4500);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.raises('T57 今日の公開中の枠がある美容師は、削除できない',
+  $$select public.salon_delete_stylist('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111')$$, 'stylist_has_slots');
+select t.ok('T57 今日の枠のない美容師は、削除できる',
+  public.salon_delete_stylist('11111111-1111-4111-8111-111111111111', 'a2222222-2222-4222-8222-222222222222') = 'deleted');
+select t.ok('T57 削除した美容師は、一覧から消える',
+  (select count(*) from public.stylists where id = 'a2222222-2222-4222-8222-222222222222') = 0);
+select t.ok('T57 使ったことのないメニューは、そのまま消える',
+  public.salon_delete_menu('11111111-1111-4111-8111-111111111111',
+    (public.salon_upsert_menu('11111111-1111-4111-8111-111111111111', null, 'T57 試しのメニュー', 30, 3000, 10, true)).id) = 'deleted'
+  and (select count(*) from public.menus where name = 'T57 試しのメニュー') = 0);
+select t.raises('T57 今日の公開中の枠があるメニューは、削除できない',
+  $$select public.salon_delete_menu('11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111')$$, 'menu_has_slots');
+commit;
+-- 準備：過去（昨日）の枠だけがあるメニュー
+insert into public.menus (id, salon_id, name, duration_min, price, booking_deadline_min)
+values ('57000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'T57 過去に使ったメニュー', 30, 3000, 10);
+insert into public.slots (salon_id, menu_id, start_at, end_at, price, status, deadline_at, demo_history)
+values ('11111111-1111-4111-8111-111111111111', '57000000-0000-4000-8000-000000000001',
+        public.jst_today_start() - interval '13 hours', public.jst_today_start() - interval '12 hours 30 minutes', 3000, 'expired',
+        public.jst_today_start() - interval '13 hours 10 minutes', false);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T57 過去の枠に使ったメニューは、記録を残して「削除済み」にする',
+  public.salon_delete_menu('11111111-1111-4111-8111-111111111111', '57000000-0000-4000-8000-000000000001') = 'archived');
+commit;
+select t.ok('T57 削除済みのメニューは止まり、過去の枠はそのまま残る',
+  (select not is_active and deleted_at is not null from public.menus where id = '57000000-0000-4000-8000-000000000001')
+  and (select count(*) from public.slots where menu_id = '57000000-0000-4000-8000-000000000001') = 1);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T57 ほかのお店の美容師は、削除できない',
+  $$select public.salon_delete_stylist('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111')$$, 'forbidden');
+select t.raises('T57 ほかのお店のメニューは、削除できない',
+  $$select public.salon_delete_menu('11111111-1111-4111-8111-111111111111', 'd1111112-1111-4111-8111-111111111111')$$, 'forbidden');
+commit;
+select public.demo_reset(false);
+select t.ok('T57 デモのリセットで、削除したデモ用の美容師が戻る',
+  (select count(*) from public.stylists where id = 'a2222222-2222-4222-8222-222222222222') = 1);
+
 -- 結果の一覧は run.sh が出す
