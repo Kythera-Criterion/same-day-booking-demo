@@ -707,3 +707,11 @@ main.dashboard {
   color: var(--color-ink);
   font-size: var(--text-small);
 }
+
+/* 左のメニューから開く、設定の1つの章だけの画面 */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}

@@ -93,6 +93,13 @@ function greeting(now: Date) {
 const shortDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short' });
 const longDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
+// 左のメニューから開く、設定の章だけの画面（見出し・説明・設定のどの章を出すか）
+const SECTION = {
+  menus: { title: 'メニュー', desc: 'メニューの名前・所要時間・当日価格・受付の締切を決めます。お休みにしたメニューは、枠を出すときに選べません。', only: 'menus' },
+  staff: { title: '美容師', desc: '枠の担当に出す美容師を決めます。写真は今日の予定の担当の列に出ます。', only: 'stylists' },
+  place: { title: 'お店の情報', desc: 'お店の名前・住所・場所と、受け付ける性別・電話番号・連絡用の LINE のグループを決めます。', only: 'contact' },
+} as const;
+
 const LISTING_LABEL: Record<string, string> = { listed: '掲載中', reviewing: '審査中', rejected: '掲載見送り', suspended: '掲載停止中' };
 
 // 前日比の表示（+2件・−1件・±0件）
@@ -161,7 +168,8 @@ export default function SalonApp({
 }) {
   const { client, session, ready, signedOut } = useRoleSession('salon');
   const { salon, salons, selectSalon, menus, stylists, presets, lineGroup, onboardingStep, listing, slots, error, loadSalon, loadSlots } = useSalonData(client, session);
-  const [tab, setTab] = useState<'today' | 'settings'>(initialTab);
+  // today：今日／settings：設定（すべて）／menus・staff・place：左のメニューから開く、設定の1つの章だけの画面
+  const [tab, setTab] = useState<'today' | 'settings' | 'menus' | 'staff' | 'place'>(initialTab);
   const [sheet, setSheetState] = useState<{ start: Date | null; stylistId: string | null; openedAt: Date } | null>(null);
   const setSheet = useCallback(
     (v: { start: Date | null; stylistId: string | null } | null) => setSheetState(v ? { ...v, openedAt: new Date() } : null),
@@ -192,8 +200,6 @@ export default function SalonApp({
   const [presetBusy, setPresetBusy] = useState<string | null>(null);
   // お店がまだないアカウントの、いちばん新しい掲載の申し込み（運営の確認待ちかどうか）
   const [myApp, setMyApp] = useState<{ status: string; salon_name: string } | null>(null);
-  // 左のメニューから開く設定の章（メニュー・美容師・お店の情報）。設定の画面に切り替えてから、その章までスクロールする
-  const [jump, setJump] = useState<string | null>(null);
   // 広い画面（960px〜）かどうか。広い画面は左のメニュー、狭い画面は下のバーが「主な操作」（同じボタンを2つ置かない）
   const [wide, setWide] = useState(false);
 
@@ -206,16 +212,6 @@ export default function SalonApp({
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
   }, []);
-
-  useEffect(() => {
-    if (tab !== 'settings' || !jump) return;
-    const id = jump;
-    const t = setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setJump(null);
-    }, 50);
-    return () => clearTimeout(t);
-  }, [tab, jump]);
 
   // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、前のスタッフの画面の状態を残さない
   useEffect(() => {
@@ -357,6 +353,12 @@ export default function SalonApp({
     const latest = slots.find((s) => s.id === selected.id);
     if (latest && latest !== selected) setSelected(latest);
   }, [slots, selected]);
+
+  // 左のメニューで画面を切り替える（切り替えたら、上から見せる）
+  function openTab(next: typeof tab) {
+    setTab(next);
+    window.scrollTo({ top: 0 });
+  }
 
   function start() {
     setStarted(true);
@@ -647,10 +649,10 @@ export default function SalonApp({
                   [
                     { key: 'chart', label: 'ダッシュボード', icon: House, on: tab === 'today' && view !== 'list', go: () => (setTab('today'), setView('chart')) },
                     { key: 'list', label: '予約の一覧', icon: ListBullets, on: tab === 'today' && view === 'list', go: () => (setTab('today'), setView('list')) },
-                    { key: 'menus', label: 'メニュー', icon: Scissors, on: false, go: () => (setTab('settings'), setJump('salon-menus')) },
-                    { key: 'staff', label: '美容師', icon: Users, on: false, go: () => (setTab('settings'), setJump('salon-staff')) },
-                    { key: 'place', label: 'お店の情報', icon: Storefront, on: false, go: () => (setTab('settings'), setJump('salon-place')) },
-                    { key: 'settings', label: '設定', icon: Gear, on: tab === 'settings', go: () => (setTab('settings'), window.scrollTo({ top: 0 })) },
+                    { key: 'menus', label: 'メニュー', icon: Scissors, on: tab === 'menus', go: () => openTab('menus') },
+                    { key: 'staff', label: '美容師', icon: Users, on: tab === 'staff', go: () => openTab('staff') },
+                    { key: 'place', label: 'お店の情報', icon: Storefront, on: tab === 'place', go: () => openTab('place') },
+                    { key: 'settings', label: '設定', icon: Gear, on: tab === 'settings', go: () => openTab('settings') },
                   ] as { key: string; label: string; icon: PhosphorIcon; on: boolean; go: () => void }[]
                 ).map((item) => (
                   <li key={item.key}>
@@ -1001,6 +1003,26 @@ export default function SalonApp({
               </div>
             </div>
             </>
+          )}
+
+          {/* 左のメニューから開く、設定の1つの章だけの画面（設定の画面には、これまでどおりすべてが並ぶ） */}
+          {(tab === 'menus' || tab === 'staff' || tab === 'place') && (
+            <section className={sa.section} aria-labelledby="salon-section-title">
+              <ScreenTitle as="h2" tight id="salon-section-title">
+                {SECTION[tab].title}
+              </ScreenTitle>
+              <SubText>{SECTION[tab].desc}</SubText>
+              <SalonSettings
+                key={`${salon.id}-${tab}`}
+                client={client}
+                salon={salon}
+                menus={menus}
+                stylists={stylists}
+                lineGroup={lineGroup}
+                onSaved={loadSalon}
+                only={SECTION[tab].only}
+              />
+            </section>
           )}
 
           {tab === 'settings' && (

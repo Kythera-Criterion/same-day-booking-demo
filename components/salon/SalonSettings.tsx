@@ -128,13 +128,13 @@ export default function SalonSettings({
 
       <div className={only ? ss.stack : ss.grid}>
         {(!only || only === 'contact') && (
-          <div className={ss.place} id="salon-place">
+          <div className={ss.place}>
             <PlaceSettings client={client} salon={salon} onSaved={onSaved} />
           </div>
         )}
 
         {(!only || only === 'menus') && (
-          <Panel className={ss.side} id="salon-menus">
+          <Panel className={ss.side}>
             <SectionHead
               icon={Scissors}
               title="メニュー"
@@ -233,7 +233,7 @@ export default function SalonSettings({
         )}
 
         {(!only || only === 'stylists') && (
-          <Panel className={ss.side} id="salon-staff">
+          <Panel className={ss.side}>
             <SectionHead icon={Users} title="美容師" />
             <ul className={ss.list} data-setting-list="">
               {stylists.map((s) => (
