@@ -127,6 +127,7 @@ Supabase の **SQL Editor** で、次の順に実行します（`psql` でも同
 | 17 | `supabase/migrations/0016_usage_visits.sql` | デモの利用の記録：訪問ごとの利用時間・見たページ・ログインしていたアカウント（メールアドレス）と、そのアカウントに送った通知の件数（運営だけが読めて、選んで削除・すべて削除できる） |
 | 18 | `supabase/migrations/0017_usage_events.sql` | 利用の記録：ページを開いたこと・使った機能（押したボタンなどの名前）を1件ずつ残し、/usage へ Realtime ですぐ届ける |
 | 19 | `supabase/migrations/0018_signup_notices.sql` | 新規登録の知らせ：お客様・サロンが自分で登録したとき（アカウントの作成・確認のリンクで完了）に1件ずつ残し、/usage へ Realtime ですぐ届ける（運営だけが読める） |
+| 20 | `supabase/migrations/0019_demo_beauty_menus.sql` | デモ用のお店にネイル（Salon Komorebi）とケア（atelier nagi）のメニューを加え、デモのリセットで今日の空き枠も作る（ホームの入口「ネイルをしたい」「自分をケアしたい」で空きが出るように） |
 | 20 | `supabase/seed_0002.sql` | エリア・カラーのメニュー・アンケートの質問・いつもの枠 |
 
 0002 以降は、既存のデータがあっても適用でき、2回流しても壊れません。

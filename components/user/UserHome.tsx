@@ -339,9 +339,11 @@ export default function UserHome() {
     return [...map.values()]
       .map((sh) => {
         const slots = [...sh.slots].sort((a, b) => a.start.localeCompare(b.start));
+        // 同じ時刻に別のメニューの枠があっても、時刻のチップは1つにする（押すと、その時刻の最初の枠を選ぶ）
+        const times = slots.filter((x, i) => i === 0 || x.start !== slots[i - 1].start);
         const names = [...sh.menus];
         const tag = MENU_TAGS.filter((w) => names.some((n) => n.includes(w))).slice(0, 2).join('・');
-        return { ...sh, slots: slots.slice(0, SHOP_SLOTS), first: slots[0].start, firstId: slots[0].id, tag };
+        return { ...sh, slots: times.slice(0, SHOP_SLOTS), first: slots[0].start, firstId: slots[0].id, tag };
       })
       .sort((a, b) => a.first.localeCompare(b.first))
       .slice(0, 6);
