@@ -19,6 +19,7 @@ import { loadOrigin } from '@/lib/origin';
 import { fmtTime, jstTodayEnd } from '@/lib/time';
 import { walkMinutes } from '@/lib/walk';
 import BookingForm, { type Alternative, type BookTarget } from './BookingForm';
+import { CancelWaitButton, useCancelWaits } from './CancelWait';
 import { needsProfile, useUserState } from './useUserState';
 import { genderCondition, stylistLine, useSalonExtras } from './useSalonExtras';
 import st from './BookConfirm.module.css';
@@ -137,6 +138,8 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
     setWalk({ min: walkMinutes(km), label: fmtDistance(km) });
   }, [slot]);
 
+  // キャンセル待ち（0020）：この枠が埋まっていたら、このお店の待ちに登録できる
+  const waitState = useCancelWaits(client, session);
   if (!client) return <NotConfigured />;
   const closed = !booked && slot && (slot.status !== 'open' || new Date(slot.deadline_at).getTime() <= now.getTime());
 
@@ -168,6 +171,9 @@ export default function BookConfirm({ slotId }: { slotId: string }) {
         <Panel>
           <SectionHead icon={CalendarX} title="この枠は受付を終えました" as="p" />
           <SubText>ほかの方の予約が入ったか、受付の締切を過ぎました。</SubText>
+          {slot && slot.salon_id && (
+            <CancelWaitButton state={waitState} signedIn={!!session} salonId={slot.salon_id} salonName={slot.salon_name} block />
+          )}
           <ButtonLink href="/" variant="primary" size="md" block icon={Lightning} iconWeight="duotone">
             ほかの枠を探す
           </ButtonLink>

@@ -364,7 +364,7 @@ main.dashboard {
 
 .infoList div {
   display: grid;
-  grid-template-columns: var(--space-16) 1fr;
+  grid-template-columns: calc(var(--space-16) * 1.75) 1fr;
   gap: var(--space-2);
 }
 
@@ -646,4 +646,64 @@ main.dashboard {
 
 .tab:hover {
   background: var(--color-surface-sunken);
+}
+
+/* 上の道具：検索とお知らせのベル */
+.tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
+/* 前日比：増えた・減った（色に加えて＋−の記号でも分かる） */
+.up {
+  color: var(--color-success-text);
+  font-weight: var(--weight-bold);
+}
+
+.down {
+  color: var(--color-danger-text);
+  font-weight: var(--weight-bold);
+}
+
+/* 週表示の週の切り替え */
+.weekNav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.weekStep {
+  display: grid;
+  place-items: center;
+  inline-size: var(--tap-min);
+  block-size: var(--tap-min);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.weekStep:hover {
+  background: var(--color-surface-sunken);
+}
+
+/* 絞り込み（メニュー・担当） */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filter {
+  min-block-size: var(--tap-min);
+  padding-inline: var(--space-3) var(--space-8);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-small);
 }

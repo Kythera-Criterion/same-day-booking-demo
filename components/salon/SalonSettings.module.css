@@ -112,3 +112,28 @@
 #salon-staff {
   scroll-margin-block-start: var(--space-6);
 }
+
+/* 担当の写真の操作（写真を入れる・変える・外す） */
+.photoActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.photoPick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--tap-min);
+  color: var(--color-action-text);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.photoPick:focus-within {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}

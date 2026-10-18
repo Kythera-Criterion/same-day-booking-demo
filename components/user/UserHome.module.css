@@ -728,3 +728,19 @@
   font-weight: var(--weight-bold);
   line-height: var(--leading-tight);
 }
+
+/* キャンセル待ち：空きがないときの登録・登録中のお店 */
+.waitBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--color-line);
+  text-align: start;
+}
+
+.waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

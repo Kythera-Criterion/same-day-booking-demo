@@ -3,7 +3,7 @@
 // 店舗の設定：メニュー（名前・所要時間・当日価格・受付締切）、美容師、受け付ける性別、電話番号、LINE の連絡用グループ
 // 書き込みはすべてデータベースの関数経由
 
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import NotificationLog from '@/components/NotificationLog';
 import Button from '@/components/ui/Button';
@@ -11,8 +11,10 @@ import { Check, FieldRow, formClass, Input, LabeledField } from '@/components/ui
 import { Pair } from '@/components/ui/Layout';
 import Notice from '@/components/ui/Notice';
 import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
-import { Bell, Check as CheckMark, PauseCircle, PencilSimple, Phone, Scissors, UserPlus, Users } from '@/components/ui/icons';
+import { Bell, Camera, Check as CheckMark, PauseCircle, PencilSimple, Phone, Scissors, UserPlus, Users } from '@/components/ui/icons';
 import PlaceSettings from './PlaceSettings';
+import { StylistAvatar } from './StaffBands';
+import { avatarDataUrl } from '@/lib/image';
 import { toMessage } from '@/lib/errors';
 import { fmtYen } from '@/lib/time';
 import type { Menu, SalonInfo, Stylist } from './useSalonData';
@@ -88,6 +90,25 @@ export default function SalonSettings({
       p_is_active: active,
     });
     if (done(error, '美容師を保存しました。') && id === null) setStylistName('');
+  }
+
+  // 担当の写真：端末で正方形の小さな画像に縮めてから保存する（外すときは null）
+  async function savePhoto(id: string, photo: string | null) {
+    setBusy(true);
+    const { error } = await client.rpc('salon_set_stylist_photo', { p_salon_id: salon.id, p_id: id, p_photo: photo });
+    done(error, photo ? '写真を保存しました。' : '写真を外しました。');
+  }
+
+  async function pickPhoto(id: string, e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      await savePhoto(id, await avatarDataUrl(file));
+    } catch {
+      setBusy(false);
+      setMessage({ kind: 'error', text: 'この写真は読み込めませんでした。JPEG・PNG の写真を選んでください。' });
+    }
   }
 
   async function saveSettings() {
@@ -217,12 +238,28 @@ export default function SalonSettings({
             <ul className={ss.list} data-setting-list="">
               {stylists.map((s) => (
                 <li key={s.id} className={ss.item} data-off={s.is_active ? undefined : ''}>
+                  <StylistAvatar name={s.name} photo={s.photo} />
                   <span className={ss.itemBody}>
                     <strong className={ss.itemName}>
                       {!s.is_active && <PauseCircle size={20} aria-hidden focusable="false" />}
                       {s.name}
                     </strong>
                     {!s.is_active && <small className={ss.itemSub}>お休み中（枠の担当に出ません）</small>}
+                    {/* 写真（0020 を流したデータベースだけ。読み込んだ担当に photo の項目があるかで見分ける） */}
+                    {'photo' in s && (
+                      <span className={ss.photoActions}>
+                        <label className={ss.photoPick}>
+                          <Camera size={20} aria-hidden focusable="false" />
+                          {s.photo ? '写真を変える' : '写真を入れる'}
+                          <input type="file" accept="image/*" className="sr-only" disabled={busy} onChange={(e) => pickPhoto(s.id, e)} />
+                        </label>
+                        {s.photo && (
+                          <Button variant="text" disabled={busy} onClick={() => savePhoto(s.id, null)}>
+                            写真を外す
+                          </Button>
+                        )}
+                      </span>
+                    )}
                   </span>
                   <Button variant="secondary" disabled={busy} onClick={() => saveStylist(s.id, s.name, !s.is_active)}>
                     {s.is_active ? 'お休みにする' : '戻す'}
@@ -230,6 +267,7 @@ export default function SalonSettings({
                 </li>
               ))}
             </ul>
+            {stylists.some((s) => 'photo' in s) && <SubText>写真は、今日の予定の担当の列に出ます。お客様の画面には出しません。</SubText>}
             <div className={ss.inlineForm}>
               <Input placeholder="名前" aria-label="美容師の名前" maxLength={40} value={stylistName} onChange={(e) => setStylistName(e.target.value)} />
               <Button variant="secondary" size="md" icon={UserPlus} disabled={busy || !stylistName.trim()} onClick={() => saveStylist(null, stylistName, true)}>

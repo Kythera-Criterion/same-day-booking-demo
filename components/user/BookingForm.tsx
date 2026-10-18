@@ -4,7 +4,7 @@
 // 1回のスクロールで読める「詳細シート」：①写真（シートの上・呼び出し側）②お店・住所・徒歩 ③今日の空き（時刻のチップ）
 // ④メニューと当日価格 ⑤担当 ⑥お店のルール（店頭払い・キャンセルはお店に電話・受付締切）を見せてから、スライドで確定する
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import Button, { ButtonLink } from '@/components/ui/Button';
@@ -65,6 +65,7 @@ export default function BookingForm({
   suspendedUntil,
   now,
   unavailable = null,
+  unavailableExtra = null,
   profileMissing = false,
   walk = null,
   stylist = null,
@@ -85,6 +86,8 @@ export default function BookingForm({
   suspendedUntil: string | null;
   now: Date;
   unavailable?: string | null;
+  // 予約できなくなったときに、お知らせの下に添えるもの（キャンセル待ちのボタン）
+  unavailableExtra?: ReactNode;
   walk?: { min: number; label: string } | null;
   stylist?: string | null;
   condition?: string | null;
@@ -163,6 +166,7 @@ export default function BookingForm({
           <Notice tone="danger" role="alert">
             {unavailable}
           </Notice>
+          {unavailableExtra}
         </div>
       )}
 

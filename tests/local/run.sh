@@ -34,6 +34,7 @@ for round in 1 2; do
   $DB -f "$ROOT/supabase/migrations/0017_usage_events.sql"
   $DB -f "$ROOT/supabase/migrations/0018_signup_notices.sql"
   $DB -f "$ROOT/supabase/migrations/0019_demo_beauty_menus.sql"
+  $DB -f "$ROOT/supabase/migrations/0020_salon_features.sql"
   $DB -f "$ROOT/supabase/seed_0002.sql"
 done
 echo "追加のマイグレーションを2回流しても、エラーはありませんでした"

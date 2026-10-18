@@ -1,4 +1,4 @@
-/* 担当ごとの今日の予定（担当が列・時刻が縦）。業務用：時刻をはっきり、線は控えめ、今の時刻は時間の色の線。
+/* 予定の表（担当・曜日が列・時刻が縦）。業務用：時刻をはっきり、線は控えめ、今の時刻は時間の色の線。
    担当の名前（上）と時刻（左）は、スクロールしても残す */
 
 .scroll {
@@ -9,6 +9,11 @@
   overflow: auto;
   overscroll-behavior: contain;
   border-block-start: 1px solid var(--color-line);
+}
+
+/* 週表示：7日分を並べるので、列を少し狭くする */
+.compact {
+  --day-col-min: calc(var(--space-16) * 1.5);
 }
 
 .grid {
@@ -57,6 +62,10 @@
   color: var(--color-action-text);
   font-size: var(--text-body);
   font-weight: var(--weight-bold);
+}
+
+img.avatar {
+  object-fit: cover;
 }
 
 .avatarNone {
@@ -117,10 +126,14 @@
   background-image:
     repeating-linear-gradient(180deg, var(--color-line-strong) 0 1px, transparent 1px calc(var(--space-16) + var(--space-2))),
     repeating-linear-gradient(180deg, var(--color-line) 0 1px, transparent 1px calc((var(--space-16) + var(--space-2)) / 2));
+}
+
+/* 枠を出せる列（今日）：押せることが分かるように */
+.colTap {
   cursor: copy;
 }
 
-.col:hover {
+.colTap:hover {
   background-color: color-mix(in srgb, var(--color-action-soft) 55%, transparent);
 }
 
@@ -225,4 +238,43 @@
   opacity: 0.88;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 週表示の列の名前：曜日・日付・今日の印 */
+.headToday {
+  background: var(--color-action-soft);
+}
+
+.day {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.dow {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.sun {
+  color: var(--color-danger-text);
+}
+
+.sat {
+  color: var(--color-info-text);
+}
+
+.date {
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+}
+
+.todayMark {
+  white-space: nowrap;
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-label);
+  background: var(--color-action);
+  color: var(--color-action-ink);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
 }

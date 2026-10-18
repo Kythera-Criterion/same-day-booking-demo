@@ -1242,4 +1242,57 @@ begin; set local role authenticated; set local request.jwt.claim.sub = '00000000
 select t.ok('T55 運営には、新規登録の知らせが見える', (select count(*) from public.signup_notices where user_id::text like '55000000-%') = 4);
 commit;
 
+-- ---------------------------------------------------------
+-- T56 キャンセル待ち・担当の写真（0020）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T56 お客様は、お店のキャンセル待ちに登録できる',
+  (public.join_cancel_wait('11111111-1111-4111-8111-111111111111')).notified_at is null);
+select t.ok('T56 同じお店・同じ日は1件にまとまる',
+  (select count(*) from (select public.join_cancel_wait('11111111-1111-4111-8111-111111111111')) x) = 1
+  and (select count(*) from public.cancel_waits where salon_id = '11111111-1111-4111-8111-111111111111') = 1);
+select t.raises('T56 キャンセル待ちは、画面から直接書き込めない',
+  $$insert into public.cancel_waits (salon_id, user_id) values ('22222222-2222-4222-8222-222222222222', '00000000-0000-4000-8000-000000000002')$$, 'row-level security');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.ok('T56 ほかのお客様には、人のキャンセル待ちが見えない', (select count(*) from public.cancel_waits) = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T56 お店のスタッフには、自分のお店のキャンセル待ちが見える（デモのリセットの見本とは別に、いま登録した1件）',
+  (select count(*) from public.cancel_waits where salon_id = '11111111-1111-4111-8111-111111111111' and user_id = '00000000-0000-4000-8000-000000000002') = 1);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.ok('T56 ほかのお店のスタッフには見えない', (select count(*) from public.cancel_waits) = 0);
+commit;
+insert into public.slots (salon_id, menu_id, start_at, end_at, price)
+values ('11111111-1111-4111-8111-111111111111', 'd1111111-1111-4111-8111-111111111111',
+        public.jst_today_start() + interval '22 hours', public.jst_today_start() + interval '23 hours', 4500);
+select t.ok('T56 そのお店で今日の枠が公開されると、キャンセル待ちのお客様へメールの知らせが1件積まれる',
+  (select count(*) from public.notification_outbox where kind = 'cancel_wait_mail' and recipient = 'user2@demo.test') = 1);
+select t.ok('T56 知らせたキャンセル待ちには、知らせた時刻が残る',
+  (select notified_at is not null from public.cancel_waits where user_id = '00000000-0000-4000-8000-000000000002'));
+insert into public.slots (salon_id, menu_id, start_at, end_at, price)
+values ('11111111-1111-4111-8111-111111111111', 'd1111112-1111-4111-8111-111111111111',
+        public.jst_today_start() + interval '23 hours', public.jst_today_start() + interval '23 hours 15 minutes', 1100);
+select t.ok('T56 続けて枠を出しても、知らせは1回だけ',
+  (select count(*) from public.notification_outbox where kind = 'cancel_wait_mail' and recipient = 'user2@demo.test') = 1);
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T56 もう一度登録すると、また待つ（知らせた時刻が消える）',
+  (public.join_cancel_wait('11111111-1111-4111-8111-111111111111')).notified_at is null);
+select public.leave_cancel_wait('11111111-1111-4111-8111-111111111111');
+select t.ok('T56 解除すると、キャンセル待ちが消える', (select count(*) from public.cancel_waits where user_id = '00000000-0000-4000-8000-000000000002') = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T56 スタッフは、担当の写真（画像のデータの URL）を決められる',
+  (public.salon_set_stylist_photo('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111', 'data:image/jpeg;base64,AAAA')).photo like 'data:image/jpeg%');
+select t.raises('T56 画像でないものは、写真にできない',
+  $$select public.salon_set_stylist_photo('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111', 'https://example.com/a.jpg')$$, 'invalid_input');
+select t.ok('T56 写真を外せる',
+  (public.salon_set_stylist_photo('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111', null)).photo is null);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000b1';
+select t.raises('T56 ほかのお店の担当の写真は変えられない',
+  $$select public.salon_set_stylist_photo('11111111-1111-4111-8111-111111111111', 'a1111111-1111-4111-8111-111111111111', null)$$, 'forbidden');
+commit;
+
 -- 結果の一覧は run.sh が出す

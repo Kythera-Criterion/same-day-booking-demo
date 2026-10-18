@@ -29,6 +29,7 @@ import {
   ArrowCounterClockwise,
   BellRinging,
   CalendarCheck,
+  CaretLeft,
   CaretRight,
   Clock,
   Gear,
@@ -43,15 +44,15 @@ import {
   SealCheck,
   SignOut,
   Storefront,
+  UserCircle,
   Users,
-  Wallet,
 } from '@/components/ui/icons';
 import { one, useRoleSession } from '@/lib/supabase';
 import { requestDispatch, useDispatchTicker } from '@/lib/dispatch-client';
 import { askNotificationPermission, browserNotify, notificationPermission } from '@/lib/alerts';
 import { toMessage } from '@/lib/errors';
 import { UI_OPTIONS } from '@/lib/ui-options';
-import { fmtTime, fmtYen, jstDateKey } from '@/lib/time';
+import { fmtTime, fmtYen, jstDateKey, jstTodayStart } from '@/lib/time';
 import { keepScreenOn, rekeepOnVisible, wakeLockSupported } from '@/lib/wakelock';
 import { AlertGate, NewBookingAlert, type IncomingBooking } from './Alerts';
 import Onboarding from './Onboarding';
@@ -59,11 +60,14 @@ import PublishSheet, { publishFree, publishOffsets, type PublishResult } from '.
 import SalonSettings from './SalonSettings';
 import SlotPanel from './SlotPanel';
 import SlotList from './SlotList';
-import StaffBands from './StaffBands';
+import StaffBands, { WeekBands } from './StaffBands';
+import SalonSearch from './SalonSearch';
+import SalonBell from './SalonBell';
+import MarketCard from './MarketCard';
 import Timeline from './Timeline';
 import { FreshMark, StateLegend } from './SlotStateMark';
 import sa from './SalonApp.module.css';
-import { activeBooking, useSalonData, type Preset, type SalonSlot } from './useSalonData';
+import { activeBooking, fetchSlots, useSalonData, type Preset, type SalonSlot } from './useSalonData';
 
 const DEMO_ACCOUNTS = [
   { email: 'salon-a@demo.test', label: 'HAIR ROOM AOI' },
@@ -86,12 +90,34 @@ function greeting(now: Date) {
   return h < 11 ? 'おはようございます' : h < 17 ? 'こんにちは' : 'こんばんは';
 }
 
+const shortDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short' });
 const longDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
 const LISTING_LABEL: Record<string, string> = { listed: '掲載中', reviewing: '審査中', rejected: '掲載見送り', suspended: '掲載停止中' };
 
-// 今日の数字のカード（アイコン・名前・数字と単位・補足）
-function Tile({ icon: Glyph, label, value, unit, sub }: { icon: PhosphorIcon; label: string; value: string | number; unit?: string; sub: string }) {
+// 前日比の表示（+2件・−1件・±0件）
+function signed(n: number, unit: string) {
+  return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}${unit}`;
+}
+
+// 今日の数字のカード（アイコン・名前・数字と単位・補足または前日比）
+
+function Tile({
+  icon: Glyph,
+  label,
+  value,
+  unit,
+  sub,
+  diff,
+}: {
+  icon: PhosphorIcon;
+  label: string;
+  value: string | number;
+  unit?: string;
+  sub: string;
+  // 前日比（昨日を読み込めていないときは null）
+  diff?: number | null;
+}) {
   return (
     <div className={sa.tile}>
       <span className={sa.tileIcon}>
@@ -103,7 +129,16 @@ function Tile({ icon: Glyph, label, value, unit, sub }: { icon: PhosphorIcon; la
           {value}
           {unit && <small>{unit}</small>}
         </span>
-        <span className={sa.tileSub}>{sub}</span>
+        <span className={sa.tileSub}>
+          {diff !== undefined && diff !== null ? (
+            <>
+              前日比 <span className={`num ${diff > 0 ? sa.up : diff < 0 ? sa.down : ''}`}>{signed(diff, unit ?? '')}</span>
+              <span className="sr-only">（{sub}）</span>
+            </>
+          ) : (
+            sub
+          )}
+        </span>
       </span>
     </div>
   );
@@ -141,7 +176,18 @@ export default function SalonApp({
   const [toast, setToast] = useState<Toast | null>(null);
   const [permission, setPermission] = useState<string>('default');
   const [now, setNow] = useState(() => new Date());
-  const [view, setView] = useState<'chart' | 'list'>('chart');
+  const [view, setView] = useState<'chart' | 'list' | 'week'>('chart');
+  // 今日の予定の絞り込み（メニュー・担当。空はすべて、担当の 'none' は担当なし）
+  const [menuFilter, setMenuFilter] = useState('');
+  const [staffFilter, setStaffFilter] = useState('');
+  // 週表示：今週から何週ずらすか・その週の枠
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekSlots, setWeekSlots] = useState<SalonSlot[] | null>(null);
+  // 前日比のための、昨日の枠
+  const [yesterday, setYesterday] = useState<SalonSlot[] | null>(null);
+  // キャンセル待ちのお客様の数（今日・昨日）。0020 を流していないデータベースでは null（「データベースの更新後に使えます」）
+  const [waitCount, setWaitCount] = useState<number | null>(null);
+  const [waitYesterday, setWaitYesterday] = useState<number | null>(null);
   const [showEnded, setShowEnded] = useState(false);
   const [presetBusy, setPresetBusy] = useState<string | null>(null);
   // お店がまだないアカウントの、いちばん新しい掲載の申し込み（運営の確認待ちかどうか）
@@ -258,6 +304,53 @@ export default function SalonApp({
     loadSlots();
   }, [today, loadSlots]);
 
+  // 昨日の枠（前日比）。日付が変わったとき・お店を切り替えたときに読み直す
+  useEffect(() => {
+    if (!client || !salonId) return;
+    let alive = true;
+    const start = jstTodayStart();
+    setYesterday(null);
+    fetchSlots(client, salonId, new Date(start.getTime() - 86_400_000), start).then(({ data, error: e }) => alive && setYesterday(e ? [] : data));
+    return () => {
+      alive = false;
+    };
+  }, [client, salonId, today]);
+
+  // キャンセル待ちの件数（今日・昨日）。0020 を流していないデータベースでは読めないので null のまま。
+  // 今日の枠が変わったとき・30秒ごと（now）に数え直す
+  useEffect(() => {
+    if (!client || !salonId) return;
+    let alive = true;
+    const day = (d: Date) => jstDateKey(d);
+    const count = (key: string) =>
+      // 件数だけを数える問い合わせ（head）は、表がないときにエラーを返さないため、1件だけ読む形で数える
+      client.from('cancel_waits').select('id', { count: 'exact' }).eq('salon_id', salonId).eq('day', key).limit(1);
+    Promise.all([count(day(now)), count(day(new Date(now.getTime() - 86_400_000)))]).then(([a, b]) => {
+      if (!alive) return;
+      setWaitCount(a.error ? null : (a.count ?? 0));
+      setWaitYesterday(b.error ? null : (b.count ?? 0));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [client, salonId, now, slots]);
+
+  // 週表示の枠（月曜日から7日分）。今日の枠が変わったら（予約・公開・取り下げ）、読み直す
+  const weekStart = (() => {
+    const start = jstTodayStart(now);
+    const dow = new Date(start.getTime() + 9 * 3_600_000).getUTCDay();
+    return new Date(start.getTime() - ((dow + 6) % 7) * 86_400_000 + weekOffset * 7 * 86_400_000);
+  })();
+  const weekKey = weekStart.getTime();
+  useEffect(() => {
+    if (!client || !salonId || view !== 'week') return;
+    let alive = true;
+    fetchSlots(client, salonId, new Date(weekKey), new Date(weekKey + 7 * 86_400_000)).then(({ data, error: e }) => alive && setWeekSlots(e ? [] : data));
+    return () => {
+      alive = false;
+    };
+  }, [client, salonId, view, weekKey, slots]);
+
   // 開いている枠・予約の内容を最新に保つ
   useEffect(() => {
     if (!selected || !slots) return;
@@ -365,7 +458,25 @@ export default function SalonApp({
     (s.status === 'expired' ||
       (s.status === 'closed' && !(s.closed_reason === 'paused' && new Date(s.deadline_at).getTime() > now.getTime())));
   const endedCount = list.filter(isEnded).length;
-  const visibleSlots = showEnded ? list : list.filter((s) => !isEnded(s));
+  // メニュー・担当の絞り込み（今日の予定・一覧・週表示で共通）
+  const matches = (s: SalonSlot) =>
+    (!menuFilter || s.menu_id === menuFilter) && (!staffFilter || (staffFilter === 'none' ? !s.stylist_id : s.stylist_id === staffFilter));
+  const visibleSlots = (showEnded ? list : list.filter((s) => !isEnded(s))).filter(matches);
+  const weekVisible = (weekSlots ?? []).filter((s) => (showEnded || !isEnded(s)) && matches(s));
+  const filtered = !!menuFilter || !!staffFilter;
+
+  // 前日比：昨日の1日分と比べる（予約・公開した枠・来店の記録がまだの予約）
+  const yMade = (yesterday ?? []).filter((s) => {
+    const b = activeBooking(s);
+    return b && (b.status === 'confirmed' || b.status === 'completed');
+  });
+  const compare = yesterday
+    ? {
+        booked: achievement.count - yMade.length,
+        published: list.length - yesterday.length,
+        unrecorded: overdue.length - yesterday.filter((s) => activeBooking(s)?.status === 'confirmed').length,
+      }
+    : null;
 
   // 掲載中でなければ、枠は出せない（審査中・見送り・運営が掲載を止めている）
   const canPublish = listing === 'listed';
@@ -534,7 +645,7 @@ export default function SalonApp({
               <ul className={sa.sideNav}>
                 {(
                   [
-                    { key: 'chart', label: 'ダッシュボード', icon: House, on: tab === 'today' && view === 'chart', go: () => (setTab('today'), setView('chart')) },
+                    { key: 'chart', label: 'ダッシュボード', icon: House, on: tab === 'today' && view !== 'list', go: () => (setTab('today'), setView('chart')) },
                     { key: 'list', label: '予約の一覧', icon: ListBullets, on: tab === 'today' && view === 'list', go: () => (setTab('today'), setView('list')) },
                     { key: 'menus', label: 'メニュー', icon: Scissors, on: false, go: () => (setTab('settings'), setJump('salon-menus')) },
                     { key: 'staff', label: '美容師', icon: Users, on: false, go: () => (setTab('settings'), setJump('salon-staff')) },
@@ -551,10 +662,23 @@ export default function SalonApp({
                 ))}
               </ul>
             </nav>
+            <MarketCard
+              salonId={salon.id}
+              salonName={salon.name}
+              slots={list}
+              listed={listing === 'listed'}
+              presetCount={usablePresets.length}
+              now={now}
+            />
           </aside>
           )}
 
           <div className={sa.main}>
+          {/* 上の道具：今日の予定の検索・お知らせのベル */}
+          <div className={sa.tools}>
+            <SalonSearch slots={list} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
+            <SalonBell salonId={salon.id} slots={list} onSelect={setSelected} />
+          </div>
           <div className={sa.head} data-salon-head="">
             <div className={sa.greet}>
               <p className={sa.headShop}>
@@ -595,10 +719,17 @@ export default function SalonApp({
             <>
                 {UI_OPTIONS.salonAchievement && (
                   <section className={sa.tiles} aria-label="今日の成果">
-                    <Tile icon={CalendarCheck} label="本日の予約" value={achievement.count} unit="件" sub="空き時間から生まれた予約" />
-                    <Tile icon={Clock} label="公開中の空き枠" value={openCount} unit="件" sub="予約を待っている枠" />
-                    <Tile icon={HourglassMedium} label="埋まった時間" value={hm(achievement.minutes)} sub="予約で埋まった施術の時間" />
-                    <Tile icon={Wallet} label="来店済みの合計" value={fmtYen(achievement.yen)} sub="来店を記録した予約の合計" />
+                    <Tile icon={CalendarCheck} label="本日の予約" value={achievement.count} unit="件" sub="空き時間から生まれた予約" diff={compare?.booked} />
+                    <Tile icon={Clock} label="公開中の空き枠" value={openCount} unit="件" sub="予約を待っている枠（前日比は、今日公開した枠の数）" diff={compare?.published} />
+                    <Tile
+                      icon={UserCircle}
+                      label="キャンセル待ち"
+                      value={waitCount ?? '—'}
+                      unit={waitCount === null ? undefined : '件'}
+                      sub={waitCount === null ? 'データベースの更新後に使えます' : '空きが出たら知らせるお客様'}
+                      diff={waitCount === null || waitYesterday === null ? null : waitCount - waitYesterday}
+                    />
+                    <Tile icon={HourglassMedium} label="未対応の確認" value={overdue.length} unit="件" sub="来店の記録がまだの予約" diff={compare?.unrecorded} />
                   </section>
                 )}
 
@@ -635,8 +766,27 @@ export default function SalonApp({
             <div className={sa.grid}>
               <Panel flush className={sa.plan}>
                 <div className={sa.planHead}>
-                  <SectionHead icon={Clock} title="今日の予定" />
-                  <span className={`${sa.planDate} num`}>{longDate.format(now).replace(/^\d+年/, '')}</span>
+                  <SectionHead icon={Clock} title={view === 'week' ? '1週間の予定' : '今日の予定'} />
+                  {view === 'week' ? (
+                    <span className={sa.weekNav}>
+                      <button type="button" className={sa.weekStep} aria-label="前の週" onClick={() => setWeekOffset((w) => w - 1)}>
+                        <CaretLeft size={20} aria-hidden focusable="false" />
+                      </button>
+                      <span className={`${sa.planDate} num`}>
+                        {shortDate.format(weekStart)}〜{shortDate.format(new Date(weekStart.getTime() + 6 * 86_400_000))}
+                      </span>
+                      <button type="button" className={sa.weekStep} aria-label="次の週" onClick={() => setWeekOffset((w) => w + 1)}>
+                        <CaretRight size={20} aria-hidden focusable="false" />
+                      </button>
+                      {weekOffset !== 0 && (
+                        <Button variant="quiet" onClick={() => setWeekOffset(0)}>
+                          今週
+                        </Button>
+                      )}
+                    </span>
+                  ) : (
+                    <span className={`${sa.planDate} num`}>{longDate.format(now).replace(/^\d+年/, '')}</span>
+                  )}
                   <Segmented
                     label="表示の切り替え"
                     className={sa.planView}
@@ -647,28 +797,86 @@ export default function SalonApp({
                         value: 'chart',
                         label: (
                           <>
-                            <span className={sa.onlyWide}>担当ごと</span>
+                            <span className={sa.onlyWide}>日表示</span>
                             <span className={sa.onlyNarrow}>タイムライン</span>
                           </>
                         ),
                       },
+                      { value: 'week', label: '週表示' },
                       { value: 'list', label: '時刻の順の一覧' },
                     ]}
                   />
                 </div>
-                {endedCount > 0 && (
-                  <div className={sa.planSub}>
+                {/* 絞り込み（メニュー・担当）と、受付を終えた枠の表示 */}
+                <div className={sa.planSub}>
+                  <span className={sa.filters}>
+                    <select className={sa.filter} aria-label="メニューで絞り込む" value={menuFilter} onChange={(e) => setMenuFilter(e.target.value)}>
+                      <option value="">すべてのメニュー</option>
+                      {menus.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                          {m.is_active ? '' : '（停止中）'}
+                        </option>
+                      ))}
+                    </select>
+                    <select className={sa.filter} aria-label="担当で絞り込む" value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}>
+                      <option value="">すべての担当</option>
+                      {stylists.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.name}
+                          {x.is_active ? '' : '（停止中）'}
+                        </option>
+                      ))}
+                      <option value="none">担当なし</option>
+                    </select>
+                    {filtered && (
+                      <Button
+                        variant="text"
+                        onClick={() => {
+                          setMenuFilter('');
+                          setStaffFilter('');
+                        }}
+                      >
+                        絞り込みを外す
+                      </Button>
+                    )}
+                  </span>
+                  {endedCount > 0 && (
                     <Check checked={showEnded} onChange={setShowEnded}>
                       受付終了・取り下げの枠も表示（{endedCount}件）
                     </Check>
-                  </div>
-                )}
-                {slots === null ? (
+                  )}
+                </div>
+                {view === 'week' ? (
+                  weekSlots === null ? (
+                    <div className={sa.planPad}>
+                      <Loading rows={2} />
+                    </div>
+                  ) : (
+                    <>
+                      <WeekBands
+                        slots={weekVisible}
+                        weekStart={weekStart}
+                        now={now}
+                        freshIds={freshIds}
+                        showNo={UI_OPTIONS.showBookingNo}
+                        onSelect={setSelected}
+                        onEmpty={(startAt) => canPublish && setSheet({ start: startAt, stylistId: null })}
+                      />
+                      <div className={sa.planPad}>
+                        <Fine>
+                          枠を押すと詳細が開きます。今日の列の空いているところを押すと、その時刻から枠を出せます（枠を出せるのは今日だけです）。
+                          {weekVisible.length === 0 && ' この週に表示する枠はありません。'}
+                        </Fine>
+                      </div>
+                    </>
+                  )
+                ) : slots === null ? (
                   <div className={sa.planPad}>
                     <Loading rows={2} />
                   </div>
                 ) : visibleSlots.length === 0 ? (
-                  <Empty icon={Clock}>{slots.length === 0 ? '今日はまだ枠を出していません。「枠を出す」から公開できます。' : '表示する枠はありません。'}</Empty>
+                  <Empty icon={Clock}>{slots.length === 0 ? '今日はまだ枠を出していません。「枠を出す」から公開できます。' : filtered ? '絞り込みに合う枠はありません。' : '表示する枠はありません。'}</Empty>
                 ) : view === 'list' ? (
                   <SlotList slots={visibleSlots} now={now} freshIds={freshIds} showNo={UI_OPTIONS.showBookingNo} onSelect={setSelected} />
                 ) : (
@@ -769,6 +977,14 @@ export default function SalonApp({
                     <div>
                       <dt>メニュー</dt>
                       <dd className="num">{menus.filter((m) => m.is_active).length}件</dd>
+                    </div>
+                    <div>
+                      <dt>埋まった時間</dt>
+                      <dd className="num">{hm(achievement.minutes)}</dd>
+                    </div>
+                    <div>
+                      <dt>来店済みの合計</dt>
+                      <dd className="num">{fmtYen(achievement.yen)}</dd>
                     </div>
                   </dl>
                   <button className={sa.seeAll} onClick={() => setTab('settings')}>

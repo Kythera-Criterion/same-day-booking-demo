@@ -38,7 +38,8 @@ export type SalonInfo = {
 // 掲載の状態（listed：掲載中／reviewing：審査中／rejected：見送り／suspended：運営が掲載を止めている）
 export type Listing = 'listed' | 'reviewing' | 'rejected' | 'suspended';
 export type Menu = { id: string; name: string; duration_min: number; price: number; booking_deadline_min: number; is_active: boolean };
-export type Stylist = { id: string; name: string; is_active: boolean };
+// photo：担当の写真（端末で小さく縮めた画像のデータの URL。0020 で追加。まだ流していないデータベースでは読まない）
+export type Stylist = { id: string; name: string; is_active: boolean; photo?: string | null };
 export type Preset = {
   id: string;
   label: string;
@@ -61,6 +62,7 @@ export type Booking = {
   photo_path: string | null;
   photo_note: string | null;
   created_at: string;
+  cancelled_at?: string | null;
 };
 export type SalonSlot = {
   id: string;
@@ -72,6 +74,7 @@ export type SalonSlot = {
   price: number;
   created_at: string;
   stylist_id: string | null;
+  menu_id: string;
   menu: { name: string; duration_min: number } | null;
   stylist: { name: string } | null;
   bookings: Booking[];
@@ -82,6 +85,32 @@ type RawSlot = Omit<SalonSlot, 'menu' | 'stylist' | 'bookings'> & {
   stylists: SalonSlot['stylist'] | NonNullable<SalonSlot['stylist']>[];
   bookings: Booking[] | null;
 };
+
+// お店の枠を、期間を決めて読む（今日の予定・週表示・前日比で共通）。
+// 1枠ずつ取り下げて予約もない枠は出さない（「今日はここまで」・掲載の停止で取り下げた枠は残す）
+export async function fetchSlots(client: SupabaseClient, salonId: string, from: Date, to: Date): Promise<{ data: SalonSlot[]; error: unknown }> {
+  const { data, error } = await client
+    .from('slots')
+    .select(
+      'id,start_at,end_at,deadline_at,status,closed_reason,price,created_at,stylist_id,menu_id,menus(name,duration_min),stylists(name),' +
+        'bookings(id,status,booking_no,contact_name,contact_phone,contact_email,karte,conversation_pref,note,photo_path,photo_note,created_at,cancelled_at)',
+    )
+    .eq('salon_id', salonId)
+    .gte('start_at', from.toISOString())
+    .lt('start_at', to.toISOString())
+    .order('start_at');
+  if (error) return { data: [], error };
+  const rows = ((data ?? []) as unknown as RawSlot[]).map((r) => ({
+    ...r,
+    menu: one(r.menus),
+    stylist: one(r.stylists),
+    bookings: r.bookings ?? [],
+  }));
+  return {
+    data: rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.closed_reason !== 'suspended' && r.bookings.length === 0)),
+    error: null,
+  };
+}
 
 // 有効な予約（キャンセル以外）
 export function activeBooking(slot: SalonSlot): Booking | null {
@@ -134,7 +163,13 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
     currentId.current = s.id;
     const [m, st, p, priv, status] = await Promise.all([
       client.from('menus').select('id,name,duration_min,price,booking_deadline_min,is_active').eq('salon_id', s.id).order('price'),
-      client.from('stylists').select('id,name,is_active').eq('salon_id', s.id).order('name'),
+      // 写真（0020）を流していないデータベースでは、写真なしで読み直す
+      client
+        .from('stylists')
+        .select('id,name,is_active,photo')
+        .eq('salon_id', s.id)
+        .order('name')
+        .then((r) => (r.error ? client.from('stylists').select('id,name,is_active').eq('salon_id', s.id).order('name') : r)),
       client.from('slot_presets').select('id,label,menu_id,stylist_id,offsets_min,kind,free_minutes').eq('salon_id', s.id).order('created_at'),
       client.from('salon_private').select('line_group_id,onboarding_step').eq('salon_id', s.id).maybeSingle(),
       client.rpc('my_salon_status', { p_salon_id: s.id }),
@@ -154,31 +189,13 @@ export function useSalonData(client: SupabaseClient | null, session: Session | n
 
   const loadSlots = useCallback(async () => {
     if (!client || !salonId) return;
-    const { data, error: e } = await client
-      .from('slots')
-      .select(
-        'id,start_at,end_at,deadline_at,status,closed_reason,price,created_at,stylist_id,menus(name,duration_min),stylists(name),' +
-          'bookings(id,status,booking_no,contact_name,contact_phone,contact_email,karte,conversation_pref,note,photo_path,photo_note,created_at)',
-      )
-      .eq('salon_id', salonId)
-      .gte('start_at', jstTodayStart().toISOString())
-      .lt('start_at', jstTodayEnd().toISOString())
-      .order('start_at');
+    const { data, error: e } = await fetchSlots(client, salonId, jstTodayStart(), jstTodayEnd());
     if (e) {
       setError('今日の枠を読み込めませんでした。');
       return;
     }
     if (currentId.current !== salonId) return;
-    const rows = ((data ?? []) as unknown as RawSlot[]).map((r) => ({
-      ...r,
-      menu: one(r.menus),
-      stylist: one(r.stylists),
-      bookings: r.bookings ?? [],
-    }));
-    // 1枠ずつ取り下げて予約もない枠は表示しない（「今日はここまで」・掲載の停止で取り下げた枠は残す）
-    setSlots(
-      rows.filter((r) => !(r.status === 'closed' && r.closed_reason !== 'paused' && r.closed_reason !== 'suspended' && r.bookings.length === 0)),
-    );
+    setSlots(data);
   }, [client, salonId]);
 
   useEffect(() => {

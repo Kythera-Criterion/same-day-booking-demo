@@ -13,7 +13,8 @@ export type NotificationKind =
   | 'salon_approved_mail'
   | 'salon_rejected_mail'
   | 'admin_invite_mail'
-  | 'password_reset_mail';
+  | 'password_reset_mail'
+  | 'cancel_wait_mail';
 
 // ログイン用のリンク（第三者に渡ると困るもの）を含むメール。実際に送ったあとは、記録からリンクを消す
 export const SECRET_LINK_KINDS: NotificationKind[] = ['salon_welcome_mail', 'signup_confirm_mail', 'admin_invite_mail', 'password_reset_mail'];
@@ -29,6 +30,7 @@ export const KIND_LABEL: Record<NotificationKind, string> = {
   salon_rejected_mail: '掲載の見送りのご連絡',
   admin_invite_mail: '運営メンバーへの招待',
   password_reset_mail: 'パスワードの再設定',
+  cancel_wait_mail: 'キャンセル待ちのお知らせ（空きが出ました）',
 };
 export type NotificationChannel = 'line' | 'email';
 export type NotificationStatus = 'pending' | 'sending' | 'sent' | 'simulated' | 'failed';
@@ -57,6 +59,8 @@ export type NotificationPayload = {
   inviter?: string;
   // ご利用開始のご案内：新規登録でパスワードを決めてある（リンクは「登録の確認」になる）
   password_set?: boolean;
+  // キャンセル待ちのお知らせ：空いた枠
+  slot_id?: string;
 };
 
 export type OutboxRow = {
@@ -105,6 +109,7 @@ export function renderNotification(kind: NotificationKind, p: NotificationPayloa
   if (kind === 'salon_rejected_mail') return renderSalonRejected(p);
   if (kind === 'admin_invite_mail') return renderAdminInvite(p);
   if (kind === 'password_reset_mail') return renderPasswordReset(p);
+  if (kind === 'cancel_wait_mail') return renderCancelWait(p);
   const when = fmtWhen(p.start_at ?? '', p.end_at ?? '');
   const price = `¥${Number(p.price).toLocaleString('ja-JP')}`;
 
@@ -153,6 +158,31 @@ export function renderNotification(kind: NotificationKind, p: NotificationPayloa
       `当日価格：${price}（店頭払いのため、お支払いは発生していません）`,
       '',
       p.salon_phone ? `ご不明な点は、お店へお電話ください（${p.salon_phone}）。` : 'ご不明な点は、お店へお問い合わせください。',
+    ].join('\n'),
+  };
+}
+
+// キャンセル待ちのお知らせ：登録したお店に、今日の空きが出た（先着順のため、予約は画面から）。
+// 予約のページのリンクは、送るとき（サーバー）は APP_URL を前に付ける。画面の通知ログのプレビューでは、パスだけ
+function renderCancelWait(p: NotificationPayload): Rendered {
+  const when = fmtWhen(p.start_at ?? '', p.end_at ?? '');
+  const base = (process.env.APP_URL ?? '').replace(/\/$/, '');
+  return {
+    channel: 'email',
+    subject: `【${p.salon_name}】キャンセル待ちのお店に空きが出ました`,
+    text: [
+      `${p.display_name ?? ''} 様`,
+      '',
+      `キャンセル待ちに登録いただいた ${p.salon_name} に、今日の空きが出ました。`,
+      '',
+      `日時：${when}`,
+      `メニュー：${p.menu_name ?? ''}`,
+      `当日価格：¥${Number(p.price ?? 0).toLocaleString('ja-JP')}（店頭払い）`,
+      '',
+      '先着順のため、ほかの方が先に予約されることがあります。ご予約は次のページからどうぞ。',
+      p.slot_id ? `${base}/book/${p.slot_id}` : `${base}/`,
+      '',
+      'このお知らせは1回だけお送りします。もう一度待つときは、画面からキャンセル待ちに登録してください。',
     ].join('\n'),
   };
 }

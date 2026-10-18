@@ -48,6 +48,7 @@ import { pickThree, restByStart, type PickRole } from '@/lib/picks';
 import { UI_OPTIONS } from '@/lib/ui-options';
 import { WINDOWS, fmtDate, fmtRemaining, fmtTime, fmtYen, jstTodayEnd, minutesUntil, windowEnd, type WindowKey } from '@/lib/time';
 import BookingForm from './BookingForm';
+import { CancelWaitButton, useCancelWaits } from './CancelWait';
 import CandidateCard from './CandidateCard';
 import FirstSteps from './FirstSteps';
 import Radar from './Radar';
@@ -371,6 +372,21 @@ export default function UserHome() {
 
   const extras = useSalonExtras(client, [...picks, ...rest].map((p) => p.salon_id));
 
+  // キャンセル待ち（0020）：登録の状態と、登録できるお店（掲載中のお店の名前とエリア）
+  const waitState = useCancelWaits(client, session);
+  const [listedSalons, setListedSalons] = useState<{ id: string; name: string; area_id: string | null }[]>([]);
+  useEffect(() => {
+    if (!client || !waitState.supported) return;
+    client
+      .from('salons')
+      .select('id,name,area_id')
+      .eq('is_approved', true)
+      .order('name')
+      .then(({ data }) => setListedSalons((data ?? []) as { id: string; name: string; area_id: string | null }[]));
+  }, [client, waitState.supported]);
+  const salonName = (id: string) => listedSalons.find((x) => x.id === id)?.name ?? 'お店';
+  const waitTargets = listedSalons.filter((x) => searchAreaId === null || searchAreaId === undefined || x.area_id === searchAreaId);
+
   if (!client) return <NotConfigured />;
 
   const shown = frozen?.list ?? picks;
@@ -527,6 +543,15 @@ export default function UserHome() {
               </div>
               {searchError && <ErrorState onRetry={search}>{searchError}</ErrorState>}
               <VoiceSearch onResult={(key, word) => choose(key, word)} />
+
+              {/* 登録中のキャンセル待ち（今日） */}
+              {session && waitState.waits.size > 0 && (
+                <section className={st.waiting} aria-label="キャンセル待ち中のお店">
+                  {[...waitState.waits.keys()].map((id) => (
+                    <CancelWaitButton key={id} state={waitState} signedIn salonId={id} salonName={salonName(id)} block />
+                  ))}
+                </section>
+              )}
 
               {shops.length > 0 && (
                 <section className={st.shops} aria-labelledby="today-shops">
@@ -691,6 +716,15 @@ export default function UserHome() {
                         時間帯を広げる（{WINDOWS.find((w) => w.key === WIDER[win])?.label}・{counts[WIDER[win]!]}件）
                       </Button>
                     )}
+                    {/* キャンセル待ち：画面を閉じても、空きが出たらメールで知らせる */}
+                    {waitState.supported && waitTargets.length > 0 && (
+                      <div className={st.waitBox}>
+                        <p className={st.emptySub}>行きたいお店のキャンセル待ちに登録すると、画面を閉じていても、今日空きが出たときにメールでお知らせします。</p>
+                        {waitTargets.map((x) => (
+                          <CancelWaitButton key={x.id} state={waitState} signedIn={!!session} salonId={x.id} salonName={x.name} block />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -811,6 +845,7 @@ export default function UserHome() {
             now={now}
             profileMissing={needsProfile(profile)}
             unavailable={sheetGone ? 'この枠は予約できなくなりました（ほかの方の予約・受付の締切・お店の受付終了など）。' : null}
+            unavailableExtra={<CancelWaitButton state={waitState} signedIn salonId={sheet.salon_id} salonName={sheet.salon_name} block />}
             onChooseOther={() => setSheet(null)}
             onBooked={(id) => router.push(`/booking/${id}?new=1`)}
             onUnavailable={search}

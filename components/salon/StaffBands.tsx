@@ -1,12 +1,14 @@
 'use client';
 
-// 担当ごとの「今日だけ」の予定（9:00〜24:00）。サロンの画面のデザイン案に合わせ、担当を列に、時刻を縦に並べる。
-// 1時間を72pxで描き、30分ごとに細い線を引く。担当の名前（上）と時刻（左）は、スクロールしても残す。
-// 現在時刻の線が動き、締切を過ぎた範囲（今から10分後まで）は斜線。空いているところを押すと、その時刻から枠を出せる。
-// 同じ担当で時間が重なる枠（担当なしの枠など）は、列の中で横に分けて並べる
+// 予定の表（9:00〜24:00）。サロンの画面のデザイン案に合わせ、列（担当・曜日）を横に、時刻を縦に並べる。
+//   StaffBands：今日の予定を、担当ごとの列で（日表示）
+//   WeekBands ：1週間の予定を、曜日ごとの列で（週表示）
+// 1時間を72pxで描き、30分ごとに細い線を引く。列の名前（上）と時刻（左）は、スクロールしても残す。
+// 現在時刻の線が動き、締切を過ぎた範囲（今から10分後まで）は斜線。今日の列の空いているところを押すと、その時刻から枠を出せる。
+// 同じ列で時間が重なる枠（担当なしの枠など）は、列の中で横に分けて並べる
 
-import { useEffect, useRef, type MouseEvent } from 'react';
-import { fmtTime, jstMinuteOfDay } from '@/lib/time';
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
+import { fmtTime, jstDateKey, jstMinuteOfDay } from '@/lib/time';
 import { activeBooking, type SalonSlot, type Stylist } from './useSalonData';
 import { STATE_LABEL, slotState } from './Timeline';
 import { FreshMark, StateIcon, stateClass } from './SlotStateMark';
@@ -37,32 +39,42 @@ function lanesOf(slots: SalonSlot[]) {
   return { placed, lanes: Math.max(1, ends.length) };
 }
 
-export default function StaffBands({
-  slots,
-  stylists,
+type Column = {
+  key: string;
+  // 上の行（担当の印と名前・曜日と日付）
+  head: ReactNode;
+  // 読み上げる列の名前
+  label: string;
+  slots: SalonSlot[];
+  // この列の時刻の経ち方：today（今の時刻の線と斜線）・past（すべて過ぎた）・future（まだ）
+  time: 'today' | 'past' | 'future';
+  // 空いているところを押したとき（今日の列だけ）
+  onEmpty?: (minute: number) => void;
+  highlight?: boolean;
+};
+
+function DayGrid({
+  label,
+  columns,
   now,
   freshIds,
   showNo,
+  compact = false,
   onSelect,
-  onEmpty,
 }: {
-  slots: SalonSlot[];
-  stylists: Stylist[];
+  label: string;
+  columns: Column[];
   now: Date;
   freshIds: string[];
   showNo: boolean;
+  compact?: boolean;
   onSelect: (slot: SalonSlot) => void;
-  onEmpty: (start: Date, stylistId: string | null) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const nowMin = jstMinuteOfDay(now);
-  const cols: { id: string | null; name: string }[] = [
-    ...stylists.filter((s) => s.is_active || slots.some((x) => x.stylist_id === s.id)).map((s) => ({ id: s.id, name: s.name })),
-    { id: null, name: '担当なし' },
-  ];
   const hours = Array.from({ length: (END - START) / 60 + 1 }, (_, i) => START + i * 60);
 
-  // 開いたときは、今の時刻の30分ほど前が上に来るようにする（担当の名前の行は上に残る）
+  // 開いたときは、今の時刻の30分ほど前が上に来るようにする（列の名前の行は上に残る）
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
@@ -71,37 +83,30 @@ export default function StaffBands({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function tapEmpty(e: MouseEvent<HTMLDivElement>, stylistId: string | null) {
+  function tap(e: MouseEvent<HTMLDivElement>, col: Column) {
+    if (!col.onEmpty) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const minute = START + (e.clientY - rect.top) / PX_PER_MIN;
-    const rounded = Math.ceil(minute / 5) * 5;
-    const todayStartMs = now.getTime() - jstMinuteOfDay(now) * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
-    onEmpty(new Date(todayStartMs + rounded * 60_000), stylistId);
+    col.onEmpty(Math.ceil(minute / 5) * 5);
   }
 
   return (
-    <div className={st.scroll} ref={scroller}>
+    <div className={`${st.scroll} ${compact ? st.compact : ''}`} ref={scroller}>
       <div
         className={st.grid}
         role="group"
-        aria-label="担当ごとの今日の予定"
-        style={{ gridTemplateColumns: `var(--day-time-w) repeat(${cols.length}, minmax(var(--day-col-min), 1fr))` }}
+        aria-label={label}
+        style={{ gridTemplateColumns: `var(--day-time-w) repeat(${columns.length}, minmax(var(--day-col-min), 1fr))` }}
       >
-        {/* 上の行：担当の名前（スクロールしても残す） */}
         <span className={st.corner} aria-hidden>
           時間
         </span>
-        {cols.map((c) => (
-          <span key={c.id ?? 'none'} className={st.head} aria-hidden>
-            <span className={`${st.avatar} ${c.id ? '' : st.avatarNone}`}>{c.id ? [...c.name][0] : '－'}</span>
-            <span className={st.who}>
-              <span className={st.name}>{c.name}</span>
-              <span className={st.role}>{c.id ? 'スタイリスト' : '担当を決めない枠'}</span>
-            </span>
+        {columns.map((c) => (
+          <span key={c.key} className={`${st.head} ${c.highlight ? st.headToday : ''}`} aria-hidden>
+            {c.head}
           </span>
         ))}
 
-        {/* 左の列：時刻 */}
         <div className={st.axis} style={{ height: TRACK_H }} aria-hidden>
           {hours.map((m) => (
             <span key={m} className={st.hour} style={{ top: y(m) }}>
@@ -110,20 +115,30 @@ export default function StaffBands({
           ))}
         </div>
 
-        {cols.map((c) => {
-          const { placed, lanes } = lanesOf(slots.filter((s) => (s.stylist_id ?? null) === c.id));
+        {columns.map((c) => {
+          const { placed, lanes } = lanesOf(c.slots);
           return (
-            <div key={c.id ?? 'none'} className={st.col} style={{ height: TRACK_H }} role="group" aria-label={c.name} onClick={(e) => tapEmpty(e, c.id)}>
-              <span className="sr-only">{c.name}：空いている時刻を押すと、その時刻から枠を出せます</span>
-              <span className={st.past} style={{ height: y(nowMin + 10) }} aria-hidden />
-              {nowMin >= START && nowMin <= END && <span className={st.now} style={{ top: y(nowMin) }} aria-hidden />}
+            <div
+              key={c.key}
+              className={`${st.col} ${c.onEmpty ? st.colTap : ''}`}
+              style={{ height: TRACK_H }}
+              role="group"
+              aria-label={c.label}
+              onClick={(e) => tap(e, c)}
+            >
+              {c.onEmpty && <span className="sr-only">{c.label}：空いている時刻を押すと、その時刻から枠を出せます</span>}
+              {c.time !== 'future' && (
+                <span className={st.past} style={{ height: c.time === 'past' ? TRACK_H : y(nowMin + 10) }} aria-hidden />
+              )}
+              {c.time === 'today' && nowMin >= START && nowMin <= END && <span className={st.now} style={{ top: y(nowMin) }} aria-hidden />}
               {placed.map(({ s, a, z, lane }) => {
                 const state = slotState(s);
                 const b = activeBooking(s);
                 const h = Math.max(20, y(z) - y(a) - 3);
                 const who = b ? `${b.contact_name} 様` : STATE_LABEL[state] ?? state;
                 const fresh = !!b && freshIds.includes(b.id);
-                const size = h >= 64 ? 'lg' : h >= 40 ? 'md' : 'sm';
+                // 週表示（列が狭い）は、時刻とアイコンだけ（名前・メニューは読み上げと、ポインタを重ねたときの説明に）
+                const size = compact ? 'sm' : h >= 64 ? 'lg' : h >= 40 ? 'md' : 'sm';
                 return (
                   <button
                     key={s.id}
@@ -139,13 +154,19 @@ export default function StaffBands({
                       e.stopPropagation();
                       onSelect(s);
                     }}
-                    title={`${fmtTime(s.start_at)}〜${fmtTime(s.end_at)} ${s.menu?.name ?? ''} ${who}${b && showNo && b.booking_no !== null ? `（予約番号 ${b.booking_no}）` : ''}`}
+                    title={`${fmtTime(s.start_at)}〜${fmtTime(s.end_at)} ${s.menu?.name ?? ''} ${who}${s.stylist ? ` ・ ${s.stylist.name}` : ''}${b && showNo && b.booking_no !== null ? `（予約番号 ${b.booking_no}）` : ''}`}
                   >
                     <span className={st.blockTop}>
                       <StateIcon state={state} />
-                      <span className={`${st.time} num`}>
-                        {fmtTime(s.start_at)} - {fmtTime(s.end_at)}
-                      </span>
+                      {/* 週表示で時間の重なる枠が横に並ぶと狭いので、アイコンだけにする（時刻は読み上げと説明に） */}
+                      {compact && lanes > 1 ? (
+                        <span className="sr-only">{fmtTime(s.start_at)}</span>
+                      ) : (
+                        <span className={`${st.time} num`}>
+                          {fmtTime(s.start_at)}
+                          {!compact && ` - ${fmtTime(s.end_at)}`}
+                        </span>
+                      )}
                       {fresh && size === 'lg' && <FreshMark />}
                     </span>
                     {size === 'sm' ? (
@@ -174,5 +195,123 @@ export default function StaffBands({
         })}
       </div>
     </div>
+  );
+}
+
+// 担当の印：写真があれば写真、なければ名前の最初の1文字
+export function StylistAvatar({ name, photo, none = false }: { name: string; photo?: string | null; none?: boolean }) {
+  if (photo) {
+    // eslint-disable-next-line @next/next/no-img-element -- 端末で縮めた小さな写真（データの URL）をそのまま出す
+    return <img className={st.avatar} src={photo} alt="" />;
+  }
+  return <span className={`${st.avatar} ${none ? st.avatarNone : ''}`}>{none ? '－' : [...name][0]}</span>;
+}
+
+// 今日の予定（担当ごとの列）
+export default function StaffBands({
+  slots,
+  stylists,
+  now,
+  freshIds,
+  showNo,
+  onSelect,
+  onEmpty,
+}: {
+  slots: SalonSlot[];
+  stylists: Stylist[];
+  now: Date;
+  freshIds: string[];
+  showNo: boolean;
+  onSelect: (slot: SalonSlot) => void;
+  onEmpty: (start: Date, stylistId: string | null) => void;
+}) {
+  const todayStartMs = now.getTime() - jstMinuteOfDay(now) * 60_000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  const rows: { id: string | null; name: string; photo: string | null }[] = [
+    ...stylists
+      .filter((s) => s.is_active || slots.some((x) => x.stylist_id === s.id))
+      .map((s) => ({ id: s.id, name: s.name, photo: s.photo ?? null })),
+    { id: null, name: '担当なし', photo: null },
+  ];
+  return (
+    <DayGrid
+      label="担当ごとの今日の予定"
+      now={now}
+      freshIds={freshIds}
+      showNo={showNo}
+      onSelect={onSelect}
+      columns={rows.map((r) => ({
+        key: r.id ?? 'none',
+        label: r.name,
+        time: 'today',
+        slots: slots.filter((s) => (s.stylist_id ?? null) === r.id),
+        onEmpty: (minute) => onEmpty(new Date(todayStartMs + minute * 60_000), r.id),
+        head: (
+          <>
+            <StylistAvatar name={r.name} photo={r.photo} none={!r.id} />
+            <span className={st.who}>
+              <span className={st.name}>{r.name}</span>
+              <span className={st.role}>{r.id ? 'スタイリスト' : '担当を決めない枠'}</span>
+            </span>
+          </>
+        ),
+      }))}
+    />
+  );
+}
+
+const DOW = ['日', '月', '火', '水', '木', '金', '土'];
+
+// 1週間の予定（曜日ごとの列）。weekStart は月曜日の0時（日本時間）
+export function WeekBands({
+  slots,
+  weekStart,
+  now,
+  freshIds,
+  showNo,
+  onSelect,
+  onEmpty,
+}: {
+  slots: SalonSlot[];
+  weekStart: Date;
+  now: Date;
+  freshIds: string[];
+  showNo: boolean;
+  onSelect: (slot: SalonSlot) => void;
+  onEmpty: (start: Date) => void;
+}) {
+  const today = jstDateKey(now);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(weekStart.getTime() + i * 86_400_000));
+  return (
+    <DayGrid
+      label="1週間の予定"
+      now={now}
+      freshIds={freshIds}
+      showNo={showNo}
+      compact
+      onSelect={onSelect}
+      columns={days.map((d) => {
+        const key = jstDateKey(d);
+        const time = key === today ? 'today' : key < today ? 'past' : 'future';
+        const jst = new Date(d.getTime() + 9 * 3_600_000);
+        return {
+          key,
+          label: `${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日（${DOW[jst.getUTCDay()]}）`,
+          time,
+          highlight: time === 'today',
+          slots: slots.filter((s) => jstDateKey(new Date(s.start_at)) === key),
+          // 枠を出せるのは今日だけ（当日の空きを届けるサービスのため）
+          onEmpty: time === 'today' ? (minute: number) => onEmpty(new Date(d.getTime() + minute * 60_000)) : undefined,
+          head: (
+            <span className={st.day}>
+              <span className={`${st.dow} ${jst.getUTCDay() === 0 ? st.sun : jst.getUTCDay() === 6 ? st.sat : ''}`}>{DOW[jst.getUTCDay()]}</span>
+              <span className={`${st.date} num`}>
+                {jst.getUTCMonth() + 1}/{jst.getUTCDate()}
+              </span>
+              {time === 'today' && <span className={st.todayMark}>今日</span>}
+            </span>
+          ),
+        };
+      })}
+    />
   );
 }
