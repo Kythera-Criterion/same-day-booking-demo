@@ -64,6 +64,12 @@ h4 {
   letter-spacing: 0.01em;
 }
 
+/* 画面と章の見出しの字（お客様の画面だけ明朝。tokens.css の --font-heading） */
+h1,
+h2 {
+  font-family: var(--font-heading);
+}
+
 ul,
 ol {
   margin: 0;

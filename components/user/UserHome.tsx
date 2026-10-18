@@ -19,6 +19,7 @@ import {
   ArrowRight,
   BellRinging,
   CalendarCheck,
+  CaretRight,
   Clock,
   Crosshair,
   Info,
@@ -363,6 +364,8 @@ export default function UserHome() {
         <>
           {step === 'start' && (
             <section className={st.hero}>
+              {/* 飾り：窓から光の入る店内の写真（人物なし）を、見出しの後ろに淡く敷く */}
+              <div className={st.heroArt} aria-hidden="true" />
               <p className={st.kicker}>
                 <Lightning size={20} weight="duotone" aria-hidden focusable="false" />
                 今日だけ・今から行ける空き枠
@@ -435,6 +438,7 @@ export default function UserHome() {
                             {fmtTime(sh.first)}から・{sh.count}枠
                           </span>
                           <span className="sr-only">（今日の候補を見る）</span>
+                          <CaretRight size={20} className={st.shopGo} aria-hidden focusable="false" />
                         </button>
                       </li>
                     ))}

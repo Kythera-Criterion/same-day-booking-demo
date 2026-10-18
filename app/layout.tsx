@@ -2,7 +2,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { M_PLUS_2, Manrope } from 'next/font/google';
+import { M_PLUS_2, Manrope, Shippori_Mincho } from 'next/font/google';
 import NetworkBanner from '@/components/NetworkBanner';
 import UsageTracker from '@/components/UsageTracker';
 
@@ -13,6 +13,15 @@ const mplus = M_PLUS_2({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-jp',
+});
+
+// 見出し：Shippori Mincho（お客様の画面の見出しだけ。温かく落ち着いた明朝。SIL Open Font License）
+const mincho = Shippori_Mincho({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-mincho',
 });
 
 const manrope = Manrope({
@@ -44,7 +53,7 @@ const SKY_SCRIPT = `(function(){function s(){var h=new Date(Date.now()+324e5).ge
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // data-sky は描画の前にスクリプトが付けるので、その差は読み込み時の不一致として扱わない
-    <html lang="ja" className={`${mplus.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang="ja" className={`${mplus.variable} ${mincho.variable} ${manrope.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: SKY_SCRIPT }} />
       </head>

@@ -37,8 +37,20 @@
 }
 
 .tab[aria-current="page"] {
+  position: relative;
   color: var(--color-action-text);
   font-weight: var(--weight-bold);
+}
+
+/* 選んでいるタブの印（デザイン案の下線）。色だけでなく、アイコンの塗りと太字でも分かる */
+.tab[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  inset-block-end: var(--space-1);
+  inline-size: var(--space-12);
+  block-size: 2px;
+  border-radius: 2px;
+  background: var(--color-action);
 }
 
 .dot {

@@ -1,11 +1,30 @@
 /* お客様のホーム：はじめの画面（今の空きの数・探すボタン・話しかけて探す・お店の写真）→ 時間帯 → 候補 */
 
-/* ---------- はじめの画面 ---------- */
+/* ---------- はじめの画面 ----------
+   デザイン案に寄せて：明朝の大きな見出しの後ろに、光の入る店内の写真を淡く敷き、数・探すボタン・お店をやわらかいカードで重ねる */
 .hero {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-block: var(--space-4) var(--space-2);
+  padding-block: var(--space-6) var(--space-2);
+}
+
+/* 見出しの後ろの写真：右側だけに置き、左端と下端を地の色へ溶かす。文字がのる部分は地の色に近いので、読みやすさは変わらない */
+.heroArt {
+  position: absolute;
+  z-index: -1;
+  inset-block-start: calc(-1 * var(--space-4));
+  inset-inline-start: 38%;
+  inset-inline-end: calc(-1 * var(--pad-page));
+  block-size: calc(var(--space-16) * 4);
+  background: url("/images/salons/aoi-main-wide.webp") 70% center / cover;
+  opacity: 0.45;
+  /* マスクは不透明な色なら何でもよい（形だけに使う） */
+  mask-image: linear-gradient(90deg, transparent, var(--color-ink) 50%, var(--color-ink) 80%, transparent), linear-gradient(0deg, transparent, var(--color-ink) 45%);
+  mask-composite: intersect;
+  pointer-events: none;
 }
 
 .kicker {
@@ -19,10 +38,10 @@
 }
 
 .headline {
-  font-size: var(--text-heading);
+  font-size: var(--text-display-serif);
   font-weight: var(--weight-bold);
-  line-height: var(--leading-tight);
-  letter-spacing: 0.02em;
+  line-height: var(--leading-snug);
+  letter-spacing: 0.04em;
 }
 
 .headline span {
@@ -35,11 +54,15 @@
   grid-template-columns: auto 1fr;
   align-items: end;
   gap: var(--space-1) var(--space-3);
-  padding-block: var(--space-4);
-  border-block: 1px solid var(--color-line);
+  margin-block-start: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
 .liveNum {
+  color: var(--color-action-text);
   font-family: var(--font-num);
   font-size: var(--text-display);
   font-weight: var(--weight-heavy);
@@ -102,54 +125,77 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: var(--weight-bold);
 }
 
+/* お店：写真を左に、名前と最初の時刻を右に置いた横長のカードを縦に並べる */
 .shopRow {
   display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  overflow-x: auto;
-  margin-inline: calc(-1 * var(--pad-page));
-  padding-inline: var(--pad-page);
-  padding-block-end: var(--space-1);
-  scroll-snap-type: x mandatory;
   list-style: none;
 }
 
-.shopRow > li {
-  flex: 0 0 var(--size-tile);
-  scroll-snap-align: start;
-}
-
 .shop {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: var(--size-tile) 1fr auto;
+  grid-template-rows: 1fr auto auto 1fr;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
   inline-size: 100%;
-  padding: 0;
+  padding: var(--space-2);
   border: 0;
-  background: none;
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   color: var(--color-ink);
   text-align: start;
+  transition:
+    transform var(--motion-short) var(--ease-out),
+    box-shadow var(--motion-short) var(--ease-out);
+}
+
+.shop:hover {
+  transform: translateY(-2px);
+}
+
+.shop > :first-child {
+  grid-row: 1 / -1;
+  border-radius: var(--radius-photo);
+}
+
+.shopGo {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  color: var(--color-ink-sub);
 }
 
 .shopName {
+  grid-column: 2;
+  grid-row: 2;
   overflow: hidden;
-  font-size: var(--text-small);
+  font-size: var(--text-body);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* 最初の時刻：淡い素焼きの色の丸い札（デザイン案の「本日の空き枠」の札） */
 .shopTime {
+  grid-column: 2;
+  grid-row: 3;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  color: var(--color-ink-2);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-medium);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
 }
 
 /* ---------- 時間帯を選ぶ ---------- */
@@ -171,6 +217,7 @@
   border: 0;
   border-radius: var(--radius-surface);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   color: var(--color-ink);
   text-align: start;
   transition: background-color var(--motion-short) var(--ease-out);
@@ -186,8 +233,8 @@
   inline-size: var(--space-10);
   block-size: var(--space-10);
   border-radius: var(--radius-control);
-  background: var(--color-surface-sunken);
-  color: var(--color-ink);
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
 }
 
 .windowText {
@@ -276,7 +323,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-block: var(--space-8) var(--space-3);
-  font-size: var(--text-body);
+  font-size: var(--text-title);
   font-weight: var(--weight-bold);
 }
 
@@ -287,6 +334,7 @@
   padding: var(--space-6) var(--space-4);
   border-radius: var(--radius-surface);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
