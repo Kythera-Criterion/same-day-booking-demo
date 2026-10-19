@@ -1,0 +1,275 @@
+/* 運営の概要（デザイン案）：数字4つ／予約数の推移・人気のメニューの種類・要対応／最近の運営の動き・システム状況 */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- 今の数字 ---------- */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 1280px) {
+  .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.tileIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-12);
+  block-size: var(--space-12);
+  border-radius: 50%;
+  background: var(--color-action-soft);
+  color: var(--color-action);
+}
+
+.tileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.tileLabel {
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.tileValue {
+  font-size: var(--text-heading);
+  font-weight: var(--weight-heavy);
+  line-height: 1.2;
+}
+
+.tileValue small {
+  margin-inline-start: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+  font-weight: var(--weight-bold);
+}
+
+.tileSub {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.up {
+  color: var(--color-success-text);
+  font-weight: var(--weight-bold);
+}
+
+.down {
+  color: var(--color-danger-text);
+  font-weight: var(--weight-bold);
+}
+
+/* ---------- 2段目・3段目 ---------- */
+.row,
+.row2 {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .row .trend {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1280px) {
+  .row {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .row .trend {
+    grid-column: auto;
+  }
+
+  .row2 {
+    grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr);
+  }
+}
+
+.none {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-block-size: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  font-weight: var(--weight-medium);
+}
+
+.more:hover {
+  color: var(--color-ink);
+}
+
+/* 人気のメニューの種類：名前・帯・割合（値は文字のインク。帯は役割の色） */
+.catList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: var(--space-2);
+  list-style: none;
+}
+
+.catList li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+}
+
+.catName {
+  grid-column: 1 / -1;
+  font-size: var(--text-small);
+}
+
+.catTrack {
+  block-size: var(--space-2);
+  border-radius: var(--space-1);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+}
+
+.catBar {
+  display: block;
+  block-size: 100%;
+  border-radius: var(--space-1);
+  background: var(--color-action);
+}
+
+.catValue {
+  min-inline-size: var(--space-10);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+  text-align: end;
+}
+
+/* 要対応 */
+.todoList {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.todoList li + li {
+  border-block-start: 1px solid var(--color-line);
+}
+
+.todoItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  padding: var(--space-3) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--color-ink);
+  text-align: start;
+}
+
+.todoItem:hover {
+  background: var(--color-surface-sunken);
+}
+
+.todoIcon {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-10);
+  border-radius: 50%;
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+.todoBody {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  font-size: var(--text-small);
+}
+
+.todoBody span {
+  overflow: hidden;
+  color: var(--color-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todoBody small {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+/* 最近の運営の動き */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--color-line);
+  white-space: nowrap;
+}
+
+/* 内容の列は折り返す。狭い画面では1文字ずつにならないよう幅を確保し、表を横にスクロールさせる */
+.table td:nth-child(3) {
+  min-inline-size: calc(var(--space-16) * 2.5);
+  white-space: normal;
+}
+
+.system {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

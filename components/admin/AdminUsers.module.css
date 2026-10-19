@@ -1,0 +1,12 @@
+/* 運営の「ユーザー」：絞り込みの欄と件数 */
+
+.search {
+  max-inline-size: calc(var(--width-sidebar) * 1.6);
+  margin-block: var(--space-3);
+}
+
+.count {
+  margin-block-end: var(--space-2);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}

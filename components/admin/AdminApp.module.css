@@ -195,3 +195,94 @@
 .choice > :first-child {
   padding-inline: var(--space-6);
 }
+
+/* ---------- 運営の画面のデザイン案に合わせた骨組み ---------- */
+/* 画面の幅：運営の画面は大きな画面で広く使う */
+main.dashboard {
+  max-inline-size: var(--width-dashboard);
+}
+
+.shell {
+  display: block;
+}
+
+.main {
+  min-inline-size: 0;
+}
+
+/* 上の道具：検索とお知らせのベル */
+.tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* 見出し：画面の名前と説明・今日の日付 */
+.pageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-block: var(--space-5) var(--space-4);
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-label);
+}
+
+.pageLead {
+  margin-block-start: var(--space-1);
+  color: var(--color-ink-2);
+  font-size: var(--text-small);
+}
+
+.pageDate {
+  color: var(--color-ink-2);
+  font-size: var(--text-body);
+}
+
+/* 広い画面：左にメニューを縦に並べる（狭い画面は、これまでどおり上に横に並べる） */
+@media (min-width: 960px) {
+  .shell {
+    display: grid;
+    grid-template-columns: var(--width-sidebar) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+
+  .tools {
+    margin-block-start: var(--space-4);
+  }
+
+  .tabs {
+    position: sticky;
+    inset-block-start: calc(var(--space-16) + var(--space-4));
+    flex-direction: column;
+    gap: var(--space-1);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    backdrop-filter: none;
+  }
+
+  .tab {
+    min-block-size: var(--size-control);
+    padding-inline: var(--space-4);
+    border-radius: var(--radius-control);
+    font-size: var(--text-body);
+  }
+
+  .tab[aria-current="page"] {
+    box-shadow: none;
+    background: var(--color-action-soft);
+    color: var(--color-action-text);
+  }
+}

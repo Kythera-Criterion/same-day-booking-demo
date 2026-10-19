@@ -323,16 +323,20 @@
   --color-bg: var(--ivory-100);
   --page-wash: linear-gradient(180deg, var(--ivory-50), var(--ivory-100));
 }
+/* 運営：運営の画面のデザイン案に合わせ、お客様・サロンと同じ生成りの地と珊瑚の操作。役割は上部の帯の「運営」の印とアイコンで見分ける。
+   数字とグラフを読む画面なので、背景は無地に近く、面は白で区切る */
 :root:has(header[data-role="admin"]) {
-  --color-action: var(--violet-600);
-  --color-action-hover: var(--violet-700);
-  --color-action-soft: var(--violet-50);
-  --color-action-line: var(--violet-100);
-  --color-action-text: var(--violet-700);
-  --color-focus: var(--violet-700);
-  --color-bg: #f6f4f9;
-  /* 数字とグラフを読む画面：無地（グラフの色と混ざらない）。上の端だけ紫をごく淡く */
-  --page-wash: linear-gradient(180deg, var(--violet-50), var(--color-bg) 40%);
+  --color-alert-bg: var(--coral-900);
+  --color-action: var(--coral-600);
+  --color-action-hover: var(--coral-700);
+  --color-action-soft: var(--coral-50);
+  --color-action-line: var(--coral-200);
+  --color-action-text: var(--coral-700);
+  --color-focus: var(--coral-700);
+  --color-chip: var(--coral-100);
+  --color-chip-ink: var(--coral-700);
+  --color-bg: var(--ivory-100);
+  --page-wash: linear-gradient(180deg, var(--ivory-50), var(--ivory-100));
 }
 
 /* 時刻の空：朝（5〜11時）・昼（11〜16時）・夕方（16〜19時）・夜（19〜5時）。data-sky がないとき（スクリプトが動かない環境）は昼 */

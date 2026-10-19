@@ -1,0 +1,96 @@
+/* 運営の「問い合わせ」：一覧（送った人の印・受付番号と件名・種類と日時・状態）と、中身のシート */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: var(--space-3);
+  list-style: none;
+}
+
+.list li + li {
+  border-block-start: 1px solid var(--color-line);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  padding: var(--space-3) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--color-ink);
+  text-align: start;
+}
+
+.item:hover {
+  background: var(--color-surface-sunken);
+}
+
+.from {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-10);
+  block-size: var(--space-10);
+  border-radius: 50%;
+  background: var(--color-action-soft);
+  color: var(--color-action-text);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  font-size: var(--text-small);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.no {
+  color: var(--color-ink-sub);
+}
+
+.body small {
+  color: var(--color-ink-sub);
+  font-size: var(--text-caption);
+}
+
+.meta {
+  display: grid;
+  gap: var(--space-1);
+  margin-block: var(--space-2) var(--space-3);
+  font-size: var(--text-small);
+}
+
+.meta div {
+  display: grid;
+  grid-template-columns: var(--space-16) 1fr;
+  gap: var(--space-2);
+}
+
+.meta dt {
+  color: var(--color-ink-sub);
+}
+
+.meta dd {
+  margin: 0;
+}
+
+.text {
+  margin-block-end: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  white-space: pre-wrap;
+}
+
+.statusRow {
+  margin-block-end: var(--space-3);
+}

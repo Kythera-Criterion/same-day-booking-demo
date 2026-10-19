@@ -4,6 +4,7 @@
 //   primary（予約）＝役割の色で塗る ／ secondary（公開した枠）＝沈んだ面とインクの線（時間の色は受付締切のために残す）
 //   塗りと線の違いでも見分けられるようにし、凡例（文字つき）・ツールチップ・数値の表を添える（色だけに頼らない）
 // 細い棒・4px の角丸・棒どうしの 2px の隙間・控えめな目盛り。実際の幅で描き、目盛りの文字が縮まないようにする
+// 折れ線を重ねるとき（予約数の推移の「掲載中の店舗数」）は、同じ1本の目盛りで描く（目盛りを2本にしない）。線はインクの 2px、点は 8px で面の色の輪
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Empty } from '@/components/States';
@@ -41,17 +42,17 @@ function useWidth(fallback: number) {
   return [ref, width] as const;
 }
 
-function Swatch({ tone }: { tone: SeriesTone }) {
-  return <i className={`${s.swatch} ${SWATCH[tone]}`} aria-hidden />;
+function Swatch({ tone, line = false }: { tone: SeriesTone; line?: boolean }) {
+  return <i className={line ? s.swatchLine : `${s.swatch} ${SWATCH[tone]}`} aria-hidden />;
 }
 
-function Legend({ series }: { series: Series[] }) {
+function Legend({ series, lineKey }: { series: Series[]; lineKey?: string }) {
   if (series.length < 2) return null;
   return (
     <ul className={s.legend} aria-label="凡例">
       {series.map((x) => (
         <li key={x.key}>
-          <Swatch tone={x.tone} />
+          <Swatch tone={x.tone} line={x.key === lineKey} />
           {x.name}
         </li>
       ))}
@@ -104,6 +105,7 @@ export function ColumnChart({
   labelHeader,
   height = 200,
   footnote,
+  line,
 }: {
   title: string;
   rows: Row[];
@@ -111,10 +113,13 @@ export function ColumnChart({
   labelHeader: string;
   height?: number;
   footnote?: ReactNode;
+  // 棒に重ねる折れ線（1系列。同じ目盛りで描く）
+  line?: Series;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [wrapRef, W] = useWidth(640);
-  const max = niceMax(Math.max(1, ...rows.flatMap((r) => series.map((x) => r.values[x.key] ?? 0))));
+  const all = line ? [...series, line] : series;
+  const max = niceMax(Math.max(1, ...rows.flatMap((r) => all.map((x) => r.values[x.key] ?? 0))));
   const H = height;
   const padL = 36;
   const padR = 4;
@@ -136,7 +141,7 @@ export function ColumnChart({
         <ChartBar size={20} aria-hidden focusable="false" />
         {title}
       </figcaption>
-      <Legend series={series} />
+      <Legend series={all} lineKey={line?.key} />
       <div className={s.plot} ref={wrapRef} onMouseLeave={() => setHover(null)}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} className={s.svg}>
           {ticks.map((t) => {
@@ -187,13 +192,30 @@ export function ColumnChart({
             );
           })}
           <line x1={padL} x2={W - padR} y1={base} y2={base} className={s.baseline} />
+          {line && rows.length > 0 && (
+            <g pointerEvents="none">
+              <polyline
+                className={s.lineMark}
+                points={rows.map((r, i) => `${padL + i * band + band / 2},${base - ((r.values[line.key] ?? 0) / max) * plotH}`).join(' ')}
+              />
+              {rows.map((r, i) => (
+                <circle
+                  key={r.label}
+                  className={s.lineDot}
+                  cx={padL + i * band + band / 2}
+                  cy={base - ((r.values[line.key] ?? 0) / max) * plotH}
+                  r={hover === i ? 5 : 4}
+                />
+              ))}
+            </g>
+          )}
         </svg>
         {hover !== null && rows[hover] && (
           <div className={s.tip} style={{ left: tipLeft }}>
             <strong>{rows[hover].label}</strong>
-            {series.map((x) => (
+            {all.map((x) => (
               <span key={x.key}>
-                <Swatch tone={x.tone} />
+                <Swatch tone={x.tone} line={x.key === line?.key} />
                 {x.name} <b className="num">{rows[hover].values[x.key] ?? 0}</b>
               </span>
             ))}
@@ -201,7 +223,7 @@ export function ColumnChart({
         )}
       </div>
       {footnote && <p className={s.note}>{footnote}</p>}
-      <DataTable rows={rows} series={series} labelHeader={labelHeader} />
+      <DataTable rows={rows} series={all} labelHeader={labelHeader} />
     </figure>
   );
 }

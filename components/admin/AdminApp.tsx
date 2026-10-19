@@ -1,6 +1,7 @@
 'use client';
 
-// 運営の画面：実証の数字・掲載希望・全サロンの今日・サロン・通知と操作の記録・終了処理の試し実行
+// 運営の画面：概要・サロン・掲載希望・ユーザー・今日の状況・問い合わせ・システム状況・実証の数字・通知と操作の記録・運営メンバー・終了処理
+// 見た目は運営の画面のデザイン案に合わせる：広い画面（960px〜）は左にメニュー、上に検索とお知らせのベル、中央に各画面
 // 運営への知らせ：
 //   ・新しい掲載希望：届いたらその場で知らせ、見ていない間に届いたものはログインした最初の画面で知らせる
 //   ・新しく加わったサロン：承認したお店が初期設定を終えてサロンの画面で使い始めたら、同じように知らせる
@@ -19,9 +20,15 @@ import { logout } from '@/lib/logout';
 import type { Providers } from '@/lib/oauth-shared';
 import Button from '@/components/ui/Button';
 import { Fine, Page } from '@/components/ui/Layout';
-import { SectionHead, SubText } from '@/components/ui/Surface';
+import { Panel, SectionHead, SubText } from '@/components/ui/Surface';
 import Toast from '@/components/ui/Toast';
-import { Bell, CalendarCheck, ChartBar, ClipboardText, Flag, SignOut, Sparkle, Storefront, UsersThree } from '@/components/ui/icons';
+import { Bell, CalendarCheck, ChartBar, ChatCircle, ClipboardText, Flag, House, ShieldCheck, SignOut, Sparkle, Storefront, Users, UsersThree } from '@/components/ui/icons';
+import AdminBell from './AdminBell';
+import AdminHome, { type AdminTab } from './AdminHome';
+import AdminInquiries from './AdminInquiries';
+import AdminSearch from './AdminSearch';
+import AdminUsers from './AdminUsers';
+import SystemStatus from './SystemStatus';
 import Applications from './Applications';
 import Dashboard from './Dashboard';
 import Logs from './Logs';
@@ -31,22 +38,31 @@ import Salons from './Salons';
 import TrialEnd from './TrialEnd';
 import s from './AdminApp.module.css';
 
+// 左のメニュー（デザイン案の順）。見出しと説明は、各画面の上に出す
 const TABS = [
-  { key: 'dashboard', label: '実証の数字' },
-  { key: 'overview', label: '今日の状況' },
-  { key: 'salons', label: 'サロン' },
-  { key: 'applications', label: '掲載希望' },
-  { key: 'logs', label: '通知・記録' },
-  { key: 'members', label: '運営メンバー' },
-  { key: 'trial', label: '終了処理' },
+  { key: 'home', label: '概要', title: '運営の概要', lead: '運営の状況のまとめを確かめられます。' },
+  { key: 'salons', label: 'サロン', title: 'サロン', lead: '掲載しているお店の一覧と、掲載の停止・再開・削除。' },
+  { key: 'applications', label: '掲載希望', title: '掲載希望', lead: '新しいお店からの掲載の申し込みを、承認するか見送ります。' },
+  { key: 'users', label: 'ユーザー', title: 'ユーザー', lead: 'お客様のアカウントの一覧です。' },
+  { key: 'overview', label: '今日の状況', title: '今日の状況', lead: '全サロンの今日の枠と予約、予約停止中の電話番号。' },
+  { key: 'inquiries', label: '問い合わせ', title: '問い合わせ', lead: 'お客様・サロンからの問い合わせに対応します。' },
+  { key: 'system', label: 'システム状況', title: 'システム状況', lead: 'サーバー・データベース・通知の送信・外部の連携を、その場で確かめます。' },
+  { key: 'dashboard', label: '実証の数字', title: '実証の数字', lead: '期間を選んで、公開・予約・来店の数字と内訳を確かめます。' },
+  { key: 'logs', label: '通知・記録', title: '通知・記録', lead: '送った通知と、操作の記録（監査ログ）。' },
+  { key: 'members', label: '運営メンバー', title: '運営メンバー', lead: '運営のアカウントの招待と一覧。' },
+  { key: 'trial', label: '終了処理', title: '終了処理', lead: '実証の終了のときに消すデータの、試し実行。' },
 ] as const;
-type TabKey = (typeof TABS)[number]['key'];
+type TabKey = AdminTab;
 // タブのアイコン（ふだんは regular、開いているタブは fill）
 const TAB_ICON: Record<TabKey, PhosphorIcon> = {
+  home: House,
   dashboard: ChartBar,
   overview: CalendarCheck,
   salons: Storefront,
   applications: ClipboardText,
+  users: Users,
+  inquiries: ChatCircle,
+  system: ShieldCheck,
   logs: Bell,
   members: UsersThree,
   trial: Flag,
@@ -55,6 +71,7 @@ type Pending = { id: string; salon_name: string; area_text: string; created_at: 
 type Joined = { id: number; salon_id: string | null; salon_name: string; at: string };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const longDate = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
 // この端末で、最後に掲載希望の一覧を開いた日時（運営ごと）
 function seenKey(uid: string) {
@@ -111,7 +128,7 @@ export default function AdminApp({
 }) {
   const { client, session, ready, signedOut } = useRoleSession('admin');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? (initialTab as TabKey) : 'dashboard');
+  const [tab, setTab] = useState<TabKey>(TABS.some((t) => t.key === initialTab) ? (initialTab as TabKey) : 'home');
   const [pending, setPending] = useState<Pending[]>([]);
   // ログインした最初の画面で知らせる、見ていない間に届いた掲載希望と、新しく加わったサロン
   const [unseen, setUnseen] = useState<{ apps: Pending[]; joined: Joined[] } | null>(null);
@@ -127,7 +144,7 @@ export default function AdminApp({
   // 開いている間にログアウトした（別のタブ・ログインの期限切れ）ときは、前の運営の画面の状態を残さない
   useEffect(() => {
     if (!signedOut || session) return;
-    setTab('dashboard');
+    setTab('home');
     setPending([]);
     setUnseen(null);
     setToast(null);
@@ -226,11 +243,19 @@ export default function AdminApp({
     }
   }
 
+  // 左のメニュー・概要・検索・ベルから画面を切り替える（掲載希望とサロンは、見たことを覚える）
+  function openTab(key: TabKey) {
+    if (key === 'applications') openApplications();
+    else if (key === 'salons') openSalons();
+    else setTab(key);
+    window.scrollTo({ top: 0 });
+  }
+
   if (!client) return <NotConfigured />;
 
   return (
     // ログインの画面は、利用者の画面と同じスマートフォンの幅にそろえる（運営の画面だけ広く使う）
-    <Page width={!session || isAdmin === false ? 'phone' : 'wide'}>
+    <Page width={!session || isAdmin === false ? 'phone' : 'wide'} className={session && isAdmin ? s.dashboard : undefined}>
       <AppHeader role="運営" home="/admin">
         {session && (
           <button onClick={() => logout('admin')}>
@@ -276,16 +301,8 @@ export default function AdminApp({
       )}
 
       {session && isAdmin && (
-        <>
-          {pending.length > 0 && tab !== 'applications' && (
-            <button className={s.pendingBar} onClick={openApplications}>
-              <ClipboardText size={24} weight="duotone" aria-hidden focusable="false" />
-              <span className={s.pendingText}>
-                承認を待っている掲載希望が <span className={`num ${s.pendingCount}`}>{pending.length}件</span> あります
-              </span>
-              <span className={s.pendingGo}>承認の画面へ →</span>
-            </button>
-          )}
+        <div className={s.shell}>
+          {/* 左のメニュー（狭い画面では、上に横に並べる） */}
           <nav className={s.tabs} aria-label="運営のメニュー" data-admin-tabs="">
             {TABS.map((t) => {
               const current = tab === t.key;
@@ -295,7 +312,7 @@ export default function AdminApp({
                   key={t.key}
                   className={s.tab}
                   aria-current={current ? 'page' : undefined}
-                  onClick={() => (t.key === 'applications' ? openApplications() : t.key === 'salons' ? openSalons() : setTab(t.key))}
+                  onClick={() => openTab(t.key)}
                 >
                   <Glyph size={20} weight={current ? 'fill' : 'regular'} aria-hidden focusable="false" />
                   {t.label}
@@ -313,7 +330,38 @@ export default function AdminApp({
               );
             })}
           </nav>
+
+          <div className={s.main}>
+          {/* 上の道具：検索とお知らせのベル */}
+          <div className={s.tools}>
+            <AdminSearch client={client} onOpen={openTab} />
+            <AdminBell client={client} pending={pending} joined={joined} onOpen={openTab} />
+          </div>
+          <div className={s.pageHead}>
+            <div>
+              <h1 className={s.pageTitle}>{TABS.find((t) => t.key === tab)?.title}</h1>
+              <p className={s.pageLead}>{TABS.find((t) => t.key === tab)?.lead}</p>
+            </div>
+            <p className={`${s.pageDate} num`}>{longDate.format(new Date())}</p>
+          </div>
+          {pending.length > 0 && tab !== 'applications' && (
+            <button className={s.pendingBar} onClick={openApplications}>
+              <ClipboardText size={24} weight="duotone" aria-hidden focusable="false" />
+              <span className={s.pendingText}>
+                承認を待っている掲載希望が <span className={`num ${s.pendingCount}`}>{pending.length}件</span> あります
+              </span>
+              <span className={s.pendingGo}>承認の画面へ →</span>
+            </button>
+          )}
           <div className={s.body}>
+            {tab === 'home' && <AdminHome client={client} onOpen={openTab} />}
+            {tab === 'users' && <AdminUsers client={client} />}
+            {tab === 'inquiries' && <AdminInquiries client={client} />}
+            {tab === 'system' && (
+              <Panel>
+                <SystemStatus client={client} />
+              </Panel>
+            )}
             {tab === 'dashboard' && <Dashboard client={client} demoMode={demoMode} />}
             {tab === 'overview' && <Overview client={client} />}
             {tab === 'salons' && <Salons client={client} fresh={freshSalons} />}
@@ -321,6 +369,7 @@ export default function AdminApp({
             {tab === 'logs' && <Logs client={client} />}
             {tab === 'members' && <Members client={client} providers={providers} linked={linked} authError={authError} />}
             {tab === 'trial' && <TrialEnd client={client} />}
+          </div>
           </div>
 
           {unseen && (
@@ -419,7 +468,7 @@ export default function AdminApp({
               </Toast>
             </div>
           )}
-        </>
+        </div>
       )}
     </Page>
   );

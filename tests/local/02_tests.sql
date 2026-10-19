@@ -1340,4 +1340,36 @@ select public.demo_reset(false);
 select t.ok('T57 デモのリセットで、削除したデモ用の美容師が戻る',
   (select count(*) from public.stylists where id = 'a2222222-2222-4222-8222-222222222222') = 1);
 
+-- ---------------------------------------------------------
+-- T58 ユーザーの一覧・問い合わせ（0022）
+-- ---------------------------------------------------------
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001';
+select t.raises('T58 運営でない人は、ユーザーの一覧を読めない', $$select * from public.admin_list_users()$$, 'forbidden');
+select t.ok('T58 お客様は、問い合わせを送れる（受付番号つき）',
+  (public.submit_inquiry('user', null, 'booking', '予約について', '時間を変えたいです', '12')).no >= 1001);
+select t.raises('T58 お店のスタッフでなければ、お店として問い合わせを送れない',
+  $$select public.submit_inquiry('salon', '11111111-1111-4111-8111-111111111111', 'listing', '掲載', '本文')$$, 'forbidden');
+select t.ok('T58 送った本人は、自分の問い合わせを読める', (select count(*) from public.inquiries where subject = '予約について') = 1);
+select t.raises('T58 運営でない人は、問い合わせの状態を変えられない',
+  $$select public.admin_update_inquiry((select id from public.inquiries limit 1), 'resolved')$$, 'forbidden');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-000000000002';
+select t.ok('T58 ほかのお客様には、人の問い合わせが見えない', (select count(*) from public.inquiries) = 0);
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000a1';
+select t.ok('T58 お店のスタッフは、お店として問い合わせを送れる',
+  (public.submit_inquiry('salon', '11111111-1111-4111-8111-111111111111', 'listing', '掲載の写真について', '差し替えたいです')).from_role = 'salon');
+commit;
+begin; set local role authenticated; set local request.jwt.claim.sub = '00000000-0000-4000-8000-0000000000ad';
+select t.ok('T58 運営は、ユーザーの一覧を読める（メールアドレスは一部を伏せる）',
+  (select count(*) from public.admin_list_users() where email_masked like 'u***@%') >= 1);
+select t.ok('T58 ユーザーの一覧に、サロンのスタッフは入らない',
+  (select count(*) from public.admin_list_users() where id = '00000000-0000-4000-8000-0000000000a1') = 0);
+select t.ok('T58 運営は、すべての問い合わせを読める', (select count(*) from public.inquiries) >= 2);
+select t.ok('T58 運営は、問い合わせを解決済みにしてメモを残せる',
+  (public.admin_update_inquiry((select id from public.inquiries where subject = '予約について'), 'resolved', '電話で対応')).resolved_at is not null);
+commit;
+select t.ok('T58 問い合わせの状態を変えると、操作の記録に残る',
+  (select count(*) from public.audit_logs where action = 'update_inquiry') >= 1);
+
 -- 結果の一覧は run.sh が出す

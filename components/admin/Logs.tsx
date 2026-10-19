@@ -16,7 +16,7 @@ import s from './Logs.module.css';
 
 type Audit = { id: number; actor: string | null; action: string; target_id: string | null; at: string };
 
-const ACTION_LABEL: Record<string, string> = {
+export const ACTION_LABEL: Record<string, string> = {
   create_slot: '枠を公開',
   close_slot: '枠を取り下げ',
   booking_complete: '来店済みにした',
@@ -42,6 +42,7 @@ const ACTION_LABEL: Record<string, string> = {
   resend_approved_mail: '掲載開始のお知らせを再送',
   usage_delete: '利用の記録を選んで削除',
   usage_delete_all: '利用の記録をすべて削除',
+  update_inquiry: '問い合わせの状態を変更',
 };
 
 const dt = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });

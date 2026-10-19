@@ -21,6 +21,7 @@ import { AGE_GROUPS, CONVERSATION_PREFS, GENDERS, OCCUPATIONS } from '@/lib/prof
 import { fmtDate, fmtTime } from '@/lib/time';
 import type { Providers } from '@/lib/oauth-shared';
 import AccountSettings from './AccountSettings';
+import InquiryForm from '@/components/InquiryForm';
 import TabBar from './TabBar';
 import { needsProfile, useUserState, type MyProfile } from './useUserState';
 import s from './MyPage.module.css';
@@ -249,6 +250,9 @@ export default function MyPage({ providers, linked, authError }: { providers: Pr
               </section>
             </>
           )}
+
+          {/* 運営へのお問い合わせ（0022 を流していないデータベースでは出ない） */}
+          {session && <InquiryForm client={client} role="user" userId={session.user.id} />}
 
           <AccountSettings
             client={client}

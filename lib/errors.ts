@@ -23,6 +23,8 @@ const MESSAGES: Record<string, string> = {
   menu_not_found: 'メニューが見つかりません。',
   stylist_not_found: '担当の美容師が見つかりません。',
   stylist_has_slots: '今日、この美容師の公開中の枠か、まだ来店していない予約があります。枠を取り下げるか担当を変えてから、削除してください。',
+  too_many_inquiries: '問い合わせは1日10件までです。続きは明日お送りいただくか、お電話でお問い合わせください。',
+  inquiry_not_found: '問い合わせが見つかりません。',
   menu_has_slots: '今日、このメニューの公開中の枠か、まだ来店していない予約があります。枠を取り下げてから、削除してください。',
   invalid_action: 'この操作は行えません。',
   invalid_input: '入力内容をご確認ください。',

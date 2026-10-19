@@ -265,3 +265,27 @@
   font-size: var(--text-caption);
   font-weight: var(--weight-medium);
 }
+
+/* 棒に重ねる折れ線：インクの 2px の線と、8px の点（面の色の 2px の輪で、棒と重なっても見分けられる） */
+.lineMark {
+  fill: none;
+  stroke: var(--color-ink-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.lineDot {
+  fill: var(--color-ink-2);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.swatchLine {
+  display: inline-block;
+  inline-size: var(--space-4);
+  block-size: 2px;
+  border-radius: 1px;
+  background: var(--color-ink-2);
+  vertical-align: middle;
+}

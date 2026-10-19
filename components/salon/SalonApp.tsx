@@ -58,6 +58,7 @@ import { AlertGate, NewBookingAlert, type IncomingBooking } from './Alerts';
 import Onboarding from './Onboarding';
 import PublishSheet, { publishFree, publishOffsets, type PublishResult } from './PublishSheet';
 import SalonSettings from './SalonSettings';
+import InquiryForm from '@/components/InquiryForm';
 import SlotPanel from './SlotPanel';
 import SlotList from './SlotList';
 import StaffBands, { WeekBands } from './StaffBands';
@@ -1053,6 +1054,8 @@ export default function SalonApp({
                 </nav>
               )}
               <SalonSettings key={salon.id} client={client} salon={salon} menus={menus} stylists={stylists} lineGroup={lineGroup} onSaved={loadSalon} only="log" deletable={deletable} />
+              {/* 運営へのお問い合わせ（0022 を流していないデータベースでは出ない） */}
+              {session && <InquiryForm client={client} role="salon" userId={session.user.id} salonId={salon.id} />}
               <ScreenTitle as="h2" tight>
                 スタッフのアカウント
               </ScreenTitle>
