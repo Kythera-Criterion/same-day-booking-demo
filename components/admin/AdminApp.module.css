@@ -266,11 +266,13 @@ main.dashboard {
     flex-direction: column;
     gap: var(--space-1);
     margin: var(--space-4) 0 0;
-    padding: 0;
+    /* 背景の写真の上でも読めるよう、半透明のすりガラスの面にのせる */
+    padding: var(--space-2);
     overflow: visible;
     border: 0;
-    background: none;
-    backdrop-filter: none;
+    border-radius: var(--radius-surface);
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    backdrop-filter: blur(var(--blur-glass));
   }
 
   .tab {

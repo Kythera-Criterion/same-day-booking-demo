@@ -753,3 +753,11 @@ main.dashboard {
   color: var(--color-ink-2);
   font-size: var(--text-caption);
 }
+
+/* 背景の写真の上でも読めるよう、左のメニューを半透明のすりガラスの面にのせる */
+.side nav {
+  padding: var(--space-2);
+  border-radius: var(--radius-surface);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(var(--blur-glass));
+}
